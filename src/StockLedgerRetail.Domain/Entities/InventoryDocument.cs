@@ -1,0 +1,40 @@
+using StockLedgerRetail.Enums;
+
+namespace StockLedgerRetail.Domain.Entities;
+
+public class InventoryDocument
+{
+    public Guid Id { get; set; }
+
+    public string DocumentNo { get; set; } = string.Empty;
+
+    public InventoryDocumentType DocumentType { get; set; }
+
+    public Guid? SourceWarehouseId { get; set; }
+
+    public Guid? DestinationWarehouseId { get; set; }
+
+    public InventoryDocumentStatus Status { get; set; } = InventoryDocumentStatus.Draft;
+
+    public DateTime DocumentDate { get; set; }
+
+    public string? ReferenceNo { get; set; }
+
+    public string? Note { get; set; }
+
+    public string CreatedBy { get; set; } = string.Empty;
+
+    public DateTime CreatedAt { get; set; }
+
+    public string? ApprovedBy { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
+
+    public Warehouse? SourceWarehouse { get; set; }
+
+    public Warehouse? DestinationWarehouse { get; set; }
+
+    public ICollection<InventoryDocumentLine> Lines { get; set; } = new List<InventoryDocumentLine>();
+
+    public ICollection<StockTransaction> StockTransactions { get; set; } = new List<StockTransaction>();
+}

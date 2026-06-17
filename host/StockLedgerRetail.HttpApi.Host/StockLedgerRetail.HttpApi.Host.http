@@ -1,0 +1,6 @@
+@StockLedgerRetail.HttpApi.Host_HostAddress = http://localhost:5270
+
+GET {{StockLedgerRetail.HttpApi.Host_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
