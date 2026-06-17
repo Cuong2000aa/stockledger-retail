@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/host/">
+    <Project Path="host/StockLedgerRetail.HttpApi.Host/StockLedgerRetail.HttpApi.Host.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/StockLedgerRetail.Application.Contracts/StockLedgerRetail.Application.Contracts.csproj" />
+    <Project Path="src/StockLedgerRetail.Application.Redis/StockLedgerRetail.Application.Redis.csproj" />
+    <Project Path="src/StockLedgerRetail.Application/StockLedgerRetail.Application.csproj" />
+    <Project Path="src/StockLedgerRetail.Domain.Shared/StockLedgerRetail.Domain.Shared.csproj" />
+    <Project Path="src/StockLedgerRetail.Domain/StockLedgerRetail.Domain.csproj" />
+    <Project Path="src/StockLedgerRetail.EntityFrameworkCore/StockLedgerRetail.EntityFrameworkCore.csproj" />
+    <Project Path="src/StockLedgerRetail.HttpApi.Client/StockLedgerRetail.HttpApi.Client.csproj" />
+    <Project Path="src/StockLedgerRetail.HttpApi/StockLedgerRetail.HttpApi.csproj" />
+    <Project Path="src/StockLedgerRetail.MongoDB/StockLedgerRetail.MongoDB.csproj" />
+  </Folder>
+</Solution>
