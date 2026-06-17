@@ -107,6 +107,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("SourceSystem")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<Guid?>("SourceWarehouseId")
                         .HasColumnType("uuid");
 
@@ -121,6 +125,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .IsUnique();
 
                     b.HasIndex("SourceWarehouseId");
+
+                    b.HasIndex("SourceSystem", "ReferenceNo", "DocumentType")
+                        .IsUnique()
+                        .HasFilter("\"ReferenceNo\" IS NOT NULL AND \"SourceSystem\" IS NOT NULL");
 
                     b.ToTable("inventory_documents", (string)null);
                 });

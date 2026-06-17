@@ -20,6 +20,11 @@ public class InventoryDocument
 
     public string? ReferenceNo { get; set; }
 
+    /// <summary>
+    /// External system that originated this document (e.g. POS, OMS).
+    /// </summary>
+    public string? SourceSystem { get; set; }
+
     public string? Note { get; set; }
 
     public string CreatedBy { get; set; } = string.Empty;

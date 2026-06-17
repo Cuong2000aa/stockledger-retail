@@ -17,12 +17,16 @@ public class InventoryDocumentConfiguration : IEntityTypeConfiguration<Inventory
         builder.Property(x => x.Status).IsRequired();
         builder.Property(x => x.DocumentDate).IsRequired();
         builder.Property(x => x.ReferenceNo).HasMaxLength(100);
+        builder.Property(x => x.SourceSystem).HasMaxLength(50);
         builder.Property(x => x.Note).HasMaxLength(500);
         builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.ApprovedBy).HasMaxLength(100);
 
         builder.HasIndex(x => x.DocumentNo).IsUnique();
+        builder.HasIndex(x => new { x.SourceSystem, x.ReferenceNo, x.DocumentType })
+            .IsUnique()
+            .HasFilter("\"ReferenceNo\" IS NOT NULL AND \"SourceSystem\" IS NOT NULL");
 
         builder.HasOne(x => x.SourceWarehouse)
             .WithMany()
