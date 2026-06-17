@@ -1,0 +1,201 @@
+# Business Rules (Quy tắc nghiệp vụ)
+
+---
+
+# General Rules (Quy tắc chung)
+
+| Rule Code | English                                                  | Tiếng Việt                                        |
+| --------- | -------------------------------------------------------- | ------------------------------------------------- |
+| BR001     | Every inventory movement must create a StockTransaction. | Mọi biến động tồn kho phải sinh StockTransaction. |
+| BR002     | Only approved documents can affect inventory.            | Chỉ phiếu đã duyệt mới được tác động tồn kho.     |
+| BR003     | Draft documents must not affect inventory.               | Phiếu nháp không được ảnh hưởng tồn kho.          |
+| BR004     | Cancelled documents must not affect inventory.           | Phiếu hủy không được ảnh hưởng tồn kho.           |
+| BR005     | Inventory quantity cannot become negative.               | Không cho phép tồn kho âm.                        |
+| BR006     | ProductVariant must exist.                               | SKU phải tồn tại.                                 |
+| BR007     | Warehouse must exist.                                    | Kho phải tồn tại.                                 |
+
+---
+
+# Stock In (Nhập kho)
+
+## Mục đích
+
+Nhập hàng từ nhà cung cấp hoặc nguồn khác vào kho.
+
+### Ví dụ
+
+```text
+Nhà cung cấp giao 100 áo Polo.
+```
+
+---
+
+## Rules
+
+| Rule Code | English                             | Tiếng Việt                   |
+| --------- | ----------------------------------- | ---------------------------- |
+| BR101     | Destination warehouse is required.  | Bắt buộc chọn kho nhận hàng. |
+| BR102     | Quantity must be greater than zero. | Số lượng phải lớn hơn 0.     |
+| BR103     | Create IN transaction.              | Sinh giao dịch IN.           |
+| BR104     | Increase CurrentStock.              | Tăng tồn kho hiện tại.       |
+
+---
+
+# Stock Out (Xuất kho)
+
+## Mục đích
+
+Xuất hàng khỏi kho.
+
+### Ví dụ
+
+```text
+Xuất bán hàng.
+
+Xuất hàng demo.
+
+Xuất hủy.
+```
+
+---
+
+## Rules
+
+| Rule Code | English                             | Tiếng Việt               |
+| --------- | ----------------------------------- | ------------------------ |
+| BR201     | Source warehouse is required.       | Bắt buộc chọn kho xuất.  |
+| BR202     | Quantity must be greater than zero. | Số lượng phải lớn hơn 0. |
+| BR203     | Available stock must be sufficient. | Tồn khả dụng phải đủ.    |
+| BR204     | Create OUT transaction.             | Sinh giao dịch OUT.      |
+| BR205     | Decrease CurrentStock.              | Giảm tồn kho hiện tại.   |
+
+---
+
+# Transfer (Chuyển kho)
+
+## Mục đích
+
+Chuyển hàng giữa hai kho.
+
+### Ví dụ
+
+```text
+Store Q1
+↓
+Store Q7
+```
+
+---
+
+## Rules
+
+| Rule Code | English                                          | Tiếng Việt                                         |
+| --------- | ------------------------------------------------ | -------------------------------------------------- |
+| BR301     | Source warehouse is required.                    | Bắt buộc có kho nguồn.                             |
+| BR302     | Destination warehouse is required.               | Bắt buộc có kho đích.                              |
+| BR303     | Source and destination cannot be the same.       | Kho nguồn và kho đích không được trùng nhau.       |
+| BR304     | Source warehouse must have enough stock.         | Kho nguồn phải đủ tồn kho.                         |
+| BR305     | Create TRANSFER_OUT transaction.                 | Sinh giao dịch TRANSFER_OUT.                       |
+| BR306     | Create TRANSFER_IN transaction.                  | Sinh giao dịch TRANSFER_IN.                        |
+| BR307     | One transfer must create two stock transactions. | Một lần chuyển kho phải tạo hai giao dịch tồn kho. |
+
+---
+
+# Adjustment (Điều chỉnh tồn kho)
+
+## Mục đích
+
+Điều chỉnh tăng hoặc giảm tồn kho.
+
+### Ví dụ
+
+```text
+Mất hàng.
+
+Tìm thấy hàng.
+
+Sai lệch dữ liệu.
+```
+
+---
+
+## Rules
+
+| Rule Code | English                                      | Tiếng Việt                            |
+| --------- | -------------------------------------------- | ------------------------------------- |
+| BR401     | Adjustment reason is required.               | Bắt buộc nhập lý do điều chỉnh.       |
+| BR402     | Positive adjustment creates ADJUSTMENT_IN.   | Điều chỉnh tăng sinh ADJUSTMENT_IN.   |
+| BR403     | Negative adjustment creates ADJUSTMENT_OUT.  | Điều chỉnh giảm sinh ADJUSTMENT_OUT.  |
+| BR404     | Adjustment cannot create negative inventory. | Điều chỉnh không được làm tồn kho âm. |
+
+---
+
+# Stock Count (Kiểm kê)
+
+## Mục đích
+
+Đối chiếu tồn hệ thống và tồn thực tế.
+
+### Ví dụ
+
+```text
+Tồn hệ thống = 100
+
+Tồn thực tế = 98
+```
+
+Chênh lệch:
+
+```text
+-2
+```
+
+---
+
+## Rules
+
+| Rule Code | English                                         | Tiếng Việt                                   |
+| --------- | ----------------------------------------------- | -------------------------------------------- |
+| BR501     | Counted quantity cannot be negative.            | Số lượng kiểm kê không được âm.              |
+| BR502     | Variance = Counted - System Quantity.           | Chênh lệch = Tồn thực tế - Tồn hệ thống.     |
+| BR503     | Positive variance creates COUNT_ADJUSTMENT_IN.  | Chênh lệch dương sinh COUNT_ADJUSTMENT_IN.   |
+| BR504     | Negative variance creates COUNT_ADJUSTMENT_OUT. | Chênh lệch âm sinh COUNT_ADJUSTMENT_OUT.     |
+| BR505     | No transaction if variance is zero.             | Không tạo giao dịch nếu không có chênh lệch. |
+
+---
+
+# Current Stock Rules (Quy tắc tồn kho hiện tại)
+
+| Rule Code | English                                              | Tiếng Việt                                            |
+| --------- | ---------------------------------------------------- | ----------------------------------------------------- |
+| BR601     | CurrentStock must be updated after StockTransaction. | CurrentStock phải được cập nhật sau StockTransaction. |
+| BR602     | Available = OnHand - Reserved.                       | Tồn khả dụng = Tồn thực tế - Tồn giữ chỗ.             |
+| BR603     | One CurrentStock per ProductVariant and Warehouse.   | Mỗi SKU tại mỗi kho chỉ có một CurrentStock.          |
+| BR604     | LastTransactionId should be stored.                  | Nên lưu LastTransactionId để truy vết.                |
+
+---
+
+# Audit Rules (Quy tắc ghi nhận lịch sử)
+
+| Rule Code | English                                       | Tiếng Việt                                  |
+| --------- | --------------------------------------------- | ------------------------------------------- |
+| BR701     | Important actions must be logged.             | Các thao tác quan trọng phải được ghi log.  |
+| BR702     | Approval actions must be logged.              | Hành động duyệt phiếu phải được ghi log.    |
+| BR703     | Cancellation actions must be logged.          | Hành động hủy phiếu phải được ghi log.      |
+| BR704     | Data changes should store old and new values. | Thay đổi dữ liệu nên lưu giá trị cũ và mới. |
+
+---
+
+# Golden Rule (Nguyên tắc vàng)
+
+```text
+InventoryDocument
+        ↓
+InventoryDocumentLine
+        ↓
+StockTransaction
+        ↓
+CurrentStock
+```
+
+Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransaction.
