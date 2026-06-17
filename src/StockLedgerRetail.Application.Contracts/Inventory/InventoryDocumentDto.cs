@@ -1,8 +1,23 @@
 using StockLedgerRetail.Enums;
 
-namespace StockLedgerRetail.Domain.Entities;
+namespace StockLedgerRetail.Inventory;
 
-public class InventoryDocument
+public class InventoryDocumentLineDto
+{
+    public Guid Id { get; set; }
+
+    public Guid ProductVariantId { get; set; }
+
+    public string Sku { get; set; } = string.Empty;
+
+    public decimal Quantity { get; set; }
+
+    public decimal? UnitCost { get; set; }
+
+    public string? Note { get; set; }
+}
+
+public class InventoryDocumentDto
 {
     public Guid Id { get; set; }
 
@@ -14,15 +29,12 @@ public class InventoryDocument
 
     public Guid? DestinationWarehouseId { get; set; }
 
-    public InventoryDocumentStatus Status { get; set; } = InventoryDocumentStatus.Draft;
+    public InventoryDocumentStatus Status { get; set; }
 
     public DateTime DocumentDate { get; set; }
 
     public string? ReferenceNo { get; set; }
 
-    /// <summary>
-    /// External system that originated this document (e.g. POS, OMS).
-    /// </summary>
     public string? SourceSystem { get; set; }
 
     public string? Note { get; set; }
@@ -35,11 +47,5 @@ public class InventoryDocument
 
     public DateTime? ApprovedAt { get; set; }
 
-    public Warehouse? SourceWarehouse { get; set; }
-
-    public Warehouse? DestinationWarehouse { get; set; }
-
-    public ICollection<InventoryDocumentLine> Lines { get; set; } = new List<InventoryDocumentLine>();
-
-    public ICollection<StockTransaction> StockTransactions { get; set; } = new List<StockTransaction>();
+    public List<InventoryDocumentLineDto> Lines { get; set; } = new();
 }

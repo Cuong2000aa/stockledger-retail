@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using StockLedgerRetail.EntityFrameworkCore;
@@ -11,9 +12,11 @@ using StockLedgerRetail.EntityFrameworkCore;
 namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(StockLedgerRetailDbContext))]
-    partial class StockLedgerRetailDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617040453_AddInventoryDocumentSourceSystem")]
+    partial class AddInventoryDocumentSourceSystem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

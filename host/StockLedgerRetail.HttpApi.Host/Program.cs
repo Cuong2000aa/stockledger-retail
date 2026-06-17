@@ -29,11 +29,12 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
 
 builder.Services.AddStockLedgerRetailEntityFrameworkCore(connectionString);
-builder.Services.AddStockLedgerRetailApplication();
+builder.Services.AddStockLedgerRetailApplication(builder.Configuration);
 
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<IntegrationApiKeyMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 
 if (app.Environment.IsDevelopment())
