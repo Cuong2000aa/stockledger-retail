@@ -50,6 +50,36 @@ public class CurrentStockRepository : ICurrentStockRepository
         return query.OrderBy(x => x.Warehouse.Code).ThenBy(x => x.ProductVariant.Sku).ToListAsync(cancellationToken);
     }
 
+    public async Task<(List<CurrentStock> Items, int TotalCount)> GetPagedListAsync(
+        Guid? warehouseId,
+        Guid? productVariantId,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.CurrentStocks
+            .Include(x => x.ProductVariant)
+            .Include(x => x.Warehouse)
+            .AsQueryable();
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+
+        if (productVariantId.HasValue)
+        {
+            query = query.Where(x => x.ProductVariantId == productVariantId.Value);
+        }
+
+        query = query.OrderBy(x => x.Warehouse.Code).ThenBy(x => x.ProductVariant.Sku);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task InsertAsync(CurrentStock currentStock, CancellationToken cancellationToken = default) =>
         await _dbContext.CurrentStocks.AddAsync(currentStock, cancellationToken);
 

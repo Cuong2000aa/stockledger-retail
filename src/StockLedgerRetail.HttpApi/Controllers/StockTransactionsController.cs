@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Inventory;
 using StockLedgerRetail.Services;
 
@@ -19,12 +20,14 @@ public class StockTransactionsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách giao dịch tồn kho. Lọc theo warehouseId và/hoặc productVariantId (tùy chọn).
+    /// Lấy danh sách giao dịch tồn kho có phân trang. Lọc theo warehouseId và/hoặc productVariantId.
     /// </summary>
     [HttpGet]
-    public Task<List<StockTransactionDto>> GetListAsync(
+    public Task<PagedResultDto<StockTransactionDto>> GetListAsync(
         [FromQuery] Guid? warehouseId,
         [FromQuery] Guid? productVariantId,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken) =>
-        _stockTransactionAppService.GetListAsync(warehouseId, productVariantId, cancellationToken);
+        _stockTransactionAppService.GetListAsync(warehouseId, productVariantId, page, pageSize, cancellationToken);
 }

@@ -1,10 +1,14 @@
+using StockLedgerRetail.Common;
 using StockLedgerRetail.ProductVariants;
 
 namespace StockLedgerRetail.Services;
 
 public interface IProductVariantAppService
 {
-    Task<List<ProductVariantDto>> GetListAsync(CancellationToken cancellationToken = default);
+    Task<PagedResultDto<ProductVariantDto>> GetListAsync(
+        int? page = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default);
 
     Task<List<ProductVariantDto>> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default);
 

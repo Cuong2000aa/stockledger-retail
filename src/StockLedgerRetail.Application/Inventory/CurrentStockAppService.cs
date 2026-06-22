@@ -1,3 +1,4 @@
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Inventory;
 using StockLedgerRetail.Services;
@@ -17,13 +18,18 @@ public class CurrentStockAppService : ICurrentStockAppService
     }
 
     /// <summary>Lấy danh sách tồn, lọc theo kho và/hoặc SKU (tùy chọn).</summary>
-    public async Task<List<CurrentStockDto>> GetListAsync(
+    public async Task<PagedResultDto<CurrentStockDto>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
-        var stocks = await _currentStockRepository.GetListAsync(warehouseId, productVariantId, cancellationToken);
-        return stocks.Select(MapToDto).ToList();
+        var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
+        var (stocks, totalCount) = await _currentStockRepository.GetPagedListAsync(
+            warehouseId, productVariantId, skip, take, cancellationToken);
+        var items = stocks.Select(MapToDto).ToList();
+        return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }
 
     /// <summary>Lấy một bản ghi tồn theo Id.</summary>

@@ -10,6 +10,11 @@ public interface IProductRepository
 
     Task<List<Product>> GetListAsync(CancellationToken cancellationToken = default);
 
+    Task<(List<Product> Items, int TotalCount)> GetPagedListAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
     Task InsertAsync(Product product, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Product product, CancellationToken cancellationToken = default);

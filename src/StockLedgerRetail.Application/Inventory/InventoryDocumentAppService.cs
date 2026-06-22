@@ -1,5 +1,6 @@
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Application.Inventory;
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
@@ -9,7 +10,7 @@ using StockLedgerRetail.Services;
 namespace StockLedgerRetail.Application.Inventory;
 
 /// <summary>
-/// Dịch vụ quản lý phiếu nghiệp vụ tồn kho — tạo nhập/xuất (Draft) và duyệt phiếu.
+/// Dịch vụ quản lý phiếu nghiệp vụ tồn kho — tạo nhập/xuất/điều chỉnh (Draft), duyệt và hủy phiếu.
 /// </summary>
 public class InventoryDocumentAppService : IInventoryDocumentAppService
 {
@@ -45,13 +46,19 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return MapToDto(document);
     }
 
-    /// <summary>Lấy danh sách phiếu, có thể lọc theo loại (StockIn, StockOut...).</summary>
-    public async Task<List<InventoryDocumentDto>> GetListAsync(
+    /// <summary>Lấy danh sách phiếu có phân trang, có thể lọc theo loại.</summary>
+    public async Task<PagedResultDto<InventoryDocumentDto>> GetListAsync(
         InventoryDocumentType? documentType = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
-        var documents = await _inventoryDocumentRepository.GetListAsync(documentType, cancellationToken);
-        return documents.Select(MapToDtoWithoutLines).ToList();
+        var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
+        var (documents, totalCount) = await _inventoryDocumentRepository.GetPagedListAsync(
+            documentType, skip, take, cancellationToken);
+
+        var items = documents.Select(MapToDtoWithoutLines).ToList();
+        return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }
 
     /// <summary>Tạo phiếu nhập kho ở trạng thái Draft — chưa tăng tồn.</summary>
@@ -118,6 +125,50 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return dto;
     }
 
+    /// <summary>Tạo phiếu điều chỉnh tồn ở trạng thái Draft — số lượng dòng có dấu (+/-).</summary>
+    public async Task<InventoryDocumentDto> CreateAdjustmentAsync(
+        CreateAdjustmentDto input,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(input.Reason))
+        {
+            throw new InvalidOperationException("Adjustment reason is required.");
+        }
+
+        await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
+        ValidateAdjustmentLines(input.Lines);
+        await EnsureAdjustmentVariantsExistAsync(input.Lines, cancellationToken);
+
+        var documentLines = input.Lines.Select(line => new CreateInventoryDocumentLineDto
+        {
+            ProductVariantId = line.ProductVariantId,
+            Quantity = line.AdjustmentQuantity,
+            Note = line.Note
+        }).ToList();
+
+        var now = DateTime.UtcNow;
+        var document = await CreateDocumentAsync(
+            InventoryDocumentType.Adjustment,
+            sourceWarehouseId: null,
+            destinationWarehouseId: input.WarehouseId,
+            documentDate: input.DocumentDate ?? now,
+            referenceNo: input.ReferenceNo,
+            sourceSystem: null,
+            note: BuildAdjustmentNote(input.Reason, input.Note),
+            lines: documentLines,
+            now: now,
+            cancellationToken);
+
+        await _inventoryDocumentRepository.InsertAsync(document, cancellationToken);
+        await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
+
+        var dto = await LoadDtoAsync(document.Id, cancellationToken);
+        await _transactionAuditService.LogAsync(
+            nameof(InventoryDocument), document.Id, AuditActionType.Create, null, dto, cancellationToken);
+
+        return dto;
+    }
+
     /// <summary>Duyệt phiếu — gọi StockLedgerService sinh giao dịch và cập nhật tồn.</summary>
     public async Task<InventoryDocumentDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -149,6 +200,30 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         var newDto = await LoadDtoAsync(document.Id, cancellationToken);
         await _transactionAuditService.LogAsync(
             nameof(InventoryDocument), document.Id, AuditActionType.Approve, oldDto, newDto, cancellationToken);
+
+        return newDto;
+    }
+
+    /// <summary>Hủy phiếu Draft — không tác động tồn kho.</summary>
+    public async Task<InventoryDocumentDto> CancelAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        if (document.Status is not InventoryDocumentStatus.Draft)
+        {
+            throw new InvalidOperationException("Only draft documents can be cancelled.");
+        }
+
+        var oldDto = MapToDto(document);
+        document.Status = InventoryDocumentStatus.Cancelled;
+
+        await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
+        await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
+
+        var newDto = await LoadDtoAsync(document.Id, cancellationToken);
+        await _transactionAuditService.LogAsync(
+            nameof(InventoryDocument), document.Id, AuditActionType.Cancel, oldDto, newDto, cancellationToken);
 
         return newDto;
     }
@@ -218,6 +293,45 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             documentType, prefix, cancellationToken);
 
         return $"{prefix}{(count + 1).ToString().PadLeft(4, '0')}";
+    }
+
+    /// <summary>Kiểm tra phiếu điều chỉnh có ít nhất một dòng và số lượng khác 0.</summary>
+    private static void ValidateAdjustmentLines(List<CreateAdjustmentLineDto> lines)
+    {
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("Document must contain at least one line.");
+        }
+
+        foreach (var line in lines)
+        {
+            if (line.AdjustmentQuantity == 0)
+            {
+                throw new InvalidOperationException("Adjustment quantity cannot be zero.");
+            }
+        }
+    }
+
+    private async Task EnsureAdjustmentVariantsExistAsync(
+        List<CreateAdjustmentLineDto> lines,
+        CancellationToken cancellationToken)
+    {
+        foreach (var line in lines)
+        {
+            var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken);
+            if (variant is null)
+            {
+                throw new InvalidOperationException($"Product variant '{line.ProductVariantId}' was not found.");
+            }
+        }
+    }
+
+    private static string BuildAdjustmentNote(string reason, string? note)
+    {
+        var trimmedReason = reason.Trim();
+        return string.IsNullOrWhiteSpace(note)
+            ? trimmedReason
+            : $"{trimmedReason} | {note.Trim()}";
     }
 
     /// <summary>Kiểm tra phiếu có ít nhất một dòng và số lượng > 0.</summary>

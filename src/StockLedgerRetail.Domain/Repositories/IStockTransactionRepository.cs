@@ -13,5 +13,12 @@ public interface IStockTransactionRepository
         Guid? productVariantId = null,
         CancellationToken cancellationToken = default);
 
+    Task<(List<StockTransaction> Items, int TotalCount)> GetPagedListAsync(
+        Guid? warehouseId,
+        Guid? productVariantId,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

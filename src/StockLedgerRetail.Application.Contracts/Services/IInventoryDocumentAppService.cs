@@ -1,3 +1,4 @@
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Enums;
 using StockLedgerRetail.Inventory;
 
@@ -7,13 +8,19 @@ public interface IInventoryDocumentAppService
 {
     Task<InventoryDocumentDto> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<List<InventoryDocumentDto>> GetListAsync(
+    Task<PagedResultDto<InventoryDocumentDto>> GetListAsync(
         InventoryDocumentType? documentType = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default);
 
     Task<InventoryDocumentDto> CreateStockInAsync(CreateStockInDto input, CancellationToken cancellationToken = default);
 
     Task<InventoryDocumentDto> CreateStockOutAsync(CreateStockOutDto input, CancellationToken cancellationToken = default);
 
+    Task<InventoryDocumentDto> CreateAdjustmentAsync(CreateAdjustmentDto input, CancellationToken cancellationToken = default);
+
     Task<InventoryDocumentDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<InventoryDocumentDto> CancelAsync(Guid id, CancellationToken cancellationToken = default);
 }

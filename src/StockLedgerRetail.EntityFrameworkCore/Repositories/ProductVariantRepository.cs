@@ -22,6 +22,17 @@ public class ProductVariantRepository : IProductVariantRepository
     public Task<List<ProductVariant>> GetListAsync(CancellationToken cancellationToken = default) =>
         _dbContext.ProductVariants.OrderBy(x => x.Sku).ToListAsync(cancellationToken);
 
+    public async Task<(List<ProductVariant> Items, int TotalCount)> GetPagedListAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.ProductVariants.OrderBy(x => x.Sku);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
+        return (items, totalCount);
+    }
+
     public Task<List<ProductVariant>> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default) =>
         _dbContext.ProductVariants.Where(x => x.ProductId == productId).OrderBy(x => x.Sku).ToListAsync(cancellationToken);
 

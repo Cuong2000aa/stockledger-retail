@@ -45,6 +45,38 @@ public class StockTransactionRepository : IStockTransactionRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<(List<StockTransaction> Items, int TotalCount)> GetPagedListAsync(
+        Guid? warehouseId,
+        Guid? productVariantId,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.StockTransactions
+            .Include(x => x.ProductVariant)
+            .Include(x => x.Warehouse)
+            .AsQueryable();
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+
+        if (productVariantId.HasValue)
+        {
+            query = query.Where(x => x.ProductVariantId == productVariantId.Value);
+        }
+
+        query = query
+            .OrderByDescending(x => x.TransactionDate)
+            .ThenByDescending(x => x.CreatedAt);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _dbContext.SaveChangesAsync(cancellationToken);
 }

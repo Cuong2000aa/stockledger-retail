@@ -21,6 +21,12 @@ public interface IInventoryDocumentRepository
         InventoryDocumentType? documentType = null,
         CancellationToken cancellationToken = default);
 
+    Task<(List<InventoryDocument> Items, int TotalCount)> GetPagedListAsync(
+        InventoryDocumentType? documentType,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
     Task<int> CountByTypeAndDatePrefixAsync(
         InventoryDocumentType documentType,
         string datePrefix,

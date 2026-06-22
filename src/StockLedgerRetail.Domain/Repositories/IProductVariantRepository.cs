@@ -10,6 +10,11 @@ public interface IProductVariantRepository
 
     Task<List<ProductVariant>> GetListAsync(CancellationToken cancellationToken = default);
 
+    Task<(List<ProductVariant> Items, int TotalCount)> GetPagedListAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
     Task<List<ProductVariant>> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default);
 
     Task InsertAsync(ProductVariant productVariant, CancellationToken cancellationToken = default);
