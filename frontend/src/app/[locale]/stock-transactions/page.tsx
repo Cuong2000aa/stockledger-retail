@@ -1,8 +1,10 @@
 "use client";
 
+import { ListFilterBar } from "@/components/ListFilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { transactionTypeKey } from "@/components/StatusBadge";
+import { useListSearch } from "@/hooks/useListSearch";
 import { fetchStockTransactions, fetchWarehouses } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
@@ -11,43 +13,70 @@ import { useState } from "react";
 
 export default function StockTransactionsPage() {
   const t = useTranslations("transactions");
+  const tStocks = useTranslations("stocks");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const locale = useLocale();
   const [page, setPage] = useState(1);
   const [warehouseId, setWarehouseId] = useState("");
+  const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
+    useListSearch(() => setPage(1));
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses-all"],
     queryFn: () => fetchWarehouses(1, 100),
   });
 
+  const hasFilters = hasSearch || warehouseId !== "";
+
   const { data, isLoading } = useQuery({
-    queryKey: ["stock-transactions", page, warehouseId],
+    queryKey: ["stock-transactions", page, warehouseId, debouncedSearch],
     queryFn: () =>
-      fetchStockTransactions(warehouseId || undefined, undefined, page),
+      fetchStockTransactions(
+        warehouseId || undefined,
+        undefined,
+        page,
+        20,
+        debouncedSearch || undefined
+      ),
   });
+
+  const clearFilters = () => {
+    resetSearch();
+    setWarehouseId("");
+    setPage(1);
+  };
 
   return (
     <div>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
-      <div className="mb-4">
-        <select
-          className="input max-w-xs"
-          value={warehouseId}
-          onChange={(e) => {
-            setWarehouseId(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">All warehouses</option>
-          {warehouses?.items.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.code} — {w.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={tFilters("searchTransaction")}
+        onReset={clearFilters}
+        showReset={hasFilters}
+      >
+        <label className="text-sm text-slate-600">
+          <span className="mb-1 block">{tStocks("warehouse")}</span>
+          <select
+            className="input min-w-[200px]"
+            value={warehouseId}
+            onChange={(e) => {
+              setWarehouseId(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">{tFilters("allWarehouses")}</option>
+            {warehouses?.items.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.code} — {w.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </ListFilterBar>
 
       <div className="card">
         {isLoading ? (

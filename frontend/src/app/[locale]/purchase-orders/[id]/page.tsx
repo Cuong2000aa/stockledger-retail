@@ -2,11 +2,11 @@
 
 import { Link } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
+import { useNotify } from "@/hooks/useNotify";
 import {
   cancelPurchaseOrder,
   fetchGoodsReceipts,
   fetchPurchaseOrder,
-  getApiErrorMessage,
   submitPurchaseOrder,
 } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
@@ -41,6 +41,7 @@ export default function PurchaseOrderDetailPage({
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const qc = useQueryClient();
+  const { notifyError, confirm } = useNotify();
 
   const { data: po, isLoading } = useQuery({
     queryKey: ["purchase-order", id],
@@ -59,7 +60,7 @@ export default function PurchaseOrderDetailPage({
       qc.invalidateQueries({ queryKey: ["purchase-order", id] });
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
     },
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   const cancelMutation = useMutation({
@@ -68,7 +69,7 @@ export default function PurchaseOrderDetailPage({
       qc.invalidateQueries({ queryKey: ["purchase-order", id] });
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
     },
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   if (isLoading || !po) {
@@ -128,8 +129,10 @@ export default function PurchaseOrderDetailPage({
             <button
               className="btn-primary"
               disabled={submitMutation.isPending}
-              onClick={() => {
-                if (confirm(t("submitConfirm"))) submitMutation.mutate();
+              onClick={async () => {
+                if (await confirm(t("submitConfirm"))) {
+                  submitMutation.mutate();
+                }
               }}
             >
               {t("submit")}
@@ -144,8 +147,10 @@ export default function PurchaseOrderDetailPage({
             <button
               className="btn-danger"
               disabled={cancelMutation.isPending}
-              onClick={() => {
-                if (confirm(t("cancelConfirm"))) cancelMutation.mutate();
+              onClick={async () => {
+                if (await confirm(t("cancelConfirm"))) {
+                  cancelMutation.mutate();
+                }
               }}
             >
               {tDoc("cancelDoc")}

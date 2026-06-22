@@ -13,6 +13,7 @@ public interface IProductRepository
     Task<(List<Product> Items, int TotalCount)> GetPagedListAsync(
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task InsertAsync(Product product, CancellationToken cancellationToken = default);

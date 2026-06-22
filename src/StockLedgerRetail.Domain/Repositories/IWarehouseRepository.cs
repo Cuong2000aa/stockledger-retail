@@ -13,6 +13,7 @@ public interface IWarehouseRepository
     Task<(List<Warehouse> Items, int TotalCount)> GetPagedListAsync(
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task InsertAsync(Warehouse warehouse, CancellationToken cancellationToken = default);

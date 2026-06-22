@@ -50,10 +50,12 @@ public class StockTransactionRepository : IStockTransactionRepository
         Guid? productVariantId,
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.StockTransactions
             .Include(x => x.ProductVariant)
+                .ThenInclude(v => v.Product)
             .Include(x => x.Warehouse)
             .AsQueryable();
 
@@ -65,6 +67,19 @@ public class StockTransactionRepository : IStockTransactionRepository
         if (productVariantId.HasValue)
         {
             query = query.Where(x => x.ProductVariantId == productVariantId.Value);
+        }
+
+        var term = TextSearchHelper.Normalize(search);
+        if (term is not null)
+        {
+            var pattern = TextSearchHelper.ToLikePattern(term);
+            query = query.Where(x =>
+                EF.Functions.ILike(x.TransactionNo, pattern) ||
+                EF.Functions.ILike(x.ProductVariant.Sku, pattern) ||
+                (x.ProductVariant.Barcode != null &&
+                 EF.Functions.ILike(x.ProductVariant.Barcode, pattern)) ||
+                EF.Functions.ILike(x.ProductVariant.Product.ProductCode, pattern) ||
+                EF.Functions.ILike(x.ProductVariant.Product.Name, pattern));
         }
 
         query = query

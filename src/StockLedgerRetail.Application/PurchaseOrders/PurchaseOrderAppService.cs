@@ -39,11 +39,12 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         Guid? supplierId = null,
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (items, totalCount) = await _purchaseOrderRepository.GetPagedListAsync(
-            status, supplierId, skip, take, cancellationToken);
+            status, supplierId, skip, take, search, cancellationToken);
 
         return PagingNormalizer.Create(
             items.Select(MapToDtoWithoutLines).ToList(),

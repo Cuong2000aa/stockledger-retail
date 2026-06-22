@@ -24,8 +24,9 @@ public class WarehousesController : ControllerBase
     public Task<PagedResultDto<WarehouseDto>> GetListAsync(
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? search,
         CancellationToken cancellationToken) =>
-        _warehouseAppService.GetListAsync(page, pageSize, cancellationToken);
+        _warehouseAppService.GetListAsync(page, pageSize, search, cancellationToken);
 
     /// <summary>Lấy chi tiết một kho theo Id.</summary>
     [HttpGet("{id:guid}")]

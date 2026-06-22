@@ -1,15 +1,18 @@
 "use client";
 
+import { ListFilterBar } from "@/components/ListFilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { ActiveBadge, isProductActive } from "@/components/StatusBadge";
+import { useListSearch } from "@/hooks/useListSearch";
+import { useNotify } from "@/hooks/useNotify";
 import {
   createProduct,
   deleteProduct,
   fetchProducts,
-  getApiErrorMessage,
   updateProduct,
 } from "@/lib/api";
+import { validateProductForm } from "@/lib/validation";
 import { ProductStatus, type Product } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -18,11 +21,14 @@ import { useState } from "react";
 export default function ProductsPage() {
   const t = useTranslations("products");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const qc = useQueryClient();
+  const { notifyValidation, notifyError, confirm } = useNotify();
   const [page, setPage] = useState(1);
+  const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
+    useListSearch(() => setPage(1));
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     productCode: "",
@@ -33,8 +39,8 @@ export default function ProductsPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["products", page],
-    queryFn: () => fetchProducts(page),
+    queryKey: ["products", page, debouncedSearch],
+    queryFn: () => fetchProducts(page, 20, debouncedSearch || undefined),
   });
 
   const saveMutation = useMutation({
@@ -59,16 +65,22 @@ export default function ProductsPage() {
       qc.invalidateQueries({ queryKey: ["products"] });
       setModalOpen(false);
       setEditing(null);
-      setError(null);
     },
-    onError: (e) => setError(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteProduct,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["products"] }),
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
+
+  function handleSave() {
+    if (notifyValidation(validateProductForm(form, !!editing))) {
+      return;
+    }
+    saveMutation.mutate();
+  }
 
   function openCreate() {
     setEditing(null);
@@ -79,7 +91,6 @@ export default function ProductsPage() {
       category: "",
       status: ProductStatus.Active,
     });
-    setError(null);
     setModalOpen(true);
   }
 
@@ -92,7 +103,6 @@ export default function ProductsPage() {
       category: p.category ?? "",
       status: p.status,
     });
-    setError(null);
     setModalOpen(true);
   }
 
@@ -106,6 +116,14 @@ export default function ProductsPage() {
             + {t("create")}
           </button>
         }
+      />
+
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={tFilters("searchProduct")}
+        onReset={resetSearch}
+        showReset={hasSearch}
       />
 
       <div className="card">
@@ -158,9 +176,10 @@ export default function ProductsPage() {
                         </button>
                         <button
                           className="text-red-600 hover:underline"
-                          onClick={() => {
-                            if (confirm(t("deleteConfirm")))
+                          onClick={async () => {
+                            if (await confirm(t("deleteConfirm"))) {
                               deleteMutation.mutate(p.id);
+                            }
                           }}
                         >
                           {tCommon("delete")}
@@ -189,11 +208,6 @@ export default function ProductsPage() {
             <h2 className="mb-4 text-lg font-semibold">
               {editing ? tCommon("edit") : t("create")}
             </h2>
-            {error && (
-              <p className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">
-                {error}
-              </p>
-            )}
             <div className="space-y-3">
               {!editing && (
                 <div>
@@ -261,7 +275,7 @@ export default function ProductsPage() {
               <button
                 className="btn-primary"
                 disabled={saveMutation.isPending}
-                onClick={() => saveMutation.mutate()}
+                onClick={handleSave}
               >
                 {tCommon("save")}
               </button>

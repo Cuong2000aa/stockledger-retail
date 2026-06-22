@@ -56,8 +56,10 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
 
     public async Task<(List<InventoryDocument> Items, int TotalCount)> GetPagedListAsync(
         InventoryDocumentType? documentType,
+        InventoryDocumentStatus? status,
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.InventoryDocuments.AsQueryable();
@@ -65,6 +67,20 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
         if (documentType.HasValue)
         {
             query = query.Where(x => x.DocumentType == documentType.Value);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(x => x.Status == status.Value);
+        }
+
+        var term = TextSearchHelper.Normalize(search);
+        if (term is not null)
+        {
+            var pattern = TextSearchHelper.ToLikePattern(term);
+            query = query.Where(x =>
+                EF.Functions.ILike(x.DocumentNo, pattern) ||
+                (x.ReferenceNo != null && EF.Functions.ILike(x.ReferenceNo, pattern)));
         }
 
         query = query.OrderByDescending(x => x.DocumentDate).ThenByDescending(x => x.CreatedAt);

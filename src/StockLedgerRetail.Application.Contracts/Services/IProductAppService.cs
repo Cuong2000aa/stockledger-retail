@@ -8,6 +8,7 @@ public interface IProductAppService
     Task<PagedResultDto<ProductDto>> GetListAsync(
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task<ProductDto> GetAsync(Guid id, CancellationToken cancellationToken = default);

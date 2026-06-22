@@ -1,16 +1,19 @@
 "use client";
 
+import { ListFilterBar } from "@/components/ListFilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { ActiveBadge, costSourceKey, isProductActive } from "@/components/StatusBadge";
+import { useListSearch } from "@/hooks/useListSearch";
+import { useNotify } from "@/hooks/useNotify";
 import {
   createProductVariant,
   deleteProductVariant,
   fetchProductVariants,
   fetchProducts,
-  getApiErrorMessage,
   updateProductVariant,
 } from "@/lib/api";
+import { validateProductVariantForm } from "@/lib/validation";
 import { formatNumber } from "@/lib/format";
 import { CostSource, ProductStatus, type ProductVariant } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -54,17 +57,20 @@ function toOptionalNumber(value: string): number | undefined {
 export default function ProductVariantsPage() {
   const t = useTranslations("variants");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const locale = useLocale();
   const qc = useQueryClient();
+  const { notifyValidation, notifyError, confirm } = useNotify();
   const [page, setPage] = useState(1);
+  const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
+    useListSearch(() => setPage(1));
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ProductVariant | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<VariantForm>(emptyForm());
 
   const { data, isLoading } = useQuery({
-    queryKey: ["product-variants", page],
-    queryFn: () => fetchProductVariants(page),
+    queryKey: ["product-variants", page, debouncedSearch],
+    queryFn: () => fetchProductVariants(page, 50, debouncedSearch || undefined),
   });
 
   const { data: products } = useQuery({
@@ -116,21 +122,27 @@ export default function ProductVariantsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["product-variants"] });
       setModalOpen(false);
-      setError(null);
+      setEditing(null);
     },
-    onError: (e) => setError(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteProductVariant,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["product-variants"] }),
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
+
+  function handleSave() {
+    if (notifyValidation(validateProductVariantForm(form))) {
+      return;
+    }
+    saveMutation.mutate();
+  }
 
   function openCreate() {
     setEditing(null);
     setForm(emptyForm(products?.items[0]?.id ?? ""));
-    setError(null);
     setModalOpen(true);
   }
 
@@ -149,7 +161,6 @@ export default function ProductVariantsPage() {
       sellingPrice: v.sellingPrice != null ? String(v.sellingPrice) : "",
       costSource: v.costSource != null ? String(v.costSource) : "",
     });
-    setError(null);
     setModalOpen(true);
   }
 
@@ -165,6 +176,14 @@ export default function ProductVariantsPage() {
             + {t("create")}
           </button>
         }
+      />
+
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={tFilters("searchSku")}
+        onReset={resetSearch}
+        showReset={hasSearch}
       />
 
       <div className="card">
@@ -226,9 +245,10 @@ export default function ProductVariantsPage() {
                         </button>
                         <button
                           className="text-red-600 hover:underline"
-                          onClick={() => {
-                            if (confirm(t("deleteConfirm")))
+                          onClick={async () => {
+                            if (await confirm(t("deleteConfirm"))) {
                               deleteMutation.mutate(v.id);
+                            }
                           }}
                         >
                           {tCommon("delete")}
@@ -257,11 +277,6 @@ export default function ProductVariantsPage() {
             <h2 className="mb-4 text-lg font-semibold">
               {editing ? tCommon("edit") : t("create")}
             </h2>
-            {error && (
-              <p className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">
-                {error}
-              </p>
-            )}
             <div className="space-y-3">
               {!editing && (
                 <>
@@ -397,7 +412,7 @@ export default function ProductVariantsPage() {
               <button
                 className="btn-primary"
                 disabled={saveMutation.isPending}
-                onClick={() => saveMutation.mutate()}
+                onClick={handleSave}
               >
                 {tCommon("save")}
               </button>

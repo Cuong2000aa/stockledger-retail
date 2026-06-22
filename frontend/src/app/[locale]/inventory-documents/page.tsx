@@ -1,12 +1,17 @@
 "use client";
 
 import { Link } from "@/i18n/routing";
+import { ListFilterBar } from "@/components/ListFilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { DocStatusBadge, docTypeKey } from "@/components/StatusBadge";
+import { useListSearch } from "@/hooks/useListSearch";
 import { fetchInventoryDocuments } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { InventoryDocumentStatus } from "@/lib/types";
+import {
+  InventoryDocumentStatus,
+  InventoryDocumentType,
+} from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -29,16 +34,54 @@ function statusLabel(
   }
 }
 
+const documentTypes = Object.values(InventoryDocumentType).filter(
+  (v) => typeof v === "number"
+) as InventoryDocumentType[];
+
+const documentStatuses = Object.values(InventoryDocumentStatus).filter(
+  (v) => typeof v === "number"
+) as InventoryDocumentStatus[];
+
 export default function InventoryDocumentsPage() {
   const t = useTranslations("documents");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const locale = useLocale();
   const [page, setPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState<InventoryDocumentType | "">("");
+  const [statusFilter, setStatusFilter] = useState<InventoryDocumentStatus | "">(
+    ""
+  );
+  const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
+    useListSearch(() => setPage(1));
+
+  const hasFilters =
+    hasSearch || typeFilter !== "" || statusFilter !== "";
 
   const { data, isLoading } = useQuery({
-    queryKey: ["inventory-documents", page],
-    queryFn: () => fetchInventoryDocuments(undefined, page),
+    queryKey: [
+      "inventory-documents",
+      page,
+      typeFilter,
+      statusFilter,
+      debouncedSearch,
+    ],
+    queryFn: () =>
+      fetchInventoryDocuments(
+        typeFilter === "" ? undefined : typeFilter,
+        statusFilter === "" ? undefined : statusFilter,
+        page,
+        20,
+        debouncedSearch || undefined
+      ),
   });
+
+  const clearFilters = () => {
+    resetSearch();
+    setTypeFilter("");
+    setStatusFilter("");
+    setPage(1);
+  };
 
   return (
     <div>
@@ -71,6 +114,55 @@ export default function InventoryDocumentsPage() {
           </div>
         }
       />
+
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={tFilters("searchDocument")}
+        onReset={clearFilters}
+        showReset={hasFilters}
+      >
+        <label className="text-sm text-slate-600">
+          <span className="mb-1 block">{t("type")}</span>
+          <select
+            className="input min-w-[160px]"
+            value={typeFilter}
+            onChange={(e) => {
+              setTypeFilter(
+                e.target.value === "" ? "" : Number(e.target.value)
+              );
+              setPage(1);
+            }}
+          >
+            <option value="">{tFilters("allTypes")}</option>
+            {documentTypes.map((type) => (
+              <option key={type} value={type}>
+                {t(`types.${docTypeKey(type)}` as "types.StockIn")}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm text-slate-600">
+          <span className="mb-1 block">{tCommon("status")}</span>
+          <select
+            className="input min-w-[160px]"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(
+                e.target.value === "" ? "" : Number(e.target.value)
+              );
+              setPage(1);
+            }}
+          >
+            <option value="">{tFilters("allStatuses")}</option>
+            {documentStatuses.map((status) => (
+              <option key={status} value={status}>
+                {statusLabel(status, t)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </ListFilterBar>
 
       <div className="card">
         {isLoading ? (

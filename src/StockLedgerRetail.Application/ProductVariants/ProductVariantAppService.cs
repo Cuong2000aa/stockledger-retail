@@ -31,10 +31,11 @@ public class ProductVariantAppService : IProductVariantAppService
     public async Task<PagedResultDto<ProductVariantDto>> GetListAsync(
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
-        var (variants, totalCount) = await _productVariantRepository.GetPagedListAsync(skip, take, cancellationToken);
+        var (variants, totalCount) = await _productVariantRepository.GetPagedListAsync(skip, take, search, cancellationToken);
         var items = variants.Select(MapToDto).ToList();
         return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }

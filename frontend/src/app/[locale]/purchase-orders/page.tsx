@@ -1,9 +1,11 @@
 "use client";
 
 import { Link } from "@/i18n/routing";
+import { ListFilterBar } from "@/components/ListFilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
-import { fetchPurchaseOrders } from "@/lib/api";
+import { useListSearch } from "@/hooks/useListSearch";
+import { fetchPurchaseOrders, fetchSuppliers } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { PurchaseOrderStatus } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
@@ -33,19 +35,45 @@ function poStatusLabel(
 export default function PurchaseOrdersPage() {
   const t = useTranslations("purchaseOrders");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const locale = useLocale();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<PurchaseOrderStatus | "">("");
+  const [supplierId, setSupplierId] = useState("");
+  const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
+    useListSearch(() => setPage(1));
+
+  const { data: suppliers } = useQuery({
+    queryKey: ["suppliers-all"],
+    queryFn: () => fetchSuppliers(1, 200),
+  });
+
+  const hasFilters = hasSearch || statusFilter !== "" || supplierId !== "";
 
   const { data, isLoading } = useQuery({
-    queryKey: ["purchase-orders", page, statusFilter],
+    queryKey: [
+      "purchase-orders",
+      page,
+      statusFilter,
+      supplierId,
+      debouncedSearch,
+    ],
     queryFn: () =>
       fetchPurchaseOrders(
         statusFilter === "" ? undefined : statusFilter,
-        undefined,
-        page
+        supplierId || undefined,
+        page,
+        20,
+        debouncedSearch || undefined
       ),
   });
+
+  const clearFilters = () => {
+    resetSearch();
+    setStatusFilter("");
+    setSupplierId("");
+    setPage(1);
+  };
 
   return (
     <div>
@@ -59,27 +87,54 @@ export default function PurchaseOrdersPage() {
         }
       />
 
-      <div className="mb-4">
-        <select
-          className="input max-w-xs"
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(
-              e.target.value === "" ? "" : Number(e.target.value)
-            );
-            setPage(1);
-          }}
-        >
-          <option value="">{tCommon("status")}: All</option>
-          {Object.values(PurchaseOrderStatus)
-            .filter((v) => typeof v === "number")
-            .map((s) => (
-              <option key={s} value={s}>
-                {poStatusLabel(s as PurchaseOrderStatus, t)}
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={tFilters("searchPo")}
+        onReset={clearFilters}
+        showReset={hasFilters}
+      >
+        <label className="text-sm text-slate-600">
+          <span className="mb-1 block">{tCommon("status")}</span>
+          <select
+            className="input min-w-[160px]"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(
+                e.target.value === "" ? "" : Number(e.target.value)
+              );
+              setPage(1);
+            }}
+          >
+            <option value="">{tFilters("allStatuses")}</option>
+            {Object.values(PurchaseOrderStatus)
+              .filter((v) => typeof v === "number")
+              .map((s) => (
+                <option key={s} value={s}>
+                  {poStatusLabel(s as PurchaseOrderStatus, t)}
+                </option>
+              ))}
+          </select>
+        </label>
+        <label className="text-sm text-slate-600">
+          <span className="mb-1 block">{t("supplier")}</span>
+          <select
+            className="input min-w-[200px]"
+            value={supplierId}
+            onChange={(e) => {
+              setSupplierId(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">{tFilters("allSuppliers")}</option>
+            {suppliers?.items.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.code} — {s.name}
               </option>
             ))}
-        </select>
-      </div>
+          </select>
+        </label>
+      </ListFilterBar>
 
       <div className="card">
         {isLoading ? (

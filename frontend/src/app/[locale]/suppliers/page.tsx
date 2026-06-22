@@ -1,15 +1,18 @@
 "use client";
 
+import { ListFilterBar } from "@/components/ListFilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { ActiveBadge } from "@/components/StatusBadge";
+import { useListSearch } from "@/hooks/useListSearch";
+import { useNotify } from "@/hooks/useNotify";
 import {
   createSupplier,
   deleteSupplier,
   fetchSuppliers,
-  getApiErrorMessage,
   updateSupplier,
 } from "@/lib/api";
+import { validateSupplierForm } from "@/lib/validation";
 import { SupplierStatus, type Supplier } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -18,11 +21,14 @@ import { useState } from "react";
 export default function SuppliersPage() {
   const t = useTranslations("suppliers");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const qc = useQueryClient();
+  const { notifyValidation, notifyError, confirm } = useNotify();
   const [page, setPage] = useState(1);
+  const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
+    useListSearch(() => setPage(1));
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     code: "",
@@ -35,8 +41,8 @@ export default function SuppliersPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["suppliers", page],
-    queryFn: () => fetchSuppliers(page),
+    queryKey: ["suppliers", page, debouncedSearch],
+    queryFn: () => fetchSuppliers(page, 20, debouncedSearch || undefined),
   });
 
   const saveMutation = useMutation({
@@ -64,16 +70,22 @@ export default function SuppliersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["suppliers"] });
       setModalOpen(false);
-      setError(null);
     },
-    onError: (e) => setError(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteSupplier,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["suppliers"] }),
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
+
+  function handleSave() {
+    if (notifyValidation(validateSupplierForm(form, !!editing))) {
+      return;
+    }
+    saveMutation.mutate();
+  }
 
   function openCreate() {
     setEditing(null);
@@ -113,6 +125,14 @@ export default function SuppliersPage() {
             + {t("create")}
           </button>
         }
+      />
+
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={tFilters("searchSupplier")}
+        onReset={resetSearch}
+        showReset={hasSearch}
       />
 
       <div className="card">
@@ -158,8 +178,8 @@ export default function SuppliersPage() {
                         </button>
                         <button
                           className="text-red-600 hover:underline"
-                          onClick={() => {
-                            if (confirm(t("deleteConfirm"))) {
+                          onClick={async () => {
+                            if (await confirm(t("deleteConfirm"))) {
                               deleteMutation.mutate(s.id);
                             }
                           }}
@@ -190,11 +210,6 @@ export default function SuppliersPage() {
             <h2 className="mb-4 text-lg font-semibold">
               {editing ? tCommon("edit") : t("create")}
             </h2>
-            {error && (
-              <p className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">
-                {error}
-              </p>
-            )}
             <div className="space-y-3">
               {!editing && (
                 <div>
@@ -259,7 +274,7 @@ export default function SuppliersPage() {
               <button
                 className="btn-primary"
                 disabled={saveMutation.isPending}
-                onClick={() => saveMutation.mutate()}
+                onClick={handleSave}
               >
                 {tCommon("save")}
               </button>

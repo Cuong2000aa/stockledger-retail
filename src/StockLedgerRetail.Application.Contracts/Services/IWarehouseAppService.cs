@@ -8,6 +8,7 @@ public interface IWarehouseAppService
     Task<PagedResultDto<WarehouseDto>> GetListAsync(
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task<WarehouseDto> GetAsync(Guid id, CancellationToken cancellationToken = default);

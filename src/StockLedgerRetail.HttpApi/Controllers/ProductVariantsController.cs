@@ -24,8 +24,9 @@ public class ProductVariantsController : ControllerBase
     public Task<PagedResultDto<ProductVariantDto>> GetListAsync(
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? search,
         CancellationToken cancellationToken) =>
-        _productVariantAppService.GetListAsync(page, pageSize, cancellationToken);
+        _productVariantAppService.GetListAsync(page, pageSize, search, cancellationToken);
 
     /// <summary>Lấy danh sách SKU thuộc một sản phẩm cha.</summary>
     [HttpGet("by-product/{productId:guid}")]

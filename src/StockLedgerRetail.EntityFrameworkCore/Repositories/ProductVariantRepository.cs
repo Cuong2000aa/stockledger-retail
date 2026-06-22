@@ -25,9 +25,22 @@ public class ProductVariantRepository : IProductVariantRepository
     public async Task<(List<ProductVariant> Items, int TotalCount)> GetPagedListAsync(
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.ProductVariants.OrderBy(x => x.Sku);
+        var query = _dbContext.ProductVariants.Include(x => x.Product).AsQueryable();
+        var term = TextSearchHelper.Normalize(search);
+        if (term is not null)
+        {
+            var pattern = TextSearchHelper.ToLikePattern(term);
+            query = query.Where(x =>
+                EF.Functions.ILike(x.Sku, pattern) ||
+                (x.Barcode != null && EF.Functions.ILike(x.Barcode, pattern)) ||
+                EF.Functions.ILike(x.Product.ProductCode, pattern) ||
+                EF.Functions.ILike(x.Product.Name, pattern));
+        }
+
+        query = query.OrderBy(x => x.Sku);
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
         return (items, totalCount);

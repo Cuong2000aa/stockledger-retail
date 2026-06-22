@@ -28,8 +28,9 @@ public class CurrentStocksController : ControllerBase
         [FromQuery] Guid? productVariantId,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? search,
         CancellationToken cancellationToken) =>
-        _currentStockAppService.GetListAsync(warehouseId, productVariantId, page, pageSize, cancellationToken);
+        _currentStockAppService.GetListAsync(warehouseId, productVariantId, page, pageSize, search, cancellationToken);
 
     /// <summary>Lấy một bản ghi tồn hiện tại theo Id.</summary>
     [HttpGet("{id:guid}")]

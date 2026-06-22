@@ -1,7 +1,9 @@
 "use client";
 
+import { ListFilterBar } from "@/components/ListFilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
+import { useListSearch } from "@/hooks/useListSearch";
 import { fetchCurrentStocks, fetchWarehouses } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
@@ -11,42 +13,68 @@ import { useState } from "react";
 export default function CurrentStocksPage() {
   const t = useTranslations("stocks");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const locale = useLocale();
   const [page, setPage] = useState(1);
   const [warehouseId, setWarehouseId] = useState("");
+  const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
+    useListSearch(() => setPage(1));
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses-all"],
     queryFn: () => fetchWarehouses(1, 100),
   });
 
+  const hasFilters = hasSearch || warehouseId !== "";
+
   const { data, isLoading } = useQuery({
-    queryKey: ["current-stocks", page, warehouseId],
+    queryKey: ["current-stocks", page, warehouseId, debouncedSearch],
     queryFn: () =>
-      fetchCurrentStocks(warehouseId || undefined, undefined, page),
+      fetchCurrentStocks(
+        warehouseId || undefined,
+        undefined,
+        page,
+        20,
+        debouncedSearch || undefined
+      ),
   });
+
+  const clearFilters = () => {
+    resetSearch();
+    setWarehouseId("");
+    setPage(1);
+  };
 
   return (
     <div>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
-      <div className="mb-4">
-        <select
-          className="input max-w-xs"
-          value={warehouseId}
-          onChange={(e) => {
-            setWarehouseId(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">{t("warehouse")} — All</option>
-          {warehouses?.items.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.code} — {w.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={tFilters("searchStock")}
+        onReset={clearFilters}
+        showReset={hasFilters}
+      >
+        <label className="text-sm text-slate-600">
+          <span className="mb-1 block">{t("warehouse")}</span>
+          <select
+            className="input min-w-[200px]"
+            value={warehouseId}
+            onChange={(e) => {
+              setWarehouseId(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">{tFilters("allWarehouses")}</option>
+            {warehouses?.items.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.code} — {w.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </ListFilterBar>
 
       <div className="card">
         {isLoading ? (
@@ -66,13 +94,6 @@ export default function CurrentStocksPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.items.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="text-center text-slate-400">
-                        {tCommon("noData")}
-                      </td>
-                    </tr>
-                  )}
                   {data?.items.map((s) => (
                     <tr key={s.id}>
                       <td className="font-mono text-xs">{s.sku}</td>
@@ -81,10 +102,8 @@ export default function CurrentStocksPage() {
                       </td>
                       <td>{formatNumber(s.quantityOnHand, locale)}</td>
                       <td>{formatNumber(s.quantityReserved, locale)}</td>
-                      <td className="font-medium text-green-700">
-                        {formatNumber(s.quantityAvailable, locale)}
-                      </td>
-                      <td className="text-xs text-slate-500">
+                      <td>{formatNumber(s.quantityAvailable, locale)}</td>
+                      <td className="text-xs">
                         {formatDate(s.lastUpdatedAt, locale)}
                       </td>
                     </tr>

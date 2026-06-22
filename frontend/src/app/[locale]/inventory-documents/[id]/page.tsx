@@ -3,13 +3,13 @@
 import { Link } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
 import { DocStatusBadge, docTypeKey } from "@/components/StatusBadge";
+import { useNotify } from "@/hooks/useNotify";
 import {
   approveDocument,
   cancelDocument,
   fetchCurrentStocks,
   fetchInventoryDocument,
   fetchWarehouses,
-  getApiErrorMessage,
 } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
 import {
@@ -57,6 +57,7 @@ export default function DocumentDetailPage({
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const qc = useQueryClient();
+  const { notifyError, confirm } = useNotify();
 
   const { data: doc, isLoading } = useQuery({
     queryKey: ["inventory-document", id],
@@ -99,7 +100,7 @@ export default function DocumentDetailPage({
       qc.invalidateQueries({ queryKey: ["current-stocks"] });
       qc.invalidateQueries({ queryKey: ["stock-transactions"] });
     },
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   const cancelMutation = useMutation({
@@ -108,7 +109,7 @@ export default function DocumentDetailPage({
       qc.invalidateQueries({ queryKey: ["inventory-document", id] });
       qc.invalidateQueries({ queryKey: ["inventory-documents"] });
     },
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   if (isLoading || !doc) {
@@ -206,8 +207,10 @@ export default function DocumentDetailPage({
             <button
               className="btn-primary"
               disabled={approveMutation.isPending}
-              onClick={() => {
-                if (confirm(t("approveConfirm"))) approveMutation.mutate();
+              onClick={async () => {
+                if (await confirm(t("approveConfirm"))) {
+                  approveMutation.mutate();
+                }
               }}
             >
               {t("approve")}
@@ -215,8 +218,10 @@ export default function DocumentDetailPage({
             <button
               className="btn-danger"
               disabled={cancelMutation.isPending}
-              onClick={() => {
-                if (confirm(t("cancelConfirm"))) cancelMutation.mutate();
+              onClick={async () => {
+                if (await confirm(t("cancelConfirm"))) {
+                  cancelMutation.mutate();
+                }
               }}
             >
               {t("cancelDoc")}

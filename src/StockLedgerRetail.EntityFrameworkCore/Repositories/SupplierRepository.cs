@@ -22,9 +22,23 @@ public class SupplierRepository : ISupplierRepository
     public async Task<(List<Supplier> Items, int TotalCount)> GetPagedListAsync(
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.Suppliers.OrderBy(x => x.Code);
+        var query = _dbContext.Suppliers.AsQueryable();
+        var term = TextSearchHelper.Normalize(search);
+        if (term is not null)
+        {
+            var pattern = TextSearchHelper.ToLikePattern(term);
+            query = query.Where(x =>
+                EF.Functions.ILike(x.Code, pattern) ||
+                EF.Functions.ILike(x.Name, pattern) ||
+                (x.ContactName != null && EF.Functions.ILike(x.ContactName, pattern)) ||
+                (x.Phone != null && EF.Functions.ILike(x.Phone, pattern)) ||
+                (x.Email != null && EF.Functions.ILike(x.Email, pattern)));
+        }
+
+        query = query.OrderBy(x => x.Code);
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
         return (items, totalCount);

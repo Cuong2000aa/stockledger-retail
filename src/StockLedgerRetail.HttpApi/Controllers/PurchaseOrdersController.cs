@@ -25,8 +25,9 @@ public class PurchaseOrdersController : ControllerBase
         [FromQuery] Guid? supplierId,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? search,
         CancellationToken cancellationToken) =>
-        _purchaseOrderAppService.GetListAsync(status, supplierId, page, pageSize, cancellationToken);
+        _purchaseOrderAppService.GetListAsync(status, supplierId, page, pageSize, search, cancellationToken);
 
     [HttpGet("{id:guid}")]
     public Task<PurchaseOrderDto> GetAsync(Guid id, CancellationToken cancellationToken) =>

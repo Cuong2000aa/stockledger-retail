@@ -33,9 +33,9 @@ public class AnalyticsAppService : IAnalyticsAppService
         var stocks = await _currentStockRepository.GetListAsync(cancellationToken: cancellationToken);
         var warehouses = await _warehouseRepository.GetListAsync(cancellationToken);
         var (_, openPoCount) = await _purchaseOrderRepository.GetPagedListAsync(
-            PurchaseOrderStatus.Submitted, null, 0, 1, cancellationToken);
+            PurchaseOrderStatus.Submitted, null, 0, 1, null, cancellationToken);
         var (_, partialPoCount) = await _purchaseOrderRepository.GetPagedListAsync(
-            PurchaseOrderStatus.PartiallyReceived, null, 0, 1, cancellationToken);
+            PurchaseOrderStatus.PartiallyReceived, null, 0, 1, null, cancellationToken);
         var (_, pendingGrCount) = await _goodsReceiptRepository.GetPagedListAsync(
             null, GoodsReceiptStatus.Draft, 0, 1, cancellationToken);
 

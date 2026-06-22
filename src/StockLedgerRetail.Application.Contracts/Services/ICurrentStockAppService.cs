@@ -10,6 +10,7 @@ public interface ICurrentStockAppService
         Guid? productVariantId = null,
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task<CurrentStockDto> GetAsync(Guid id, CancellationToken cancellationToken = default);

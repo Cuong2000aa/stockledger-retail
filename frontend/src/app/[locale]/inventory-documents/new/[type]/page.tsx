@@ -2,6 +2,7 @@
 
 import { Link, useRouter } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
+import { useNotify } from "@/hooks/useNotify";
 import {
   createAdjustment,
   createStockCount,
@@ -10,8 +11,8 @@ import {
   createTransfer,
   fetchProductVariants,
   fetchWarehouses,
-  getApiErrorMessage,
 } from "@/lib/api";
+import { validateInventoryDocumentForm } from "@/lib/validation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { use, useState } from "react";
@@ -47,6 +48,7 @@ export default function NewDocumentPage({
   const t = useTranslations("documents");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const { notifyValidation, notifyError } = useNotify();
 
   const [warehouseId, setWarehouseId] = useState("");
   const [sourceWarehouseId, setSourceWarehouseId] = useState("");
@@ -55,7 +57,6 @@ export default function NewDocumentPage({
   const [referenceNo, setReferenceNo] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<LineState[]>([emptyLine()]);
-  const [error, setError] = useState<string | null>(null);
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses-all"],
@@ -76,23 +77,11 @@ export default function NewDocumentPage({
   };
 
   const title = titleMap[kind] ?? t("title");
-
-  const canSubmit =
-    kind === "transfer"
-      ? sourceWarehouseId &&
-        destinationWarehouseId &&
-        sourceWarehouseId !== destinationWarehouseId
-      : kind === "stock-count" || kind === "adjustment"
-        ? warehouseId && (kind !== "adjustment" || reason.trim())
-        : !!warehouseId;
+  const hasVariants = (variants?.items.length ?? 0) > 0;
 
   const mutation = useMutation({
     mutationFn: async () => {
       const documentDate = new Date().toISOString();
-
-      if (kind === "transfer" && sourceWarehouseId === destinationWarehouseId) {
-        throw new Error(t("sameWarehouseError"));
-      }
 
       if (kind === "stock-in") {
         return createStockIn({
@@ -158,8 +147,26 @@ export default function NewDocumentPage({
     onSuccess: (doc) => {
       router.push(`/inventory-documents/${doc.id}`);
     },
-    onError: (e) => setError(getApiErrorMessage(e)),
+    onError: notifyError,
   });
+
+  const handleSave = () => {
+    const issues = validateInventoryDocumentForm({
+      kind,
+      warehouseId,
+      sourceWarehouseId,
+      destinationWarehouseId,
+      reason,
+      lines,
+      hasVariants,
+    });
+
+    if (notifyValidation(issues)) {
+      return;
+    }
+
+    mutation.mutate();
+  };
 
   const updateLine = (idx: number, patch: Partial<LineState>) => {
     const next = [...lines];
@@ -184,12 +191,6 @@ export default function NewDocumentPage({
       />
 
       <div className="card max-w-3xl p-6">
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </p>
-        )}
-
         <div className="space-y-4">
           {kind === "transfer" ? (
             <>
@@ -226,13 +227,6 @@ export default function NewDocumentPage({
                     </option>
                   ))}
                 </select>
-                {sourceWarehouseId &&
-                  destinationWarehouseId &&
-                  sourceWarehouseId === destinationWarehouseId && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {t("sameWarehouseError")}
-                    </p>
-                  )}
               </div>
             </>
           ) : (
@@ -294,7 +288,7 @@ export default function NewDocumentPage({
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium">{t("lines")}</span>
+              <span className="text-sm font-medium">{t("lines")} *</span>
               <button
                 type="button"
                 className="text-sm text-brand-600 hover:underline"
@@ -315,7 +309,7 @@ export default function NewDocumentPage({
                     updateLine(idx, { productVariantId: e.target.value })
                   }
                 >
-                  <option value="">SKU</option>
+                  <option value="">{t("selectSku")}</option>
                   {variants?.items.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.sku}
@@ -373,8 +367,8 @@ export default function NewDocumentPage({
 
           <button
             className="btn-primary"
-            disabled={mutation.isPending || !canSubmit}
-            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            onClick={handleSave}
           >
             {tCommon("save")}
           </button>

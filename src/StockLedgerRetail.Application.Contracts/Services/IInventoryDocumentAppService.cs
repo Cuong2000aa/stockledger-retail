@@ -10,8 +10,10 @@ public interface IInventoryDocumentAppService
 
     Task<PagedResultDto<InventoryDocumentDto>> GetListAsync(
         InventoryDocumentType? documentType = null,
+        InventoryDocumentStatus? status = null,
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task<InventoryDocumentDto> CreateStockInAsync(CreateStockInDto input, CancellationToken cancellationToken = default);

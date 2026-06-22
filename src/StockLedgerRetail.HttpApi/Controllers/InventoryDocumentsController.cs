@@ -25,10 +25,12 @@ public class InventoryDocumentsController : ControllerBase
     [HttpGet]
     public Task<PagedResultDto<InventoryDocumentDto>> GetListAsync(
         [FromQuery] InventoryDocumentType? documentType,
+        [FromQuery] InventoryDocumentStatus? status,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? search,
         CancellationToken cancellationToken) =>
-        _inventoryDocumentAppService.GetListAsync(documentType, page, pageSize, cancellationToken);
+        _inventoryDocumentAppService.GetListAsync(documentType, status, page, pageSize, search, cancellationToken);
 
     /// <summary>Lấy chi tiết phiếu kèm danh sách dòng hàng.</summary>
     [HttpGet("{id:guid}")]
