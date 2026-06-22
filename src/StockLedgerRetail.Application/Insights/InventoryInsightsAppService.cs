@@ -43,7 +43,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     ? Math.Max(normalizedDays, (referenceDateUtc.Date - x.LastOutboundAt.Value.Date).Days)
                     : normalizedDays;
 
-                return new DeadStockInsightDto
+                var insight = new DeadStockInsightDto
                 {
                     ProductVariantId = x.ProductVariantId,
                     Sku = x.Sku,
@@ -59,6 +59,9 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     Severity = days >= 120 ? "critical" : "warning",
                     RuleCode = "dead_stock"
                 };
+
+                ApplyRecommendation(insight);
+                return insight;
             })
             .OrderByDescending(x => x.DaysWithoutOutbound)
             .ThenByDescending(x => x.EstimatedCostValue ?? 0)
@@ -91,7 +94,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     ? x.QuantityAvailable / averageDailyOutbound
                     : (decimal?)null;
 
-                return new SalesVelocityInsightDto
+                var insight = new SalesVelocityInsightDto
                 {
                     ProductVariantId = x.ProductVariantId,
                     Sku = x.Sku,
@@ -108,6 +111,9 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     Severity = GetVelocitySeverity(averageDailyOutbound, estimatedDaysOfCover),
                     RuleCode = "sales_velocity"
                 };
+
+                ApplyRecommendation(insight);
+                return insight;
             })
             .Where(x => x.OutboundQuantity > 0 || x.QuantityOnHand > 0)
             .OrderByDescending(x => x.OutboundQuantity)
@@ -199,7 +205,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
 
                 source.RemainingQuantity -= suggestedQuantity;
 
-                suggestions.Add(new TransferSuggestionDto
+                var suggestion = new TransferSuggestionDto
                 {
                     ProductVariantId = destination.Fact.ProductVariantId,
                     Sku = destination.Fact.Sku,
@@ -216,7 +222,10 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     DestinationDaysOfCover = destination.CoverDays,
                     Severity = destination.CoverDays.HasValue && destination.CoverDays.Value < 7 ? "critical" : "warning",
                     RuleCode = "transfer_rebalance"
-                });
+                };
+
+                ApplyRecommendation(suggestion);
+                suggestions.Add(suggestion);
             }
         }
 
@@ -251,6 +260,27 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         }
 
         return "info";
+    }
+
+    private static void ApplyRecommendation(DeadStockInsightDto insight)
+    {
+        var (actionCode, parameters) = InsightRecommendationBuilder.ForDeadStock(insight);
+        insight.RecommendedActionCode = actionCode;
+        insight.RecommendationParams = parameters;
+    }
+
+    private static void ApplyRecommendation(SalesVelocityInsightDto insight)
+    {
+        var (actionCode, parameters) = InsightRecommendationBuilder.ForSalesVelocity(insight);
+        insight.RecommendedActionCode = actionCode;
+        insight.RecommendationParams = parameters;
+    }
+
+    private static void ApplyRecommendation(TransferSuggestionDto insight)
+    {
+        var (actionCode, parameters) = InsightRecommendationBuilder.ForTransfer(insight);
+        insight.RecommendedActionCode = actionCode;
+        insight.RecommendationParams = parameters;
     }
 
     private sealed class TransferCandidate

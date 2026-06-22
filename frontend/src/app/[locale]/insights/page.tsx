@@ -1,26 +1,36 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
-import { fetchWarehouses } from "@/lib/api";
+import { fetchWarehouses, getApiErrorMessage } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/routing";
 import { useMemo, useState } from "react";
 import {
+  createTransferFromSuggestion,
   fetchDeadStockInsights,
   fetchSalesVelocityInsights,
   fetchTransferSuggestions,
 } from "@/features/insights/api";
 import { insightQueryKeys } from "@/features/insights/queries";
+import type { TransferSuggestion } from "@/features/insights/types";
+
+type RecommendationParams = Record<string, string>;
 
 export default function InsightsPage() {
   const t = useTranslations("insights");
+  const tActions = useTranslations("insights.actions");
   const tCommon = useTranslations("common");
   const tStocks = useTranslations("stocks");
   const locale = useLocale();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [daysWithoutOutbound, setDaysWithoutOutbound] = useState(60);
   const [lookbackDays, setLookbackDays] = useState(30);
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [creatingTransferKey, setCreatingTransferKey] = useState<string | null>(null);
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses", "all-for-insights"],
@@ -44,10 +54,30 @@ export default function InsightsPage() {
     queryFn: () => fetchTransferSuggestions(undefined, activeWarehouseId, lookbackDays, 14, 7, 20),
   });
 
+  const createTransferMutation = useMutation({
+    mutationFn: createTransferFromSuggestion,
+    onSuccess: (doc) => {
+      setTransferError(null);
+      setCreatingTransferKey(null);
+      void queryClient.invalidateQueries({ queryKey: ["inventory-documents"] });
+      router.push(`/inventory-documents/${doc.id}`);
+    },
+    onError: (error) => {
+      setCreatingTransferKey(null);
+      setTransferError(getApiErrorMessage(error));
+    },
+  });
+
   const warehouseOptions = useMemo(
     () => warehouses?.items ?? [],
     [warehouses?.items]
   );
+
+  const handleCreateTransfer = (item: TransferSuggestion, rowKey: string) => {
+    setTransferError(null);
+    setCreatingTransferKey(rowKey);
+    createTransferMutation.mutate(item);
+  };
 
   return (
     <div>
@@ -93,7 +123,11 @@ export default function InsightsPage() {
         </label>
       </div>
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-3">
+      {transferError && (
+        <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{transferError}</p>
+      )}
+
+      <div className="mb-6 grid gap-6 xl:grid-cols-1">
         <div className="card overflow-hidden">
           <div className="border-b border-slate-200 px-4 py-3">
             <h2 className="font-semibold text-slate-900">{t("deadStock.title")}</h2>
@@ -108,11 +142,12 @@ export default function InsightsPage() {
                   <th>{t("deadStock.days")}</th>
                   <th>{tStocks("onHand")}</th>
                   <th>{t("deadStock.costValue")}</th>
+                  <th>{t("recommendation")}</th>
                 </tr>
               </thead>
               <tbody>
                 {deadStockLoading ? (
-                  <LoadingRow colSpan={5} label={tCommon("loading")} />
+                  <LoadingRow colSpan={6} label={tCommon("loading")} />
                 ) : deadStock?.length ? (
                   deadStock.map((item) => (
                     <tr key={`${item.productVariantId}-${item.warehouseId}`}>
@@ -123,10 +158,17 @@ export default function InsightsPage() {
                       </td>
                       <td>{formatNumber(item.quantityOnHand, locale)}</td>
                       <td>{formatNumber(item.estimatedCostValue ?? 0, locale)}</td>
+                      <td className="max-w-xs text-sm text-slate-600">
+                        <RecommendationText
+                          actionCode={item.recommendedActionCode}
+                          params={item.recommendationParams}
+                          translate={tActions}
+                        />
+                      </td>
                     </tr>
                   ))
                 ) : (
-                  <EmptyRow colSpan={5} label={tCommon("noData")} />
+                  <EmptyRow colSpan={6} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -147,11 +189,12 @@ export default function InsightsPage() {
                   <th>{t("salesVelocity.outbound")}</th>
                   <th>{t("salesVelocity.avgDaily")}</th>
                   <th>{t("salesVelocity.coverDays")}</th>
+                  <th>{t("recommendation")}</th>
                 </tr>
               </thead>
               <tbody>
                 {salesVelocityLoading ? (
-                  <LoadingRow colSpan={5} label={tCommon("loading")} />
+                  <LoadingRow colSpan={6} label={tCommon("loading")} />
                 ) : salesVelocity?.length ? (
                   salesVelocity.map((item) => (
                     <tr key={`${item.productVariantId}-${item.warehouseId}`}>
@@ -164,10 +207,17 @@ export default function InsightsPage() {
                           ? formatNumber(item.estimatedDaysOfCover, locale)
                           : t("salesVelocity.noDemand")}
                       </td>
+                      <td className="max-w-xs text-sm text-slate-600">
+                        <RecommendationText
+                          actionCode={item.recommendedActionCode}
+                          params={item.recommendationParams}
+                          translate={tActions}
+                        />
+                      </td>
                     </tr>
                   ))
                 ) : (
-                  <EmptyRow colSpan={5} label={tCommon("noData")} />
+                  <EmptyRow colSpan={6} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -188,29 +238,51 @@ export default function InsightsPage() {
                   <th>{t("transfer.to")}</th>
                   <th>{t("transfer.qty")}</th>
                   <th>{t("transfer.coverDays")}</th>
+                  <th>{t("recommendation")}</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {transferSuggestionsLoading ? (
-                  <LoadingRow colSpan={5} label={tCommon("loading")} />
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
                 ) : transferSuggestions?.length ? (
-                  transferSuggestions.map((item, index) => (
-                    <tr
-                      key={`${item.productVariantId}-${item.sourceWarehouseId}-${item.destinationWarehouseId}-${index}`}
-                    >
-                      <td className="font-mono text-xs">{item.sku}</td>
-                      <td>{item.sourceWarehouseCode}</td>
-                      <td>{item.destinationWarehouseCode}</td>
-                      <td>{formatNumber(item.suggestedQuantity, locale)}</td>
-                      <td className={severityClass(item.severity)}>
-                        {item.destinationDaysOfCover != null
-                          ? formatNumber(item.destinationDaysOfCover, locale)
-                          : tCommon("noData")}
-                      </td>
-                    </tr>
-                  ))
+                  transferSuggestions.map((item, index) => {
+                    const rowKey = `${item.productVariantId}-${item.sourceWarehouseId}-${item.destinationWarehouseId}-${index}`;
+                    const isCreating = creatingTransferKey === rowKey;
+
+                    return (
+                      <tr key={rowKey}>
+                        <td className="font-mono text-xs">{item.sku}</td>
+                        <td>{item.sourceWarehouseCode}</td>
+                        <td>{item.destinationWarehouseCode}</td>
+                        <td>{formatNumber(item.suggestedQuantity, locale)}</td>
+                        <td className={severityClass(item.severity)}>
+                          {item.destinationDaysOfCover != null
+                            ? formatNumber(item.destinationDaysOfCover, locale)
+                            : tCommon("noData")}
+                        </td>
+                        <td className="max-w-xs text-sm text-slate-600">
+                          <RecommendationText
+                            actionCode={item.recommendedActionCode}
+                            params={item.recommendationParams}
+                            translate={tActions}
+                          />
+                        </td>
+                        <td className="whitespace-nowrap">
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            disabled={isCreating || createTransferMutation.isPending}
+                            onClick={() => handleCreateTransfer(item, rowKey)}
+                          >
+                            {isCreating ? t("transfer.creating") : t("transfer.createTransfer")}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
-                  <EmptyRow colSpan={5} label={tCommon("noData")} />
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -219,6 +291,26 @@ export default function InsightsPage() {
       </div>
     </div>
   );
+}
+
+function RecommendationText({
+  actionCode,
+  params,
+  translate,
+}: {
+  actionCode?: string;
+  params?: RecommendationParams;
+  translate: ReturnType<typeof useTranslations<"insights.actions">>;
+}) {
+  if (!actionCode) {
+    return <span>—</span>;
+  }
+
+  try {
+    return <span>{translate(actionCode as never, params ?? {})}</span>;
+  } catch {
+    return <span className="font-mono text-xs">{actionCode}</span>;
+  }
 }
 
 function LoadingRow({ colSpan, label }: { colSpan: number; label: string }) {

@@ -1,6 +1,8 @@
 {
   "common": {
-    "appName": "Tồn kho bán hàng",
+    "appBrand": "StockLedger",
+    "appTagline": "Quản trị tồn kho",
+    "appName": "StockLedger — Quản trị tồn kho",
     "loading": "Đang tải...",
     "save": "Lưu",
     "cancel": "Hủy",
@@ -244,7 +246,20 @@
       "from": "Từ kho",
       "to": "Đến kho",
       "qty": "SL gợi ý",
-      "coverDays": "Cover đích"
+      "coverDays": "Cover đích",
+      "createTransfer": "Tạo chuyển kho",
+      "creating": "Đang tạo..."
+    },
+    "recommendation": "Hướng xử lý",
+    "actions": {
+      "dead_stock_critical_markdown": "Ưu tiên giảm giá xả tồn tại {warehouseCode} — SKU {sku} đứng yên {days} ngày.",
+      "dead_stock_markdown_or_transfer": "Cân nhắc giảm giá hoặc chuyển sang kho outlet — {sku} tại {warehouseCode} ({days} ngày không bán).",
+      "dead_stock_review": "Theo dõi và cân nhắc ngừng nhập — {sku} tại {warehouseCode}.",
+      "velocity_replenish_urgent": "Bổ sung gấp: tạo PO hoặc chuyển kho — {sku} tại {warehouseCode} còn ~{coverDays} ngày cover.",
+      "velocity_replenish_plan": "Lên kế hoạch nhập/chuyển kho — {sku} tại {warehouseCode} (~{coverDays} ngày cover).",
+      "velocity_monitor": "Tiếp tục theo dõi — {sku} tại {warehouseCode} đang ổn định.",
+      "velocity_no_demand_review": "Không có outbound gần đây — rà soát tồn chết hoặc ngừng nhập {sku} tại {warehouseCode}.",
+      "transfer_execute": "Điều chuyển {quantity} từ {sourceWarehouseCode} sang {destinationWarehouseCode} cho {sku}."
     }
   },
   "warehouseTypes": {

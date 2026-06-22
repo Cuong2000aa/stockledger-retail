@@ -408,6 +408,8 @@ export interface DeadStockInsight {
   estimatedCostValue?: number;
   severity: string;
   ruleCode: string;
+  recommendedActionCode: string;
+  recommendationParams: Record<string, string>;
 }
 
 export interface SalesVelocityInsight {
@@ -425,6 +427,8 @@ export interface SalesVelocityInsight {
   lookbackDays: number;
   severity: string;
   ruleCode: string;
+  recommendedActionCode: string;
+  recommendationParams: Record<string, string>;
 }
 
 export interface TransferSuggestion {
@@ -443,4 +447,6 @@ export interface TransferSuggestion {
   destinationDaysOfCover?: number;
   severity: string;
   ruleCode: string;
+  recommendedActionCode: string;
+  recommendationParams: Record<string, string>;
 }

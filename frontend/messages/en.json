@@ -1,6 +1,8 @@
 {
   "common": {
-    "appName": "Sales Inventory",
+    "appBrand": "StockLedger",
+    "appTagline": "Inventory Management",
+    "appName": "StockLedger — Inventory Management",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -244,7 +246,20 @@
       "from": "From",
       "to": "To",
       "qty": "Suggested qty",
-      "coverDays": "Dest cover"
+      "coverDays": "Dest cover",
+      "createTransfer": "Create transfer",
+      "creating": "Creating..."
+    },
+    "recommendation": "Recommended action",
+    "actions": {
+      "dead_stock_critical_markdown": "Prioritize markdown clearance at {warehouseCode} — SKU {sku} idle for {days} days.",
+      "dead_stock_markdown_or_transfer": "Consider markdown or move to outlet — {sku} at {warehouseCode} ({days} days without sales).",
+      "dead_stock_review": "Monitor and consider stopping replenishment — {sku} at {warehouseCode}.",
+      "velocity_replenish_urgent": "Urgent replenishment: create PO or transfer — {sku} at {warehouseCode} has ~{coverDays} days cover.",
+      "velocity_replenish_plan": "Plan replenishment or transfer — {sku} at {warehouseCode} (~{coverDays} days cover).",
+      "velocity_monitor": "Keep monitoring — {sku} at {warehouseCode} looks stable.",
+      "velocity_no_demand_review": "No recent outbound — review dead stock or stop ordering {sku} at {warehouseCode}.",
+      "transfer_execute": "Transfer {quantity} from {sourceWarehouseCode} to {destinationWarehouseCode} for {sku}."
     }
   },
   "warehouseTypes": {

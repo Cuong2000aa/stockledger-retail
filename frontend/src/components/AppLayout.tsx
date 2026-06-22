@@ -49,9 +49,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="h-10 w-10 shrink-0 object-contain"
               priority
             />
-            <span className="text-lg font-bold leading-tight text-brand-700">
-              {tCommon("appName")}
-            </span>
+            <div className="min-w-0 flex flex-col">
+              <span className="text-lg font-bold leading-tight text-brand-700">
+                {tCommon("appBrand")}
+              </span>
+              <span className="text-xs font-medium leading-tight text-slate-500">
+                {tCommon("appTagline")}
+              </span>
+            </div>
           </Link>
         </div>
         <nav className="flex-1 space-y-1 p-3">
