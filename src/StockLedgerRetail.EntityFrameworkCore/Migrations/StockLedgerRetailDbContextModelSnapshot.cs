@@ -513,6 +513,89 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.ToTable("purchase_order_lines", (string)null);
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CommittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReferenceKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ReferenceType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReservationNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("SourceSystem")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReservationNo")
+                        .IsUnique();
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("SourceSystem", "ReferenceType", "ReferenceKey", "WarehouseId", "Status");
+
+                    b.ToTable("stock_reservations", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockReservationLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductVariantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("StockReservationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductVariantId");
+
+                    b.HasIndex("StockReservationId", "ProductVariantId")
+                        .IsUnique();
+
+                    b.ToTable("stock_reservation_lines", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockTransaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -891,6 +974,36 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("PurchaseOrder");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockReservation", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockReservationLine", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.ProductVariant", "ProductVariant")
+                        .WithMany()
+                        .HasForeignKey("ProductVariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("StockLedgerRetail.Domain.Entities.StockReservation", "StockReservation")
+                        .WithMany("Lines")
+                        .HasForeignKey("StockReservationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProductVariant");
+
+                    b.Navigation("StockReservation");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockTransaction", b =>
                 {
                     b.HasOne("StockLedgerRetail.Domain.Entities.InventoryDocument", "Document")
@@ -973,6 +1086,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                 {
                     b.Navigation("GoodsReceipts");
 
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockReservation", b =>
+                {
                     b.Navigation("Lines");
                 });
 
