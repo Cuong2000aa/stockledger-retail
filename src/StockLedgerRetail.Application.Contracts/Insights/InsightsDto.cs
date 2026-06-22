@@ -27,6 +27,10 @@ public class DeadStockInsightDto
     public string Severity { get; set; } = "info";
 
     public string RuleCode { get; set; } = "dead_stock";
+
+    public string RecommendedActionCode { get; set; } = string.Empty;
+
+    public Dictionary<string, string> RecommendationParams { get; set; } = new();
 }
 
 public class SalesVelocityInsightDto
@@ -58,6 +62,10 @@ public class SalesVelocityInsightDto
     public string Severity { get; set; } = "info";
 
     public string RuleCode { get; set; } = "sales_velocity";
+
+    public string RecommendedActionCode { get; set; } = string.Empty;
+
+    public Dictionary<string, string> RecommendationParams { get; set; } = new();
 }
 
 public class TransferSuggestionDto
@@ -91,4 +99,8 @@ public class TransferSuggestionDto
     public string Severity { get; set; } = "warning";
 
     public string RuleCode { get; set; } = "transfer_rebalance";
+
+    public string RecommendedActionCode { get; set; } = string.Empty;
+
+    public Dictionary<string, string> RecommendationParams { get; set; } = new();
 }

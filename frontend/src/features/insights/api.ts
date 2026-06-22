@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api";
+import { apiClient, createTransfer } from "@/lib/api";
 import type {
   DeadStockInsight,
   SalesVelocityInsight,
@@ -48,3 +48,17 @@ export const fetchTransferSuggestions = (
       },
     })
     .then((r) => r.data);
+
+export const createTransferFromSuggestion = (item: TransferSuggestion) =>
+  createTransfer({
+    sourceWarehouseId: item.sourceWarehouseId,
+    destinationWarehouseId: item.destinationWarehouseId,
+    documentDate: new Date().toISOString(),
+    note: `[INSIGHT] ${item.sku}: ${item.sourceWarehouseCode} → ${item.destinationWarehouseCode}`,
+    lines: [
+      {
+        productVariantId: item.productVariantId,
+        quantity: item.suggestedQuantity,
+      },
+    ],
+  });
