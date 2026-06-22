@@ -77,6 +77,14 @@ public class StockTransactionRepository : IStockTransactionRepository
         return (items, totalCount);
     }
 
+    public Task<List<StockTransaction>> GetByDateRangeAsync(
+        DateTime fromDate,
+        DateTime toDate,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.StockTransactions
+            .Where(x => x.TransactionDate >= fromDate && x.TransactionDate <= toDate)
+            .ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _dbContext.SaveChangesAsync(cancellationToken);
 }

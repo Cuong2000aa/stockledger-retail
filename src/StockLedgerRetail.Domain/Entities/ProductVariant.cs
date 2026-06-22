@@ -20,6 +20,15 @@ public class ProductVariant : AuditedEntity
 
     public ProductStatus Status { get; set; } = ProductStatus.Active;
 
+    /// <summary>Giá vốn hiện tại — có thể đồng bộ từ ERP, POS, Purchase System hoặc nhập thủ công.</summary>
+    public decimal? CostPrice { get; set; }
+
+    /// <summary>Giá bán hiện tại — dùng cho phân tích định giá tồn kho tương lai.</summary>
+    public decimal? SellingPrice { get; set; }
+
+    /// <summary>Nguồn giá vốn đang áp dụng cho <see cref="CostPrice"/>.</summary>
+    public CostSource? CostSource { get; set; }
+
     public Product Product { get; set; } = null!;
 
     public ICollection<CurrentStock> CurrentStocks { get; set; } = new List<CurrentStock>();
@@ -27,4 +36,7 @@ public class ProductVariant : AuditedEntity
     public ICollection<InventoryDocumentLine> InventoryDocumentLines { get; set; } = new List<InventoryDocumentLine>();
 
     public ICollection<StockTransaction> StockTransactions { get; set; } = new List<StockTransaction>();
+
+    /// <summary>Lịch sử giá vốn theo thời gian — chuẩn bị cho tích hợp và phân tích tồn kho.</summary>
+    public ICollection<ProductCostHistory> CostHistory { get; set; } = new List<ProductCostHistory>();
 }

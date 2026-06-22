@@ -8,7 +8,9 @@ import {
   History,
   LayoutDashboard,
   Package,
+  ShoppingCart,
   Tags,
+  Truck,
   Warehouse,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -20,6 +22,8 @@ const navItems = [
   { href: "/products", icon: Package, key: "products" },
   { href: "/product-variants", icon: Tags, key: "productVariants" },
   { href: "/warehouses", icon: Warehouse, key: "warehouses" },
+  { href: "/suppliers", icon: Truck, key: "suppliers" },
+  { href: "/purchase-orders", icon: ShoppingCart, key: "purchaseOrders" },
   { href: "/inventory-documents", icon: FileText, key: "inventoryDocuments" },
   { href: "/current-stocks", icon: Boxes, key: "currentStocks" },
   { href: "/stock-transactions", icon: History, key: "stockTransactions" },

@@ -22,6 +22,12 @@ public class ProductVariantDto
 
     public ProductStatus Status { get; set; }
 
+    public decimal? CostPrice { get; set; }
+
+    public decimal? SellingPrice { get; set; }
+
+    public CostSource? CostSource { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

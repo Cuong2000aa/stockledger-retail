@@ -33,12 +33,26 @@
     "warehouses": "Warehouses",
     "inventoryDocuments": "Inventory Documents",
     "currentStocks": "Current Stock",
-    "stockTransactions": "Stock History"
+    "stockTransactions": "Stock History",
+    "suppliers": "Suppliers",
+    "purchaseOrders": "Purchase Orders"
   },
   "dashboard": {
     "title": "Dashboard",
-    "subtitle": "Retail inventory management overview",
-    "quickLinks": "Quick links"
+    "subtitle": "Inventory analytics and quick access",
+    "quickLinks": "Quick links",
+    "totalSkus": "SKUs in stock",
+    "totalOnHand": "Total on hand",
+    "totalAvailable": "Total available",
+    "openPos": "Open POs",
+    "pendingGr": "Pending GRs",
+    "movements30d": "30-day movements",
+    "totalIn": "Total in",
+    "totalOut": "Total out",
+    "transactions": "Transactions",
+    "stockByWarehouse": "Stock by warehouse",
+    "lowStock": "Low stock",
+    "threshold": "Threshold"
   },
   "products": {
     "title": "Products",
@@ -61,7 +75,16 @@
     "size": "Size",
     "season": "Season",
     "unit": "Unit",
-    "deleteConfirm": "Delete this SKU?"
+    "costPrice": "Cost price",
+    "sellingPrice": "Selling price",
+    "costSource": "Cost source",
+    "deleteConfirm": "Delete this SKU?",
+    "costSources": {
+      "Manual": "Manual",
+      "Erp": "ERP",
+      "Pos": "POS",
+      "PurchaseSystem": "Purchase system"
+    }
   },
   "warehouses": {
     "title": "Warehouses",
@@ -139,6 +162,56 @@
     "after": "After",
     "date": "Date",
     "createdBy": "Created by"
+  },
+  "suppliers": {
+    "title": "Suppliers",
+    "subtitle": "Manage procurement partners",
+    "create": "New supplier",
+    "code": "Supplier code",
+    "name": "Name",
+    "contact": "Contact",
+    "phone": "Phone",
+    "email": "Email",
+    "address": "Address",
+    "deleteConfirm": "Delete this supplier?"
+  },
+  "purchaseOrders": {
+    "title": "Purchase Orders",
+    "subtitle": "Order and receive goods from suppliers",
+    "create": "Create PO",
+    "poNo": "PO No",
+    "supplier": "Supplier",
+    "orderDate": "Order date",
+    "expectedDate": "Expected date",
+    "orderedQty": "Ordered qty",
+    "receivedQty": "Received qty",
+    "remainingQty": "Remaining",
+    "unitCost": "Unit cost",
+    "submit": "Submit PO",
+    "submitConfirm": "Submit this purchase order?",
+    "cancelConfirm": "Cancel this purchase order?",
+    "receive": "Receive goods",
+    "createGr": "Create receipt",
+    "detail": "PO detail",
+    "statusDraft": "Draft",
+    "statusSubmitted": "Submitted",
+    "statusPartiallyReceived": "Partially received",
+    "statusReceived": "Received",
+    "statusCancelled": "Cancelled"
+  },
+  "goodsReceipts": {
+    "title": "Goods Receipts",
+    "grNo": "GR No",
+    "receiptDate": "Receipt date",
+    "receivedQty": "Received qty",
+    "approve": "Approve receipt",
+    "approveConfirm": "Approve this receipt? Stock will be updated.",
+    "cancelConfirm": "Cancel this draft receipt?",
+    "detail": "GR detail",
+    "linkedStockIn": "Linked stock-in",
+    "statusDraft": "Draft",
+    "statusApproved": "Approved",
+    "statusCancelled": "Cancelled"
   },
   "warehouseTypes": {
     "Dc": "Distribution Center",

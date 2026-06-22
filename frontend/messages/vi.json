@@ -33,12 +33,26 @@
     "warehouses": "Kho",
     "inventoryDocuments": "Phiếu nghiệp vụ",
     "currentStocks": "Tồn hiện tại",
-    "stockTransactions": "Lịch sử tồn kho"
+    "stockTransactions": "Lịch sử tồn kho",
+    "suppliers": "Nhà cung cấp",
+    "purchaseOrders": "Đơn mua hàng"
   },
   "dashboard": {
     "title": "Tổng quan",
-    "subtitle": "Quản lý tồn kho bán lẻ",
-    "quickLinks": "Truy cập nhanh"
+    "subtitle": "Phân tích tồn kho và truy cập nhanh",
+    "quickLinks": "Truy cập nhanh",
+    "totalSkus": "Tổng SKU có tồn",
+    "totalOnHand": "Tổng tồn thực",
+    "totalAvailable": "Tổng khả dụng",
+    "openPos": "PO đang mở",
+    "pendingGr": "GR chờ duyệt",
+    "movements30d": "Biến động 30 ngày",
+    "totalIn": "Tổng nhập",
+    "totalOut": "Tổng xuất",
+    "transactions": "Giao dịch",
+    "stockByWarehouse": "Tồn theo kho",
+    "lowStock": "Tồn thấp",
+    "threshold": "Ngưỡng"
   },
   "products": {
     "title": "Sản phẩm",
@@ -61,7 +75,16 @@
     "size": "Size",
     "season": "Mùa",
     "unit": "Đơn vị",
-    "deleteConfirm": "Xóa SKU này?"
+    "costPrice": "Giá vốn",
+    "sellingPrice": "Giá bán",
+    "costSource": "Nguồn giá vốn",
+    "deleteConfirm": "Xóa SKU này?",
+    "costSources": {
+      "Manual": "Nhập thủ công",
+      "Erp": "ERP",
+      "Pos": "POS",
+      "PurchaseSystem": "Hệ thống mua hàng"
+    }
   },
   "warehouses": {
     "title": "Kho",
@@ -139,6 +162,56 @@
     "after": "Sau",
     "date": "Ngày",
     "createdBy": "Người tạo"
+  },
+  "suppliers": {
+    "title": "Nhà cung cấp",
+    "subtitle": "Quản lý đối tác cung ứng",
+    "create": "Thêm NCC",
+    "code": "Mã NCC",
+    "name": "Tên",
+    "contact": "Liên hệ",
+    "phone": "Điện thoại",
+    "email": "Email",
+    "address": "Địa chỉ",
+    "deleteConfirm": "Xóa nhà cung cấp này?"
+  },
+  "purchaseOrders": {
+    "title": "Đơn mua hàng",
+    "subtitle": "Đặt hàng và nhận hàng từ NCC",
+    "create": "Tạo PO",
+    "poNo": "Số PO",
+    "supplier": "Nhà cung cấp",
+    "orderDate": "Ngày đặt",
+    "expectedDate": "Ngày dự kiến",
+    "orderedQty": "SL đặt",
+    "receivedQty": "SL đã nhận",
+    "remainingQty": "SL còn lại",
+    "unitCost": "Đơn giá",
+    "submit": "Gửi PO",
+    "submitConfirm": "Gửi đơn mua hàng này?",
+    "cancelConfirm": "Hủy đơn mua hàng này?",
+    "receive": "Nhận hàng",
+    "createGr": "Tạo phiếu nhận",
+    "detail": "Chi tiết PO",
+    "statusDraft": "Nháp",
+    "statusSubmitted": "Đã gửi",
+    "statusPartiallyReceived": "Nhận một phần",
+    "statusReceived": "Đã nhận đủ",
+    "statusCancelled": "Đã hủy"
+  },
+  "goodsReceipts": {
+    "title": "Phiếu nhận hàng",
+    "grNo": "Số GR",
+    "receiptDate": "Ngày nhận",
+    "receivedQty": "SL nhận",
+    "approve": "Duyệt nhận hàng",
+    "approveConfirm": "Duyệt phiếu nhận? Tồn kho sẽ được cập nhật.",
+    "cancelConfirm": "Hủy phiếu nhận nháp này?",
+    "detail": "Chi tiết GR",
+    "linkedStockIn": "Phiếu nhập liên kết",
+    "statusDraft": "Nháp",
+    "statusApproved": "Đã duyệt",
+    "statusCancelled": "Đã hủy"
   },
   "warehouseTypes": {
     "Dc": "Kho trung tâm",

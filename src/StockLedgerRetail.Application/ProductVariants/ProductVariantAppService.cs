@@ -67,7 +67,10 @@ public class ProductVariantAppService : IProductVariantAppService
             throw new InvalidOperationException($"SKU '{input.Sku}' already exists.");
         }
 
+        ValidateValuation(input.CostPrice, input.SellingPrice);
+
         var now = DateTime.UtcNow;
+        var (costPrice, costSource) = NormalizeCost(input.CostPrice, input.CostSource);
         var variant = new ProductVariant
         {
             Id = Guid.NewGuid(),
@@ -79,6 +82,9 @@ public class ProductVariantAppService : IProductVariantAppService
             Season = input.Season?.Trim(),
             Unit = input.Unit?.Trim(),
             Status = input.Status,
+            CostPrice = costPrice,
+            SellingPrice = input.SellingPrice,
+            CostSource = costSource,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -100,12 +106,18 @@ public class ProductVariantAppService : IProductVariantAppService
 
         var oldDto = MapToDto(variant);
 
+        ValidateValuation(input.CostPrice, input.SellingPrice);
+
         variant.Barcode = input.Barcode?.Trim();
         variant.Color = input.Color?.Trim();
         variant.Size = input.Size?.Trim();
         variant.Season = input.Season?.Trim();
         variant.Unit = input.Unit?.Trim();
         variant.Status = input.Status;
+        var (costPrice, costSource) = NormalizeCost(input.CostPrice, input.CostSource);
+        variant.CostPrice = costPrice;
+        variant.SellingPrice = input.SellingPrice;
+        variant.CostSource = costSource;
         variant.UpdatedAt = DateTime.UtcNow;
 
         await _productVariantRepository.UpdateAsync(variant, cancellationToken);
@@ -143,7 +155,36 @@ public class ProductVariantAppService : IProductVariantAppService
         Season = variant.Season,
         Unit = variant.Unit,
         Status = variant.Status,
+        CostPrice = variant.CostPrice,
+        SellingPrice = variant.SellingPrice,
+        CostSource = variant.CostSource,
         CreatedAt = variant.CreatedAt,
         UpdatedAt = variant.UpdatedAt
     };
+
+    private static void ValidateValuation(decimal? costPrice, decimal? sellingPrice)
+    {
+        if (costPrice is < 0)
+        {
+            throw new InvalidOperationException("Cost price cannot be negative.");
+        }
+
+        if (sellingPrice is < 0)
+        {
+            throw new InvalidOperationException("Selling price cannot be negative.");
+        }
+    }
+
+    /// <summary>Giá vốn null thì xóa nguồn; có giá mà không chỉ nguồn thì mặc định Manual.</summary>
+    private static (decimal? CostPrice, CostSource? CostSource) NormalizeCost(
+        decimal? costPrice,
+        CostSource? costSource)
+    {
+        if (costPrice is null)
+        {
+            return (null, null);
+        }
+
+        return (costPrice, costSource ?? CostSource.Manual);
+    }
 }
