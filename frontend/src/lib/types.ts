@@ -176,6 +176,19 @@ export interface AdjustmentLineInput {
   note?: string;
 }
 
+export interface StockCountLineInput {
+  productVariantId: string;
+  countedQuantity: number;
+  note?: string;
+}
+
+export interface UpdateDocumentDraftInput {
+  documentDate?: string;
+  referenceNo?: string;
+  note?: string;
+  lines?: DocumentLineInput[];
+}
+
 export interface CurrentStock {
   id: string;
   productVariantId: string;

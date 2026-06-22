@@ -59,6 +59,15 @@ export default function InventoryDocumentsPage() {
             >
               + {t("createAdjustment")}
             </Link>
+            <Link href="/inventory-documents/new/transfer" className="btn-secondary">
+              + {t("createTransfer")}
+            </Link>
+            <Link
+              href="/inventory-documents/new/stock-count"
+              className="btn-secondary"
+            >
+              + {t("createStockCount")}
+            </Link>
           </div>
         }
       />

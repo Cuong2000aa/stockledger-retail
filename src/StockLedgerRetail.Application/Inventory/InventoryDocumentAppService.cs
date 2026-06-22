@@ -169,6 +169,142 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return dto;
     }
 
+    /// <summary>Tạo phiếu chuyển kho ở trạng thái Draft — chưa tác động tồn.</summary>
+    public async Task<InventoryDocumentDto> CreateTransferAsync(
+        CreateTransferDto input,
+        CancellationToken cancellationToken = default)
+    {
+        if (input.SourceWarehouseId == input.DestinationWarehouseId)
+        {
+            throw new InvalidOperationException("Source and destination warehouse cannot be the same.");
+        }
+
+        await EnsureWarehouseExistsAsync(input.SourceWarehouseId, cancellationToken);
+        await EnsureWarehouseExistsAsync(input.DestinationWarehouseId, cancellationToken);
+        await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
+        ValidateLines(input.Lines);
+
+        var now = DateTime.UtcNow;
+        var document = await CreateDocumentAsync(
+            InventoryDocumentType.Transfer,
+            sourceWarehouseId: input.SourceWarehouseId,
+            destinationWarehouseId: input.DestinationWarehouseId,
+            documentDate: input.DocumentDate ?? now,
+            referenceNo: input.ReferenceNo,
+            sourceSystem: null,
+            note: input.Note,
+            lines: input.Lines,
+            now: now,
+            cancellationToken);
+
+        await _inventoryDocumentRepository.InsertAsync(document, cancellationToken);
+        await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
+
+        var dto = await LoadDtoAsync(document.Id, cancellationToken);
+        await _transactionAuditService.LogAsync(
+            nameof(InventoryDocument), document.Id, AuditActionType.Create, null, dto, cancellationToken);
+
+        return dto;
+    }
+
+    /// <summary>Tạo phiếu kiểm kê ở trạng thái Draft — dòng lưu số lượng kiểm thực tế.</summary>
+    public async Task<InventoryDocumentDto> CreateStockCountAsync(
+        CreateStockCountDto input,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
+        ValidateStockCountLines(input.Lines);
+        await EnsureStockCountVariantsExistAsync(input.Lines, cancellationToken);
+
+        var documentLines = input.Lines.Select(line => new CreateInventoryDocumentLineDto
+        {
+            ProductVariantId = line.ProductVariantId,
+            Quantity = line.CountedQuantity,
+            Note = line.Note
+        }).ToList();
+
+        var now = DateTime.UtcNow;
+        var document = await CreateDocumentAsync(
+            InventoryDocumentType.StockCount,
+            sourceWarehouseId: null,
+            destinationWarehouseId: input.WarehouseId,
+            documentDate: input.DocumentDate ?? now,
+            referenceNo: input.ReferenceNo,
+            sourceSystem: null,
+            note: input.Note,
+            lines: documentLines,
+            now: now,
+            cancellationToken);
+
+        await _inventoryDocumentRepository.InsertAsync(document, cancellationToken);
+        await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
+
+        var dto = await LoadDtoAsync(document.Id, cancellationToken);
+        await _transactionAuditService.LogAsync(
+            nameof(InventoryDocument), document.Id, AuditActionType.Create, null, dto, cancellationToken);
+
+        return dto;
+    }
+
+    /// <summary>Cập nhật phiếu Draft — chỉ ngày, tham chiếu, ghi chú và dòng hàng.</summary>
+    public async Task<InventoryDocumentDto> UpdateDraftAsync(
+        Guid id,
+        UpdateInventoryDocumentDraftDto input,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        if (document.Status is not InventoryDocumentStatus.Draft)
+        {
+            throw new InvalidOperationException("Only draft documents can be updated.");
+        }
+
+        var oldDto = MapToDto(document);
+
+        if (input.DocumentDate.HasValue)
+        {
+            document.DocumentDate = input.DocumentDate.Value;
+        }
+
+        if (input.ReferenceNo is not null)
+        {
+            document.ReferenceNo = string.IsNullOrWhiteSpace(input.ReferenceNo) ? null : input.ReferenceNo.Trim();
+        }
+
+        if (input.Note is not null)
+        {
+            document.Note = string.IsNullOrWhiteSpace(input.Note) ? null : input.Note.Trim();
+        }
+
+        if (input.Lines is not null)
+        {
+            ValidateDraftLines(document.DocumentType, input.Lines);
+            await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
+
+            await _inventoryDocumentRepository.RemoveLinesByDocumentIdAsync(document.Id, cancellationToken);
+
+            document.Lines = input.Lines.Select(line => new InventoryDocumentLine
+            {
+                Id = Guid.NewGuid(),
+                DocumentId = document.Id,
+                ProductVariantId = line.ProductVariantId,
+                Quantity = line.Quantity,
+                UnitCost = line.UnitCost,
+                Note = line.Note?.Trim()
+            }).ToList();
+        }
+
+        await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
+        await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
+
+        var newDto = await LoadDtoAsync(document.Id, cancellationToken);
+        await _transactionAuditService.LogAsync(
+            nameof(InventoryDocument), document.Id, AuditActionType.Update, oldDto, newDto, cancellationToken);
+
+        return newDto;
+    }
+
     /// <summary>Duyệt phiếu — gọi StockLedgerService sinh giao dịch và cập nhật tồn.</summary>
     public async Task<InventoryDocumentDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -332,6 +468,80 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return string.IsNullOrWhiteSpace(note)
             ? trimmedReason
             : $"{trimmedReason} | {note.Trim()}";
+    }
+
+    /// <summary>Kiểm tra dòng kiểm kê: ít nhất một dòng, số kiểm >= 0.</summary>
+    private static void ValidateStockCountLines(List<CreateStockCountLineDto> lines)
+    {
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("Document must contain at least one line.");
+        }
+
+        foreach (var line in lines)
+        {
+            if (line.CountedQuantity < 0)
+            {
+                throw new InvalidOperationException("Counted quantity cannot be negative.");
+            }
+        }
+    }
+
+    private async Task EnsureStockCountVariantsExistAsync(
+        List<CreateStockCountLineDto> lines,
+        CancellationToken cancellationToken)
+    {
+        foreach (var line in lines)
+        {
+            var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken);
+            if (variant is null)
+            {
+                throw new InvalidOperationException($"Product variant '{line.ProductVariantId}' was not found.");
+            }
+        }
+    }
+
+    /// <summary>Kiểm tra dòng khi cập nhật Draft theo loại phiếu.</summary>
+    private static void ValidateDraftLines(InventoryDocumentType documentType, List<CreateInventoryDocumentLineDto> lines)
+    {
+        if (lines.Count == 0)
+        {
+            throw new InvalidOperationException("Document must contain at least one line.");
+        }
+
+        switch (documentType)
+        {
+            case InventoryDocumentType.Adjustment:
+                foreach (var line in lines)
+                {
+                    if (line.Quantity == 0)
+                    {
+                        throw new InvalidOperationException("Adjustment quantity cannot be zero.");
+                    }
+                }
+
+                break;
+            case InventoryDocumentType.StockCount:
+                foreach (var line in lines)
+                {
+                    if (line.Quantity < 0)
+                    {
+                        throw new InvalidOperationException("Counted quantity cannot be negative.");
+                    }
+                }
+
+                break;
+            default:
+                foreach (var line in lines)
+                {
+                    if (line.Quantity <= 0)
+                    {
+                        throw new InvalidOperationException("Line quantity must be greater than zero.");
+                    }
+                }
+
+                break;
+        }
     }
 
     /// <summary>Kiểm tra phiếu có ít nhất một dòng và số lượng > 0.</summary>
