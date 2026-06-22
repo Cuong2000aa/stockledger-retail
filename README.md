@@ -120,58 +120,58 @@ frontend/                               ← Next.js 15 + TypeScript + Tailwind
 
 ## Getting Started
 
-### Prerequisites — cài trên máy trước khi chạy source
+### Prerequisites — install before running from source
 
-Cần cài **đủ** các mục bắt buộc bên dưới. Sau khi cài, chạy lệnh **Kiểm tra** để xác nhận.
+Install **all** required items below. After installing, run the **Verify** commands to confirm.
 
-| # | Phần mềm | Phiên bản khuyến nghị | Dùng cho | Tải / cài |
-|---|----------|----------------------|----------|-----------|
-| 1 | **.NET SDK** | **10.x** (khớp `net10.0` trong repo) | Build & chạy API | [https://dotnet.microsoft.com/download](https://dotnet.microsoft.com/download) |
-| 2 | **Node.js** | **20 LTS** trở lên | Frontend Next.js | [https://nodejs.org/](https://nodejs.org/) |
-| 3 | **PostgreSQL** | **14+** (16 khuyến nghị) | Database | [https://www.postgresql.org/download/](https://www.postgresql.org/download/) |
-| 4 | **Git** | Mới nhất | Clone repo | [https://git-scm.com/downloads](https://git-scm.com/downloads) |
-| 5 | **EF Core CLI** | Cùng major với EF trong project (~10.x) | Chạy migration DB | Xem bước cài bên dưới |
+| # | Software | Recommended version | Used for | Download |
+|---|----------|---------------------|----------|----------|
+| 1 | **.NET SDK** | **10.x** (matches `net10.0` in this repo) | Build & run API | [https://dotnet.microsoft.com/download](https://dotnet.microsoft.com/download) |
+| 2 | **Node.js** | **20 LTS** or newer | Next.js frontend | [https://nodejs.org/](https://nodejs.org/) |
+| 3 | **PostgreSQL** | **14+** (16 recommended) | Database | [https://www.postgresql.org/download/](https://www.postgresql.org/download/) |
+| 4 | **Git** | Latest | Clone repo | [https://git-scm.com/downloads](https://git-scm.com/downloads) |
+| 5 | **EF Core CLI** | Same major as EF in the project (~10.x) | Database migrations | See install step below |
 
-**Tuỳ chọn (IDE):** Visual Studio 2022+, VS Code, hoặc Rider.
+**Optional (IDE):** Visual Studio 2022+, VS Code, or Rider.
 
-#### Kiểm tra sau khi cài
+#### Verify after install
 
 ```bash
-dotnet --version          # ví dụ: 10.0.x
-node --version            # ví dụ: v20.x
+dotnet --version          # e.g. 10.0.x
+node --version            # e.g. v20.x
 npm --version
-psql --version            # hoặc mở pgAdmin
+psql --version            # or use pgAdmin
 git --version
 ```
 
-#### Cài EF Core CLI (chỉ cần một lần trên máy)
+#### Install EF Core CLI (one-time per machine)
 
 ```bash
 dotnet tool install --global dotnet-ef
-# hoặc cập nhật:
+# or update:
 dotnet tool update --global dotnet-ef
 
 dotnet ef --version
 ```
 
-#### PostgreSQL — tạo database
+#### PostgreSQL — create database
 
-Sau khi cài PostgreSQL, tạo database trống (tên tuỳ bạn, ví dụ `stockledger_retail`):
+After installing PostgreSQL, create an empty database (any name, e.g. `stockledger_retail`):
 
 ```sql
 CREATE DATABASE stockledger_retail;
 ```
 
-Ghi nhớ `Host`, `Port`, `Username`, `Password` — dùng ở bước cấu hình API.
+Note your `Host`, `Port`, `Username`, and `Password` — you will need them when configuring the API.
 
-#### Cấu hình bắt buộc trên máy dev
+#### Required local configuration
 
-| File | Mục đích |
-|------|----------|
-| `host/StockLedgerRetail.HttpApi.Host/appsettings.json` | Connection string PostgreSQL (`ConnectionStrings:Default`) |
-| `frontend/.env.local` | URL API cho UI (copy từ `.env.local.example`) |
+| File | Purpose |
+|------|---------|
+| `host/StockLedgerRetail.HttpApi.Host/appsettings.json` | PostgreSQL connection string (`ConnectionStrings:Default`) |
+| `frontend/.env.local` | API URL for the UI (copy from `.env.local.example`) |
 
-**Connection string** (ví dụ):
+**Connection string** (example):
 
 ```json
 "ConnectionStrings": {
@@ -185,33 +185,33 @@ Ghi nhớ `Host`, `Port`, `Username`, `Password` — dùng ở bước cấu hì
 NEXT_PUBLIC_API_URL=http://localhost:5270
 ```
 
-> Không commit mật khẩu thật lên Git. Có thể dùng `appsettings.Development.local.json` (đã nằm trong `.gitignore`) cho cấu hình local.
+> Do not commit real passwords to Git. You can use `appsettings.Development.local.json` (already in `.gitignore`) for local secrets.
 
-#### Ghi chú Windows (PowerShell)
+#### Windows notes (PowerShell)
 
-- Chạy lệnh từ **thư mục gốc repo** (có folder `host`, `src`, `frontend`).
-- Đường dẫn user có dấu `(` — luôn **bọc path trong ngoặc kép** khi `cd`:
+- Run commands from the **repository root** (folders `host`, `src`, `frontend`).
+- If your user path contains `(`, always **wrap paths in quotes** when using `cd`:
   ```powershell
   cd "C:\Users\...\stockledger-retail"
   ```
-- Nếu `npm` bị chặn execution policy, dùng: `npm.cmd run dev`
-- Chạy API:
+- If `npm` is blocked by execution policy, use: `npm.cmd run dev`
+- Run the API:
   ```powershell
   dotnet run --project host\StockLedgerRetail.HttpApi.Host --launch-profile http
   ```
 
 ---
 
-### Chạy lần đầu (từ clone repo)
+### First run (from a fresh clone)
 
-**1. Clone & vào thư mục project**
+**1. Clone & enter the project**
 
 ```bash
 git clone https://github.com/Cuong2000aa/stockledger-retail.git
 cd stockledger-retail
 ```
 
-**2. Cấu hình DB** — sửa `appsettings.json` (hoặc file local) với connection string PostgreSQL của bạn.
+**2. Configure the database** — edit `appsettings.json` (or a local override) with your PostgreSQL connection string.
 
 **3. Apply migrations**
 
@@ -221,7 +221,7 @@ dotnet ef database update --project .
 cd ../..
 ```
 
-**4. Chạy API** (terminal 1)
+**4. Run the API** (terminal 1)
 
 ```bash
 dotnet run --project host/StockLedgerRetail.HttpApi.Host --launch-profile http
@@ -229,7 +229,7 @@ dotnet run --project host/StockLedgerRetail.HttpApi.Host --launch-profile http
 
 API: [http://localhost:5270](http://localhost:5270) · Swagger: [http://localhost:5270/swagger](http://localhost:5270/swagger)
 
-**5. Chạy Frontend** (terminal 2)
+**5. Run the frontend** (terminal 2)
 
 ```bash
 cd frontend
@@ -238,17 +238,17 @@ npm install
 npm run dev
 ```
 
-UI: [http://localhost:3000/vi](http://localhost:3000/vi) (mặc định tiếng Việt)
+UI: [http://localhost:3000/vi](http://localhost:3000/vi) (default locale is Vietnamese; use `/en` for English)
 
 ---
 
-### Backend (tóm tắt)
+### Backend (quick reference)
 
 ```bash
 dotnet run --project host/StockLedgerRetail.HttpApi.Host --launch-profile http
 ```
 
-Cấu hình connection string trong `host/StockLedgerRetail.HttpApi.Host/appsettings.json` (hoặc file `*.local.json`).
+Configure the connection string in `host/StockLedgerRetail.HttpApi.Host/appsettings.json` (or a `*.local.json` file).
 
 Apply migrations:
 
@@ -257,7 +257,7 @@ cd src/StockLedgerRetail.EntityFrameworkCore
 dotnet ef database update --project .
 ```
 
-### Frontend (tóm tắt)
+### Frontend (quick reference)
 
 ```bash
 cd frontend
