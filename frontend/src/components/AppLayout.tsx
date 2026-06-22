@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import clsx from "clsx";
+import Image from "next/image";
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, key: "dashboard" },
@@ -33,7 +34,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <aside className="flex w-64 flex-col border-r border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
-          <p className="text-lg font-bold text-brand-700">{tCommon("appName")}</p>
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt={tCommon("appName")}
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 object-contain"
+              priority
+            />
+            <span className="text-lg font-bold leading-tight text-brand-700">
+              {tCommon("appName")}
+            </span>
+          </Link>
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {navItems.map(({ href, icon: Icon, key }) => {

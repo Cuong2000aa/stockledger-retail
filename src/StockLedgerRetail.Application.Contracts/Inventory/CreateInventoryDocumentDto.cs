@@ -66,3 +66,52 @@ public class CreateAdjustmentDto
 
     public List<CreateAdjustmentLineDto> Lines { get; set; } = new();
 }
+
+public class CreateTransferDto
+{
+    public Guid SourceWarehouseId { get; set; }
+
+    public Guid DestinationWarehouseId { get; set; }
+
+    public DateTime? DocumentDate { get; set; }
+
+    public string? ReferenceNo { get; set; }
+
+    public string? Note { get; set; }
+
+    public List<CreateInventoryDocumentLineDto> Lines { get; set; } = new();
+}
+
+public class CreateStockCountLineDto
+{
+    public Guid ProductVariantId { get; set; }
+
+    /// <summary>Số lượng kiểm kê thực tế (>= 0).</summary>
+    public decimal CountedQuantity { get; set; }
+
+    public string? Note { get; set; }
+}
+
+public class CreateStockCountDto
+{
+    public Guid WarehouseId { get; set; }
+
+    public DateTime? DocumentDate { get; set; }
+
+    public string? ReferenceNo { get; set; }
+
+    public string? Note { get; set; }
+
+    public List<CreateStockCountLineDto> Lines { get; set; } = new();
+}
+
+public class UpdateInventoryDocumentDraftDto
+{
+    public DateTime? DocumentDate { get; set; }
+
+    public string? ReferenceNo { get; set; }
+
+    public string? Note { get; set; }
+
+    public List<CreateInventoryDocumentLineDto>? Lines { get; set; }
+}

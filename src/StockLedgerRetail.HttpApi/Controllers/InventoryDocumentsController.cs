@@ -60,6 +60,33 @@ public class InventoryDocumentsController : ControllerBase
         _inventoryDocumentAppService.CreateAdjustmentAsync(input, cancellationToken);
 
     /// <summary>
+    /// Tạo phiếu chuyển kho (Transfer). Kho nguồn ≠ kho đích. Trạng thái ban đầu: Draft.
+    /// </summary>
+    [HttpPost("transfer")]
+    public Task<InventoryDocumentDto> CreateTransferAsync(
+        [FromBody] CreateTransferDto input,
+        CancellationToken cancellationToken) =>
+        _inventoryDocumentAppService.CreateTransferAsync(input, cancellationToken);
+
+    /// <summary>
+    /// Tạo phiếu kiểm kê (Stock Count). Dòng lưu số lượng kiểm thực tế; khi duyệt hệ thống tính chênh lệch với tồn.
+    /// Trạng thái ban đầu: Draft.
+    /// </summary>
+    [HttpPost("stock-count")]
+    public Task<InventoryDocumentDto> CreateStockCountAsync(
+        [FromBody] CreateStockCountDto input,
+        CancellationToken cancellationToken) =>
+        _inventoryDocumentAppService.CreateStockCountAsync(input, cancellationToken);
+
+    /// <summary>Cập nhật phiếu Draft — ngày, tham chiếu, ghi chú và/hoặc danh sách dòng hàng.</summary>
+    [HttpPut("{id:guid}")]
+    public Task<InventoryDocumentDto> UpdateDraftAsync(
+        Guid id,
+        [FromBody] UpdateInventoryDocumentDraftDto input,
+        CancellationToken cancellationToken) =>
+        _inventoryDocumentAppService.UpdateDraftAsync(id, input, cancellationToken);
+
+    /// <summary>
     /// Duyệt phiếu — sinh StockTransaction và cập nhật CurrentStock.
     /// Đây là bước thực sự làm thay đổi tồn kho.
     /// </summary>

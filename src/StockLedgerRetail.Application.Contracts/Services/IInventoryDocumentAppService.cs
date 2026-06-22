@@ -20,6 +20,12 @@ public interface IInventoryDocumentAppService
 
     Task<InventoryDocumentDto> CreateAdjustmentAsync(CreateAdjustmentDto input, CancellationToken cancellationToken = default);
 
+    Task<InventoryDocumentDto> CreateTransferAsync(CreateTransferDto input, CancellationToken cancellationToken = default);
+
+    Task<InventoryDocumentDto> CreateStockCountAsync(CreateStockCountDto input, CancellationToken cancellationToken = default);
+
+    Task<InventoryDocumentDto> UpdateDraftAsync(Guid id, UpdateInventoryDocumentDraftDto input, CancellationToken cancellationToken = default);
+
     Task<InventoryDocumentDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<InventoryDocumentDto> CancelAsync(Guid id, CancellationToken cancellationToken = default);

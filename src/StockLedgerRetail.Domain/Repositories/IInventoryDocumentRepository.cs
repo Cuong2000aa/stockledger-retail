@@ -36,5 +36,7 @@ public interface IInventoryDocumentRepository
 
     Task UpdateAsync(InventoryDocument document, CancellationToken cancellationToken = default);
 
+    Task RemoveLinesByDocumentIdAsync(Guid documentId, CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

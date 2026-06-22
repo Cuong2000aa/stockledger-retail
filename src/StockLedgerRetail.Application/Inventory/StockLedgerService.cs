@@ -50,6 +50,12 @@ public class StockLedgerService : IStockLedgerService
             case InventoryDocumentType.Adjustment:
                 await ProcessAdjustmentAsync(document, cancellationToken);
                 break;
+            case InventoryDocumentType.Transfer:
+                await ProcessTransferAsync(document, cancellationToken);
+                break;
+            case InventoryDocumentType.StockCount:
+                await ProcessStockCountAsync(document, cancellationToken);
+                break;
             default:
                 throw new InvalidOperationException(
                     $"Document type '{document.DocumentType}' is not supported yet.");
@@ -177,6 +183,128 @@ public class StockLedgerService : IStockLedgerService
                     warehouseId,
                     StockTransactionType.AdjustmentOut,
                     line.Quantity,
+                    cancellationToken);
+            }
+        }
+    }
+
+    /// <summary>Xử lý chuyển kho — TRANSFER_OUT tại nguồn, TRANSFER_IN tại đích cho từng dòng.</summary>
+    private async Task ProcessTransferAsync(InventoryDocument document, CancellationToken cancellationToken)
+    {
+        if (document.SourceWarehouseId is null || document.DestinationWarehouseId is null)
+        {
+            throw new InvalidOperationException("Source and destination warehouses are required for transfer.");
+        }
+
+        if (document.SourceWarehouseId == document.DestinationWarehouseId)
+        {
+            throw new InvalidOperationException("Source and destination warehouse cannot be the same.");
+        }
+
+        var sourceWarehouseId = document.SourceWarehouseId.Value;
+        var destinationWarehouseId = document.DestinationWarehouseId.Value;
+
+        await EnsureWarehouseExistsAsync(sourceWarehouseId, cancellationToken);
+        await EnsureWarehouseExistsAsync(destinationWarehouseId, cancellationToken);
+
+        foreach (var line in document.Lines)
+        {
+            await EnsureProductVariantExistsAsync(line.ProductVariantId, cancellationToken);
+
+            if (line.Quantity <= 0)
+            {
+                throw new InvalidOperationException("Line quantity must be greater than zero.");
+            }
+
+            var currentStock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
+                line.ProductVariantId,
+                sourceWarehouseId,
+                cancellationToken);
+
+            var available = currentStock?.QuantityAvailable ?? 0;
+            if (available < line.Quantity)
+            {
+                throw new InvalidOperationException(
+                    $"Insufficient available stock for variant '{line.ProductVariantId}'. Available: {available}, requested: {line.Quantity}.");
+            }
+
+            await ApplyStockChangeAsync(
+                document,
+                line,
+                sourceWarehouseId,
+                StockTransactionType.TransferOut,
+                -line.Quantity,
+                cancellationToken);
+
+            await ApplyStockChangeAsync(
+                document,
+                line,
+                destinationWarehouseId,
+                StockTransactionType.TransferIn,
+                line.Quantity,
+                cancellationToken);
+        }
+    }
+
+    /// <summary>Xử lý kiểm kê — so sánh số kiểm với tồn hệ thống, sinh COUNT_ADJUSTMENT nếu có chênh lệch.</summary>
+    private async Task ProcessStockCountAsync(InventoryDocument document, CancellationToken cancellationToken)
+    {
+        if (document.DestinationWarehouseId is null)
+        {
+            throw new InvalidOperationException("Warehouse is required for stock count.");
+        }
+
+        var warehouseId = document.DestinationWarehouseId.Value;
+        await EnsureWarehouseExistsAsync(warehouseId, cancellationToken);
+
+        foreach (var line in document.Lines)
+        {
+            await EnsureProductVariantExistsAsync(line.ProductVariantId, cancellationToken);
+
+            if (line.Quantity < 0)
+            {
+                throw new InvalidOperationException("Counted quantity cannot be negative.");
+            }
+
+            var currentStock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
+                line.ProductVariantId,
+                warehouseId,
+                cancellationToken);
+
+            var onHand = currentStock?.QuantityOnHand ?? 0;
+            var variance = line.Quantity - onHand;
+
+            if (variance == 0)
+            {
+                continue;
+            }
+
+            if (variance > 0)
+            {
+                await ApplyStockChangeAsync(
+                    document,
+                    line,
+                    warehouseId,
+                    StockTransactionType.CountAdjustmentIn,
+                    variance,
+                    cancellationToken);
+            }
+            else
+            {
+                var decreaseQuantity = Math.Abs(variance);
+                var available = currentStock?.QuantityAvailable ?? 0;
+                if (available < decreaseQuantity)
+                {
+                    throw new InvalidOperationException(
+                        $"Insufficient available stock for variant '{line.ProductVariantId}'. Available: {available}, count decrease: {decreaseQuantity}.");
+                }
+
+                await ApplyStockChangeAsync(
+                    document,
+                    line,
+                    warehouseId,
+                    StockTransactionType.CountAdjustmentOut,
+                    variance,
                     cancellationToken);
             }
         }

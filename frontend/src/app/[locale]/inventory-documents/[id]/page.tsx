@@ -6,14 +6,19 @@ import { DocStatusBadge, docTypeKey } from "@/components/StatusBadge";
 import {
   approveDocument,
   cancelDocument,
+  fetchCurrentStocks,
   fetchInventoryDocument,
+  fetchWarehouses,
   getApiErrorMessage,
 } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
-import { InventoryDocumentStatus } from "@/lib/types";
+import {
+  InventoryDocumentStatus,
+  InventoryDocumentType,
+} from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { use } from "react";
+import { use, useMemo } from "react";
 
 function statusLabel(
   status: InventoryDocumentStatus,
@@ -33,6 +38,15 @@ function statusLabel(
   }
 }
 
+function warehouseLabel(
+  id: string | undefined,
+  map: Map<string, { code: string; name: string }>
+) {
+  if (!id) return "—";
+  const w = map.get(id);
+  return w ? `${w.code} — ${w.name}` : id;
+}
+
 export default function DocumentDetailPage({
   params,
 }: {
@@ -49,12 +63,41 @@ export default function DocumentDetailPage({
     queryFn: () => fetchInventoryDocument(id),
   });
 
+  const { data: warehouses } = useQuery({
+    queryKey: ["warehouses-all"],
+    queryFn: () => fetchWarehouses(1, 100),
+  });
+
+  const warehouseMap = useMemo(() => {
+    const map = new Map<string, { code: string; name: string }>();
+    warehouses?.items.forEach((w) => map.set(w.id, { code: w.code, name: w.name }));
+    return map;
+  }, [warehouses]);
+
+  const isStockCount = doc?.documentType === InventoryDocumentType.StockCount;
+  const countWarehouseId = doc?.destinationWarehouseId;
+
+  const { data: currentStocks } = useQuery({
+    queryKey: ["current-stocks-count", countWarehouseId],
+    queryFn: () => fetchCurrentStocks(countWarehouseId, undefined, 1, 500),
+    enabled: !!doc && isStockCount && !!countWarehouseId,
+  });
+
+  const onHandByVariant = useMemo(() => {
+    const map = new Map<string, number>();
+    currentStocks?.items.forEach((s) =>
+      map.set(s.productVariantId, s.quantityOnHand)
+    );
+    return map;
+  }, [currentStocks]);
+
   const approveMutation = useMutation({
     mutationFn: () => approveDocument(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory-document", id] });
       qc.invalidateQueries({ queryKey: ["inventory-documents"] });
       qc.invalidateQueries({ queryKey: ["current-stocks"] });
+      qc.invalidateQueries({ queryKey: ["stock-transactions"] });
     },
     onError: (e) => alert(getApiErrorMessage(e)),
   });
@@ -73,6 +116,14 @@ export default function DocumentDetailPage({
   }
 
   const isDraft = doc.status === InventoryDocumentStatus.Draft;
+  const isTransfer = doc.documentType === InventoryDocumentType.Transfer;
+  const isAdjustment = doc.documentType === InventoryDocumentType.Adjustment;
+
+  const quantityHeader = isStockCount
+    ? t("countedQuantity")
+    : isAdjustment
+      ? t("adjustmentQuantity")
+      : t("quantity");
 
   return (
     <div>
@@ -80,9 +131,19 @@ export default function DocumentDetailPage({
         title={doc.documentNo}
         subtitle={t("detail")}
         action={
-          <Link href="/inventory-documents" className="btn-secondary">
-            {tCommon("back")}
-          </Link>
+          <div className="flex gap-2">
+            {isDraft && (
+              <Link
+                href={`/inventory-documents/${id}/edit`}
+                className="btn-primary"
+              >
+                {t("editDraft")}
+              </Link>
+            )}
+            <Link href="/inventory-documents" className="btn-secondary">
+              {tCommon("back")}
+            </Link>
+          </div>
         }
       />
 
@@ -111,6 +172,29 @@ export default function DocumentDetailPage({
             <dt className="text-xs text-slate-500">{t("referenceNo")}</dt>
             <dd>{doc.referenceNo ?? "—"}</dd>
           </div>
+          {(isTransfer || doc.documentType === InventoryDocumentType.StockOut) &&
+            doc.sourceWarehouseId && (
+              <div>
+                <dt className="text-xs text-slate-500">{t("sourceWarehouse")}</dt>
+                <dd>{warehouseLabel(doc.sourceWarehouseId, warehouseMap)}</dd>
+              </div>
+            )}
+          {(isTransfer ||
+            doc.documentType === InventoryDocumentType.StockIn ||
+            isStockCount ||
+            isAdjustment) &&
+            doc.destinationWarehouseId && (
+              <div>
+                <dt className="text-xs text-slate-500">
+                  {isTransfer || doc.documentType === InventoryDocumentType.StockIn
+                    ? t("destinationWarehouse")
+                    : t("warehouse")}
+                </dt>
+                <dd>
+                  {warehouseLabel(doc.destinationWarehouseId, warehouseMap)}
+                </dd>
+              </div>
+            )}
           <div className="sm:col-span-2">
             <dt className="text-xs text-slate-500">{t("note")}</dt>
             <dd>{doc.note ?? "—"}</dd>
@@ -150,18 +234,45 @@ export default function DocumentDetailPage({
             <thead>
               <tr>
                 <th>{t("productVariant")}</th>
-                <th>{t("quantity")}</th>
+                <th>{quantityHeader}</th>
+                {isStockCount && isDraft && (
+                  <>
+                    <th>{t("systemQuantity")}</th>
+                    <th>{t("variance")}</th>
+                  </>
+                )}
                 <th>{t("note")}</th>
               </tr>
             </thead>
             <tbody>
-              {doc.lines.map((line) => (
-                <tr key={line.id}>
-                  <td className="font-mono text-xs">{line.sku}</td>
-                  <td>{formatNumber(line.quantity, locale)}</td>
-                  <td>{line.note ?? "—"}</td>
-                </tr>
-              ))}
+              {doc.lines.map((line) => {
+                const onHand = onHandByVariant.get(line.productVariantId) ?? 0;
+                const variance = line.quantity - onHand;
+                return (
+                  <tr key={line.id}>
+                    <td className="font-mono text-xs">{line.sku}</td>
+                    <td>{formatNumber(line.quantity, locale)}</td>
+                    {isStockCount && isDraft && (
+                      <>
+                        <td>{formatNumber(onHand, locale)}</td>
+                        <td
+                          className={
+                            variance > 0
+                              ? "text-green-700"
+                              : variance < 0
+                                ? "text-red-700"
+                                : ""
+                          }
+                        >
+                          {variance > 0 ? "+" : ""}
+                          {formatNumber(variance, locale)}
+                        </td>
+                      </>
+                    )}
+                    <td>{line.note ?? "—"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

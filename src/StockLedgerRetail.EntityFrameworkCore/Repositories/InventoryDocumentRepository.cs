@@ -93,6 +93,11 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
         return Task.CompletedTask;
     }
 
+    public Task RemoveLinesByDocumentIdAsync(Guid documentId, CancellationToken cancellationToken = default) =>
+        _dbContext.InventoryDocumentLines
+            .Where(x => x.DocumentId == documentId)
+            .ExecuteDeleteAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _dbContext.SaveChangesAsync(cancellationToken);
 }

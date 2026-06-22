@@ -11,7 +11,9 @@ import type {
   PagedResult,
   Product,
   ProductVariant,
+  StockCountLineInput,
   StockTransaction,
+  UpdateDocumentDraftInput,
   UpdateProductInput,
   UpdateProductVariantInput,
   UpdateWarehouseInput,
@@ -137,6 +139,34 @@ export const createAdjustment = (body: {
 }) =>
   api
     .post<InventoryDocument>("/api/inventory-documents/adjustment", body)
+    .then((r) => r.data);
+
+export const createTransfer = (body: {
+  sourceWarehouseId: string;
+  destinationWarehouseId: string;
+  documentDate?: string;
+  referenceNo?: string;
+  note?: string;
+  lines: DocumentLineInput[];
+}) =>
+  api
+    .post<InventoryDocument>("/api/inventory-documents/transfer", body)
+    .then((r) => r.data);
+
+export const createStockCount = (body: {
+  warehouseId: string;
+  documentDate?: string;
+  referenceNo?: string;
+  note?: string;
+  lines: StockCountLineInput[];
+}) =>
+  api
+    .post<InventoryDocument>("/api/inventory-documents/stock-count", body)
+    .then((r) => r.data);
+
+export const updateDocumentDraft = (id: string, body: UpdateDocumentDraftInput) =>
+  api
+    .put<InventoryDocument>(`/api/inventory-documents/${id}`, body)
     .then((r) => r.data);
 
 export const approveDocument = (id: string) =>
