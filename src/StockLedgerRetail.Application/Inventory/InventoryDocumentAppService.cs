@@ -8,6 +8,9 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Inventory;
 
+/// <summary>
+/// Dịch vụ quản lý phiếu nghiệp vụ tồn kho — tạo nhập/xuất (Draft) và duyệt phiếu.
+/// </summary>
 public class InventoryDocumentAppService : IInventoryDocumentAppService
 {
     private readonly IInventoryDocumentRepository _inventoryDocumentRepository;
@@ -33,6 +36,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         _auditContext = auditContext;
     }
 
+    /// <summary>Lấy chi tiết phiếu kèm danh sách dòng hàng.</summary>
     public async Task<InventoryDocumentDto> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
@@ -41,6 +45,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return MapToDto(document);
     }
 
+    /// <summary>Lấy danh sách phiếu, có thể lọc theo loại (StockIn, StockOut...).</summary>
     public async Task<List<InventoryDocumentDto>> GetListAsync(
         InventoryDocumentType? documentType = null,
         CancellationToken cancellationToken = default)
@@ -49,6 +54,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return documents.Select(MapToDtoWithoutLines).ToList();
     }
 
+    /// <summary>Tạo phiếu nhập kho ở trạng thái Draft — chưa tăng tồn.</summary>
     public async Task<InventoryDocumentDto> CreateStockInAsync(
         CreateStockInDto input,
         CancellationToken cancellationToken = default)
@@ -80,6 +86,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return dto;
     }
 
+    /// <summary>Tạo phiếu xuất kho ở trạng thái Draft — chưa giảm tồn.</summary>
     public async Task<InventoryDocumentDto> CreateStockOutAsync(
         CreateStockOutDto input,
         CancellationToken cancellationToken = default)
@@ -111,6 +118,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return dto;
     }
 
+    /// <summary>Duyệt phiếu — gọi StockLedgerService sinh giao dịch và cập nhật tồn.</summary>
     public async Task<InventoryDocumentDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
@@ -145,6 +153,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return newDto;
     }
 
+    /// <summary>Tạo entity phiếu kèm dòng hàng và sinh số phiếu tự động.</summary>
     private async Task<InventoryDocument> CreateDocumentAsync(
         InventoryDocumentType documentType,
         Guid? sourceWarehouseId,
@@ -188,6 +197,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return document;
     }
 
+    /// <summary>Sinh mã phiếu theo loại và ngày, ví dụ SI-20250622-0001.</summary>
     private async Task<string> GenerateDocumentNoAsync(
         InventoryDocumentType documentType,
         DateTime now,
@@ -210,6 +220,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return $"{prefix}{(count + 1).ToString().PadLeft(4, '0')}";
     }
 
+    /// <summary>Kiểm tra phiếu có ít nhất một dòng và số lượng > 0.</summary>
     private void ValidateLines(List<CreateInventoryDocumentLineDto> lines)
     {
         if (lines.Count == 0)
@@ -226,6 +237,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         }
     }
 
+    /// <summary>Đảm bảo tất cả SKU trong phiếu tồn tại trong hệ thống.</summary>
     private async Task EnsureProductVariantsExistAsync(
         List<CreateInventoryDocumentLineDto> lines,
         CancellationToken cancellationToken)
@@ -240,6 +252,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         }
     }
 
+    /// <summary>Đảm bảo kho nguồn/đích tồn tại.</summary>
     private async Task EnsureWarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken);
@@ -249,6 +262,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         }
     }
 
+    /// <summary>Tải lại phiếu từ DB sau khi lưu để trả DTO đầy đủ.</summary>
     private async Task<InventoryDocumentDto> LoadDtoAsync(Guid id, CancellationToken cancellationToken)
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
@@ -257,6 +271,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return MapToDto(document);
     }
 
+    /// <summary>Chuyển entity sang DTO kèm danh sách dòng hàng.</summary>
     private static InventoryDocumentDto MapToDto(InventoryDocument document) => new()
     {
         Id = document.Id,
@@ -284,6 +299,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         }).ToList()
     };
 
+    /// <summary>Chuyển entity sang DTO không kèm dòng (dùng cho danh sách).</summary>
     private static InventoryDocumentDto MapToDtoWithoutLines(InventoryDocument document) => new()
     {
         Id = document.Id,

@@ -7,6 +7,9 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Products;
 
+/// <summary>
+/// Dịch vụ nghiệp vụ quản lý sản phẩm cha (Product) — CRUD và ghi audit log.
+/// </summary>
 public class ProductAppService : IProductAppService
 {
     private readonly IProductRepository _productRepository;
@@ -20,12 +23,14 @@ public class ProductAppService : IProductAppService
         _transactionAuditService = transactionAuditService;
     }
 
+    /// <summary>Lấy toàn bộ danh sách sản phẩm, sắp xếp theo mã.</summary>
     public async Task<List<ProductDto>> GetListAsync(CancellationToken cancellationToken = default)
     {
         var products = await _productRepository.GetListAsync(cancellationToken);
         return products.Select(MapToDto).ToList();
     }
 
+    /// <summary>Lấy một sản phẩm theo Id. Ném lỗi nếu không tồn tại.</summary>
     public async Task<ProductDto> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var product = await _productRepository.GetByIdAsync(id, cancellationToken)
@@ -34,6 +39,7 @@ public class ProductAppService : IProductAppService
         return MapToDto(product);
     }
 
+    /// <summary>Tạo sản phẩm mới và ghi log CREATE.</summary>
     public async Task<ProductDto> CreateAsync(CreateProductDto input, CancellationToken cancellationToken = default)
     {
         var existing = await _productRepository.GetByProductCodeAsync(input.ProductCode, cancellationToken);
@@ -64,6 +70,7 @@ public class ProductAppService : IProductAppService
         return dto;
     }
 
+    /// <summary>Cập nhật sản phẩm và ghi log UPDATE (lưu giá trị cũ/mới).</summary>
     public async Task<ProductDto> UpdateAsync(Guid id, UpdateProductDto input, CancellationToken cancellationToken = default)
     {
         var product = await _productRepository.GetByIdAsync(id, cancellationToken)
@@ -86,6 +93,7 @@ public class ProductAppService : IProductAppService
         return newDto;
     }
 
+    /// <summary>Xóa sản phẩm và ghi log DELETE.</summary>
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var product = await _productRepository.GetByIdAsync(id, cancellationToken)
@@ -99,6 +107,7 @@ public class ProductAppService : IProductAppService
         await _transactionAuditService.LogAsync(nameof(Product), product.Id, AuditActionType.Delete, oldDto, null, cancellationToken);
     }
 
+    /// <summary>Chuyển entity Product sang DTO trả về API.</summary>
     private static ProductDto MapToDto(Product product) => new()
     {
         Id = product.Id,

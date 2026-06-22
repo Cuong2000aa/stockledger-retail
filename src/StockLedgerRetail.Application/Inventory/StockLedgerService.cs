@@ -5,6 +5,10 @@ using StockLedgerRetail.Enums;
 
 namespace StockLedgerRetail.Application.Inventory;
 
+/// <summary>
+/// Engine sổ cái tồn kho — khi phiếu được duyệt, sinh StockTransaction và cập nhật CurrentStock.
+/// Nguyên tắc: không đổi tồn mà không có giao dịch; không cho tồn âm.
+/// </summary>
 public class StockLedgerService : IStockLedgerService
 {
     private readonly ICurrentStockRepository _currentStockRepository;
@@ -27,6 +31,7 @@ public class StockLedgerService : IStockLedgerService
         _auditContext = auditContext;
     }
 
+    /// <summary>Xử lý phiếu đã duyệt theo loại (hiện hỗ trợ StockIn, StockOut).</summary>
     public async Task ProcessApprovedDocumentAsync(InventoryDocument document, CancellationToken cancellationToken = default)
     {
         if (document.Lines.Count == 0)
@@ -48,6 +53,7 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
+    /// <summary>Xử lý nhập kho — tăng tồn tại kho đích cho từng dòng.</summary>
     private async Task ProcessStockInAsync(InventoryDocument document, CancellationToken cancellationToken)
     {
         if (document.DestinationWarehouseId is null)
@@ -76,6 +82,7 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
+    /// <summary>Xử lý xuất kho — kiểm tra đủ tồn rồi giảm tại kho nguồn.</summary>
     private async Task ProcessStockOutAsync(InventoryDocument document, CancellationToken cancellationToken)
     {
         if (document.SourceWarehouseId is null)
@@ -116,6 +123,9 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
+    /// <summary>
+    /// Áp dụng thay đổi tồn: ghi StockTransaction (before/after) rồi cập nhật hoặc tạo CurrentStock.
+    /// </summary>
     private async Task ApplyStockChangeAsync(
         InventoryDocument document,
         InventoryDocumentLine line,
@@ -183,6 +193,7 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
+    /// <summary>Sinh mã giao dịch sổ cái, ví dụ ST-20250622-000001.</summary>
     private async Task<string> GenerateTransactionNoAsync(DateTime now, CancellationToken cancellationToken)
     {
         var prefix = $"ST-{now:yyyyMMdd}-";
@@ -190,6 +201,7 @@ public class StockLedgerService : IStockLedgerService
         return $"{prefix}{(count + 1).ToString().PadLeft(6, '0')}";
     }
 
+    /// <summary>Kiểm tra kho tồn tại trước khi ghi sổ.</summary>
     private async Task EnsureWarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken);
@@ -199,6 +211,7 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
+    /// <summary>Kiểm tra SKU tồn tại trước khi ghi sổ.</summary>
     private async Task EnsureProductVariantExistsAsync(Guid productVariantId, CancellationToken cancellationToken)
     {
         var variant = await _productVariantRepository.GetByIdAsync(productVariantId, cancellationToken);

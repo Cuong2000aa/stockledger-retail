@@ -7,6 +7,9 @@ using StockLedgerRetail.Warehouses;
 
 namespace StockLedgerRetail.Application.Warehouses;
 
+/// <summary>
+/// Dịch vụ nghiệp vụ quản lý kho — hỗ trợ kho cha/con (store, DC, backroom...).
+/// </summary>
 public class WarehouseAppService : IWarehouseAppService
 {
     private readonly IWarehouseRepository _warehouseRepository;
@@ -20,12 +23,14 @@ public class WarehouseAppService : IWarehouseAppService
         _transactionAuditService = transactionAuditService;
     }
 
+    /// <summary>Lấy danh sách tất cả kho.</summary>
     public async Task<List<WarehouseDto>> GetListAsync(CancellationToken cancellationToken = default)
     {
         var warehouses = await _warehouseRepository.GetListAsync(cancellationToken);
         return warehouses.Select(MapToDto).ToList();
     }
 
+    /// <summary>Lấy chi tiết kho theo Id.</summary>
     public async Task<WarehouseDto> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(id, cancellationToken)
@@ -34,6 +39,7 @@ public class WarehouseAppService : IWarehouseAppService
         return MapToDto(warehouse);
     }
 
+    /// <summary>Tạo kho mới, kiểm tra mã kho duy nhất và kho cha (nếu có) tồn tại.</summary>
     public async Task<WarehouseDto> CreateAsync(CreateWarehouseDto input, CancellationToken cancellationToken = default)
     {
         var existing = await _warehouseRepository.GetByCodeAsync(input.Code, cancellationToken);
@@ -70,6 +76,7 @@ public class WarehouseAppService : IWarehouseAppService
         return dto;
     }
 
+    /// <summary>Cập nhật kho; không cho phép kho tự trỏ parent là chính nó.</summary>
     public async Task<WarehouseDto> UpdateAsync(Guid id, UpdateWarehouseDto input, CancellationToken cancellationToken = default)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(id, cancellationToken)
@@ -103,6 +110,7 @@ public class WarehouseAppService : IWarehouseAppService
         return newDto;
     }
 
+    /// <summary>Xóa kho.</summary>
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(id, cancellationToken)
@@ -116,6 +124,7 @@ public class WarehouseAppService : IWarehouseAppService
         await _transactionAuditService.LogAsync(nameof(Warehouse), warehouse.Id, AuditActionType.Delete, oldDto, null, cancellationToken);
     }
 
+    /// <summary>Chuyển entity Warehouse sang DTO.</summary>
     private static WarehouseDto MapToDto(Warehouse warehouse) => new()
     {
         Id = warehouse.Id,

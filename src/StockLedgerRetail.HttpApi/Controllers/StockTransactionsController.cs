@@ -4,6 +4,9 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Controllers;
 
+/// <summary>
+/// API tra cứu sổ cái tồn kho (StockTransaction) — lịch sử mọi biến động tồn, dùng để audit và phân tích.
+/// </summary>
 [ApiController]
 [Route("api/stock-transactions")]
 public class StockTransactionsController : ControllerBase
@@ -15,6 +18,9 @@ public class StockTransactionsController : ControllerBase
         _stockTransactionAppService = stockTransactionAppService;
     }
 
+    /// <summary>
+    /// Lấy danh sách giao dịch tồn kho. Lọc theo warehouseId và/hoặc productVariantId (tùy chọn).
+    /// </summary>
     [HttpGet]
     public Task<List<StockTransactionDto>> GetListAsync(
         [FromQuery] Guid? warehouseId,
