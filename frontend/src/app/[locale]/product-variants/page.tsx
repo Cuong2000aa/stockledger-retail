@@ -1,0 +1,294 @@
+"use client";
+
+import { PageHeader } from "@/components/PageHeader";
+import { Pagination } from "@/components/Pagination";
+import { ActiveBadge, isProductActive } from "@/components/StatusBadge";
+import {
+  createProductVariant,
+  deleteProductVariant,
+  fetchProductVariants,
+  fetchProducts,
+  getApiErrorMessage,
+  updateProductVariant,
+} from "@/lib/api";
+import { ProductStatus, type ProductVariant } from "@/lib/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+
+export default function ProductVariantsPage() {
+  const t = useTranslations("variants");
+  const tCommon = useTranslations("common");
+  const qc = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<ProductVariant | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    productId: "",
+    sku: "",
+    barcode: "",
+    color: "",
+    size: "",
+    season: "",
+    unit: "",
+    status: ProductStatus.Active,
+  });
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["product-variants", page],
+    queryFn: () => fetchProductVariants(page),
+  });
+
+  const { data: products } = useQuery({
+    queryKey: ["products-all"],
+    queryFn: () => fetchProducts(1, 100),
+  });
+
+  const productMap = new Map(
+    products?.items.map((p) => [p.id, p.name]) ?? []
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (editing) {
+        return updateProductVariant(editing.id, {
+          barcode: form.barcode || undefined,
+          color: form.color || undefined,
+          size: form.size || undefined,
+          season: form.season || undefined,
+          unit: form.unit || undefined,
+          status: form.status,
+        });
+      }
+      return createProductVariant({
+        productId: form.productId,
+        sku: form.sku,
+        barcode: form.barcode || undefined,
+        color: form.color || undefined,
+        size: form.size || undefined,
+        season: form.season || undefined,
+        unit: form.unit || undefined,
+        status: form.status,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["product-variants"] });
+      setModalOpen(false);
+      setError(null);
+    },
+    onError: (e) => setError(getApiErrorMessage(e)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProductVariant,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["product-variants"] }),
+    onError: (e) => alert(getApiErrorMessage(e)),
+  });
+
+  function openCreate() {
+    setEditing(null);
+    setForm({
+      productId: products?.items[0]?.id ?? "",
+      sku: "",
+      barcode: "",
+      color: "",
+      size: "",
+      season: "",
+      unit: "",
+      status: ProductStatus.Active,
+    });
+    setError(null);
+    setModalOpen(true);
+  }
+
+  function openEdit(v: ProductVariant) {
+    setEditing(v);
+    setForm({
+      productId: v.productId,
+      sku: v.sku,
+      barcode: v.barcode ?? "",
+      color: v.color ?? "",
+      size: v.size ?? "",
+      season: v.season ?? "",
+      unit: v.unit ?? "",
+      status: v.status,
+    });
+    setError(null);
+    setModalOpen(true);
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title={t("title")}
+        subtitle={t("subtitle")}
+        action={
+          <button className="btn-primary" onClick={openCreate}>
+            + {t("create")}
+          </button>
+        }
+      />
+
+      <div className="card">
+        {isLoading ? (
+          <p className="p-6 text-slate-500">{tCommon("loading")}</p>
+        ) : (
+          <>
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>{t("sku")}</th>
+                    <th>{t("product")}</th>
+                    <th>{t("color")}</th>
+                    <th>{t("size")}</th>
+                    <th>{tCommon("status")}</th>
+                    <th>{tCommon("actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data?.items.map((v) => (
+                    <tr key={v.id}>
+                      <td className="font-mono text-xs">{v.sku}</td>
+                      <td>{productMap.get(v.productId) ?? v.productId}</td>
+                      <td>{v.color ?? "—"}</td>
+                      <td>{v.size ?? "—"}</td>
+                      <td>
+                        <ActiveBadge
+                          active={isProductActive(v.status)}
+                          label={
+                            isProductActive(v.status)
+                              ? tCommon("active")
+                              : tCommon("inactive")
+                          }
+                        />
+                      </td>
+                      <td className="space-x-2">
+                        <button
+                          className="text-brand-600 hover:underline"
+                          onClick={() => openEdit(v)}
+                        >
+                          {tCommon("edit")}
+                        </button>
+                        <button
+                          className="text-red-600 hover:underline"
+                          onClick={() => {
+                            if (confirm(t("deleteConfirm")))
+                              deleteMutation.mutate(v.id);
+                          }}
+                        >
+                          {tCommon("delete")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {data && (
+              <Pagination
+                page={data.page}
+                pageSize={data.pageSize}
+                totalCount={data.totalCount}
+                onChange={setPage}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="card max-h-[90vh] w-full max-w-md overflow-y-auto p-6">
+            <h2 className="mb-4 text-lg font-semibold">
+              {editing ? tCommon("edit") : t("create")}
+            </h2>
+            {error && (
+              <p className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+            <div className="space-y-3">
+              {!editing && (
+                <>
+                  <div>
+                    <label className="mb-1 block text-sm">{t("product")} *</label>
+                    <select
+                      className="input"
+                      value={form.productId}
+                      onChange={(e) =>
+                        setForm({ ...form, productId: e.target.value })
+                      }
+                    >
+                      {products?.items.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.productCode} — {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm">{t("sku")} *</label>
+                    <input
+                      className="input"
+                      value={form.sku}
+                      onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
+              {["barcode", "color", "size", "season", "unit"].map((field) => (
+                <div key={field}>
+                  <label className="mb-1 block text-sm">
+                    {t(field as "barcode")}
+                  </label>
+                  <input
+                    className="input"
+                    value={form[field as keyof typeof form] as string}
+                    onChange={(e) =>
+                      setForm({ ...form, [field]: e.target.value })
+                    }
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="mb-1 block text-sm">{tCommon("status")}</label>
+                <select
+                  className="input"
+                  value={form.status}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      status: Number(e.target.value) as ProductStatus,
+                    })
+                  }
+                >
+                  <option value={ProductStatus.Active}>
+                    {tCommon("active")}
+                  </option>
+                  <option value={ProductStatus.Inactive}>
+                    {tCommon("inactive")}
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button className="btn-secondary" onClick={() => setModalOpen(false)}>
+                {tCommon("cancel")}
+              </button>
+              <button
+                className="btn-primary"
+                disabled={saveMutation.isPending}
+                onClick={() => saveMutation.mutate()}
+              >
+                {tCommon("save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
