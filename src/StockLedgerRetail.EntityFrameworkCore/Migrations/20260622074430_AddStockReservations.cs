@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 {
     /// <inheritdoc />
-    public class AddStockReservations : Migration
+    public partial class AddStockReservations : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -58,7 +58,7 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_stock_reservation_lines_stock_reservations_StockReservationId",
+                        name: "FK_stock_reservation_lines_stock_reservations_StockReservation~",
                         column: x => x.StockReservationId,
                         principalTable: "stock_reservations",
                         principalColumn: "Id",
@@ -83,7 +83,7 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_stock_reservations_SourceSystem_ReferenceType_ReferenceKey_W~",
+                name: "IX_stock_reservations_SourceSystem_ReferenceType_ReferenceKey_~",
                 table: "stock_reservations",
                 columns: new[] { "SourceSystem", "ReferenceType", "ReferenceKey", "WarehouseId", "Status" });
 
