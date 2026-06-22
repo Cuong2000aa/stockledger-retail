@@ -13,6 +13,7 @@ import {
   fetchWarehouses,
 } from "@/lib/api";
 import { validateInventoryDocumentForm } from "@/lib/validation";
+import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { use, useState } from "react";
@@ -206,7 +207,7 @@ export default function NewDocumentPage({
                   <option value="">—</option>
                   {warehouses?.items.map((w) => (
                     <option key={w.id} value={w.id}>
-                      {w.code} — {w.name}
+                      {formatWarehouseOptionLabel(w)}
                     </option>
                   ))}
                 </select>
@@ -223,7 +224,7 @@ export default function NewDocumentPage({
                   <option value="">—</option>
                   {warehouses?.items.map((w) => (
                     <option key={w.id} value={w.id}>
-                      {w.code} — {w.name}
+                      {formatWarehouseOptionLabel(w)}
                     </option>
                   ))}
                 </select>
@@ -247,7 +248,7 @@ export default function NewDocumentPage({
                 <option value="">—</option>
                 {warehouses?.items.map((w) => (
                   <option key={w.id} value={w.id}>
-                    {w.code} — {w.name}
+                    {formatWarehouseOptionLabel(w)}
                   </option>
                 ))}
               </select>

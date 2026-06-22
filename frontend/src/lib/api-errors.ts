@@ -70,6 +70,27 @@ const API_ERROR_RULES: Array<{
     key: "inventoryNegative",
   },
   {
+    pattern: /Address line is required for DC and store warehouses/i,
+    key: "warehouseAddressLineRequired",
+  },
+  {
+    pattern: /Ward is required for DC and store warehouses/i,
+    key: "warehouseWardRequired",
+  },
+  {
+    pattern: /District is required for DC and store warehouses/i,
+    key: "warehouseDistrictRequired",
+  },
+  {
+    pattern: /Province is required for DC and store warehouses/i,
+    key: "warehouseProvinceRequired",
+  },
+  {
+    pattern: /Full address cannot exceed (\d+) characters/i,
+    key: "warehouseFullAddressTooLong",
+    mapValues: (match) => ({ max: Number(match[1]) }),
+  },
+  {
     pattern: /Either cartSessionId or orderReference is required/i,
     key: "reservationReferenceRequired",
   },

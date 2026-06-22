@@ -1,3 +1,8 @@
+import { WarehouseType } from "./types";
+import { formatWarehouseAddress } from "./formatWarehouseAddress";
+
+export const MAX_WAREHOUSE_FULL_ADDRESS_LENGTH = 1000;
+
 export type ValidationIssue = {
   key: string;
   values?: Record<string, string | number>;
@@ -28,13 +33,43 @@ export function validateProductForm(
 }
 
 export function validateWarehouseForm(
-  form: { code: string; name: string },
+  form: {
+    code: string;
+    name: string;
+    type: WarehouseType;
+    addressLine?: string;
+    ward?: string;
+    district?: string;
+    province?: string;
+    postalCode?: string;
+  },
   isEditing: boolean
 ): ValidationIssue[] {
-  return collect(
+  const issues = collect(
     !isEditing ? required(form.code, "warehouseCodeRequired") : null,
     required(form.name, "warehouseNameRequired")
   );
+
+  if (form.type === WarehouseType.Dc || form.type === WarehouseType.Store) {
+    issues.push(
+      ...collect(
+        required(form.addressLine, "warehouseAddressLineRequired"),
+        required(form.ward, "warehouseWardRequired"),
+        required(form.district, "warehouseDistrictRequired"),
+        required(form.province, "warehouseProvinceRequired")
+      )
+    );
+  }
+
+  const fullAddress = formatWarehouseAddress(form);
+  if (fullAddress.length > MAX_WAREHOUSE_FULL_ADDRESS_LENGTH) {
+    issues.push({
+      key: "warehouseFullAddressTooLong",
+      values: { max: MAX_WAREHOUSE_FULL_ADDRESS_LENGTH },
+    });
+  }
+
+  return issues;
 }
 
 export function validateSupplierForm(

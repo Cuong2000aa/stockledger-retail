@@ -61,6 +61,19 @@ public class WarehouseAppService : IWarehouseAppService
                 ?? throw new KeyNotFoundException($"Parent warehouse '{input.ParentWarehouseId}' was not found.");
         }
 
+        WarehouseAddressValidator.EnsureValidForType(
+            input.Type,
+            input.AddressLine,
+            input.Ward,
+            input.District,
+            input.Province);
+
+        var addressLine = NormalizeOptional(input.AddressLine);
+        var ward = NormalizeOptional(input.Ward);
+        var district = NormalizeOptional(input.District);
+        var province = NormalizeOptional(input.Province);
+        var postalCode = NormalizeOptional(input.PostalCode);
+
         var now = DateTime.UtcNow;
         var warehouse = new Warehouse
         {
@@ -70,6 +83,19 @@ public class WarehouseAppService : IWarehouseAppService
             Type = input.Type,
             ParentWarehouseId = input.ParentWarehouseId,
             Status = input.Status,
+            AddressLine = addressLine,
+            Ward = ward,
+            District = district,
+            Province = province,
+            PostalCode = postalCode,
+            Phone = NormalizeOptional(input.Phone),
+            ContactName = NormalizeOptional(input.ContactName),
+            FullAddress = WarehouseAddressFormatter.BuildFullAddress(
+                addressLine,
+                ward,
+                district,
+                province,
+                postalCode),
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -102,10 +128,30 @@ public class WarehouseAppService : IWarehouseAppService
 
         var oldDto = MapToDto(warehouse);
 
+        WarehouseAddressValidator.EnsureValidForType(
+            input.Type,
+            input.AddressLine,
+            input.Ward,
+            input.District,
+            input.Province);
+
         warehouse.Name = input.Name.Trim();
         warehouse.Type = input.Type;
         warehouse.ParentWarehouseId = input.ParentWarehouseId;
         warehouse.Status = input.Status;
+        warehouse.AddressLine = NormalizeOptional(input.AddressLine);
+        warehouse.Ward = NormalizeOptional(input.Ward);
+        warehouse.District = NormalizeOptional(input.District);
+        warehouse.Province = NormalizeOptional(input.Province);
+        warehouse.PostalCode = NormalizeOptional(input.PostalCode);
+        warehouse.Phone = NormalizeOptional(input.Phone);
+        warehouse.ContactName = NormalizeOptional(input.ContactName);
+        warehouse.FullAddress = WarehouseAddressFormatter.BuildFullAddress(
+            warehouse.AddressLine,
+            warehouse.Ward,
+            warehouse.District,
+            warehouse.Province,
+            warehouse.PostalCode);
         warehouse.UpdatedAt = DateTime.UtcNow;
 
         await _warehouseRepository.UpdateAsync(warehouse, cancellationToken);
@@ -140,7 +186,18 @@ public class WarehouseAppService : IWarehouseAppService
         Type = warehouse.Type,
         ParentWarehouseId = warehouse.ParentWarehouseId,
         Status = warehouse.Status,
+        AddressLine = warehouse.AddressLine,
+        Ward = warehouse.Ward,
+        District = warehouse.District,
+        Province = warehouse.Province,
+        PostalCode = warehouse.PostalCode,
+        Phone = warehouse.Phone,
+        ContactName = warehouse.ContactName,
+        FullAddress = warehouse.FullAddress,
         CreatedAt = warehouse.CreatedAt,
         UpdatedAt = warehouse.UpdatedAt
     };
+
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
