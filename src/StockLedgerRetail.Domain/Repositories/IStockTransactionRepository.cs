@@ -20,5 +20,10 @@ public interface IStockTransactionRepository
         int take,
         CancellationToken cancellationToken = default);
 
+    Task<List<StockTransaction>> GetByDateRangeAsync(
+        DateTime fromDate,
+        DateTime toDate,
+        CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

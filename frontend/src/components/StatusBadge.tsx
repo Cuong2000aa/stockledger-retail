@@ -4,6 +4,7 @@ import {
   ProductStatus,
   StockTransactionType,
   WarehouseType,
+  CostSource,
 } from "@/lib/types";
 import clsx from "clsx";
 
@@ -53,6 +54,10 @@ export function docTypeKey(type: InventoryDocumentType): string {
 
 export function warehouseTypeKey(type: WarehouseType): string {
   return WarehouseType[type];
+}
+
+export function costSourceKey(source: CostSource): string {
+  return CostSource[source];
 }
 
 export function isProductActive(status: ProductStatus) {

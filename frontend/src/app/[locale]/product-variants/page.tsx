@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
-import { ActiveBadge, isProductActive } from "@/components/StatusBadge";
+import { ActiveBadge, costSourceKey, isProductActive } from "@/components/StatusBadge";
 import {
   createProductVariant,
   deleteProductVariant,
@@ -11,30 +11,56 @@ import {
   getApiErrorMessage,
   updateProductVariant,
 } from "@/lib/api";
-import { ProductStatus, type ProductVariant } from "@/lib/types";
+import { formatNumber } from "@/lib/format";
+import { CostSource, ProductStatus, type ProductVariant } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
+
+type VariantForm = {
+  productId: string;
+  sku: string;
+  barcode: string;
+  color: string;
+  size: string;
+  season: string;
+  unit: string;
+  status: ProductStatus;
+  costPrice: string;
+  sellingPrice: string;
+  costSource: string;
+};
+
+const emptyForm = (productId = ""): VariantForm => ({
+  productId,
+  sku: "",
+  barcode: "",
+  color: "",
+  size: "",
+  season: "",
+  unit: "",
+  status: ProductStatus.Active,
+  costPrice: "",
+  sellingPrice: "",
+  costSource: "",
+});
+
+function toOptionalNumber(value: string): number | undefined {
+  if (value.trim() === "") return undefined;
+  const n = Number(value);
+  return Number.isNaN(n) ? undefined : n;
+}
 
 export default function ProductVariantsPage() {
   const t = useTranslations("variants");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ProductVariant | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    productId: "",
-    sku: "",
-    barcode: "",
-    color: "",
-    size: "",
-    season: "",
-    unit: "",
-    status: ProductStatus.Active,
-  });
+  const [form, setForm] = useState<VariantForm>(emptyForm());
 
   const { data, isLoading } = useQuery({
     queryKey: ["product-variants", page],
@@ -50,8 +76,20 @@ export default function ProductVariantsPage() {
     products?.items.map((p) => [p.id, p.name]) ?? []
   );
 
+  const valuationPayload = () => {
+    const costPrice = toOptionalNumber(form.costPrice);
+    const sellingPrice = toOptionalNumber(form.sellingPrice);
+    const costSource =
+      costPrice !== undefined && form.costSource
+        ? (Number(form.costSource) as CostSource)
+        : undefined;
+
+    return { costPrice, sellingPrice, costSource };
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const valuation = valuationPayload();
       if (editing) {
         return updateProductVariant(editing.id, {
           barcode: form.barcode || undefined,
@@ -60,6 +98,7 @@ export default function ProductVariantsPage() {
           season: form.season || undefined,
           unit: form.unit || undefined,
           status: form.status,
+          ...valuation,
         });
       }
       return createProductVariant({
@@ -71,6 +110,7 @@ export default function ProductVariantsPage() {
         season: form.season || undefined,
         unit: form.unit || undefined,
         status: form.status,
+        ...valuation,
       });
     },
     onSuccess: () => {
@@ -89,16 +129,7 @@ export default function ProductVariantsPage() {
 
   function openCreate() {
     setEditing(null);
-    setForm({
-      productId: products?.items[0]?.id ?? "",
-      sku: "",
-      barcode: "",
-      color: "",
-      size: "",
-      season: "",
-      unit: "",
-      status: ProductStatus.Active,
-    });
+    setForm(emptyForm(products?.items[0]?.id ?? ""));
     setError(null);
     setModalOpen(true);
   }
@@ -114,10 +145,15 @@ export default function ProductVariantsPage() {
       season: v.season ?? "",
       unit: v.unit ?? "",
       status: v.status,
+      costPrice: v.costPrice != null ? String(v.costPrice) : "",
+      sellingPrice: v.sellingPrice != null ? String(v.sellingPrice) : "",
+      costSource: v.costSource != null ? String(v.costSource) : "",
     });
     setError(null);
     setModalOpen(true);
   }
+
+  const hasCostPrice = form.costPrice.trim() !== "";
 
   return (
     <div>
@@ -142,8 +178,9 @@ export default function ProductVariantsPage() {
                   <tr>
                     <th>{t("sku")}</th>
                     <th>{t("product")}</th>
-                    <th>{t("color")}</th>
-                    <th>{t("size")}</th>
+                    <th>{t("costPrice")}</th>
+                    <th>{t("sellingPrice")}</th>
+                    <th>{t("costSource")}</th>
                     <th>{tCommon("status")}</th>
                     <th>{tCommon("actions")}</th>
                   </tr>
@@ -153,8 +190,23 @@ export default function ProductVariantsPage() {
                     <tr key={v.id}>
                       <td className="font-mono text-xs">{v.sku}</td>
                       <td>{productMap.get(v.productId) ?? v.productId}</td>
-                      <td>{v.color ?? "—"}</td>
-                      <td>{v.size ?? "—"}</td>
+                      <td>
+                        {v.costPrice != null
+                          ? formatNumber(v.costPrice, locale)
+                          : "—"}
+                      </td>
+                      <td>
+                        {v.sellingPrice != null
+                          ? formatNumber(v.sellingPrice, locale)
+                          : "—"}
+                      </td>
+                      <td className="text-xs">
+                        {v.costSource != null
+                          ? t(
+                              `costSources.${costSourceKey(v.costSource)}` as "costSources.Manual"
+                            )
+                          : "—"}
+                      </td>
                       <td>
                         <ActiveBadge
                           active={isProductActive(v.status)}
@@ -246,13 +298,77 @@ export default function ProductVariantsPage() {
                   </label>
                   <input
                     className="input"
-                    value={form[field as keyof typeof form] as string}
+                    value={form[field as keyof VariantForm] as string}
                     onChange={(e) =>
                       setForm({ ...form, [field]: e.target.value })
                     }
                   />
                 </div>
               ))}
+
+              <div className="border-t border-slate-100 pt-3">
+                <p className="mb-2 text-xs font-semibold uppercase text-slate-500">
+                  {t("costPrice")} / {t("sellingPrice")}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-sm">{t("costPrice")}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      className="input"
+                      placeholder="—"
+                      value={form.costPrice}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          costPrice: e.target.value,
+                          costSource:
+                            e.target.value.trim() === "" ? "" : form.costSource,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm">{t("sellingPrice")}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="any"
+                      className="input"
+                      placeholder="—"
+                      value={form.sellingPrice}
+                      onChange={(e) =>
+                        setForm({ ...form, sellingPrice: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+                {hasCostPrice && (
+                  <div className="mt-3">
+                    <label className="mb-1 block text-sm">{t("costSource")}</label>
+                    <select
+                      className="input"
+                      value={form.costSource || String(CostSource.Manual)}
+                      onChange={(e) =>
+                        setForm({ ...form, costSource: e.target.value })
+                      }
+                    >
+                      {Object.values(CostSource)
+                        .filter((v) => typeof v === "number")
+                        .map((s) => (
+                          <option key={s} value={s}>
+                            {t(
+                              `costSources.${costSourceKey(s as CostSource)}` as "costSources.Manual"
+                            )}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="mb-1 block text-sm">{tCommon("status")}</label>
                 <select

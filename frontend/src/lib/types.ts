@@ -10,6 +10,13 @@ export enum ProductStatus {
   Inactive = 2,
 }
 
+export enum CostSource {
+  Manual = 1,
+  Erp = 2,
+  Pos = 3,
+  PurchaseSystem = 4,
+}
+
 export enum WarehouseType {
   Dc = 1,
   Store = 2,
@@ -86,6 +93,9 @@ export interface ProductVariant {
   season?: string;
   unit?: string;
   status: ProductStatus;
+  costPrice?: number;
+  sellingPrice?: number;
+  costSource?: CostSource;
   createdAt: string;
   updatedAt: string;
 }
@@ -99,6 +109,9 @@ export interface CreateProductVariantInput {
   season?: string;
   unit?: string;
   status: ProductStatus;
+  costPrice?: number;
+  sellingPrice?: number;
+  costSource?: CostSource;
 }
 
 export interface UpdateProductVariantInput {
@@ -108,6 +121,9 @@ export interface UpdateProductVariantInput {
   season?: string;
   unit?: string;
   status: ProductStatus;
+  costPrice?: number;
+  sellingPrice?: number;
+  costSource?: CostSource;
 }
 
 export interface Warehouse {
@@ -222,4 +238,158 @@ export interface StockTransaction {
 
 export interface ApiError {
   error: string;
+}
+
+export enum SupplierStatus {
+  Active = 1,
+  Inactive = 2,
+}
+
+export enum PurchaseOrderStatus {
+  Draft = 1,
+  Submitted = 2,
+  PartiallyReceived = 3,
+  Received = 4,
+  Cancelled = 5,
+}
+
+export enum GoodsReceiptStatus {
+  Draft = 1,
+  Approved = 2,
+  Cancelled = 3,
+}
+
+export interface Supplier {
+  id: string;
+  code: string;
+  name: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  status: SupplierStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSupplierInput {
+  code: string;
+  name: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  status: SupplierStatus;
+}
+
+export interface UpdateSupplierInput {
+  name: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  status: SupplierStatus;
+}
+
+export interface PurchaseOrderLine {
+  id: string;
+  productVariantId: string;
+  sku: string;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  remainingQuantity: number;
+  unitCost?: number;
+  note?: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNo: string;
+  supplierId: string;
+  supplierCode: string;
+  supplierName: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  status: PurchaseOrderStatus;
+  orderDate: string;
+  expectedDate?: string;
+  referenceNo?: string;
+  note?: string;
+  createdBy: string;
+  createdAt: string;
+  submittedAt?: string;
+  lines: PurchaseOrderLine[];
+}
+
+export interface CreatePurchaseOrderLineInput {
+  productVariantId: string;
+  orderedQuantity: number;
+  unitCost?: number;
+  note?: string;
+}
+
+export interface GoodsReceiptLine {
+  id: string;
+  purchaseOrderLineId: string;
+  productVariantId: string;
+  sku: string;
+  receivedQuantity: number;
+  unitCost?: number;
+  note?: string;
+}
+
+export interface GoodsReceipt {
+  id: string;
+  grNo: string;
+  purchaseOrderId: string;
+  poNo: string;
+  warehouseId: string;
+  warehouseCode: string;
+  status: GoodsReceiptStatus;
+  receiptDate: string;
+  referenceNo?: string;
+  note?: string;
+  inventoryDocumentId?: string;
+  inventoryDocumentNo?: string;
+  createdBy: string;
+  createdAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  lines: GoodsReceiptLine[];
+}
+
+export interface InventorySummary {
+  totalSkus: number;
+  totalOnHand: number;
+  totalAvailable: number;
+  warehouseCount: number;
+  openPurchaseOrders: number;
+  pendingGoodsReceipts: number;
+}
+
+export interface StockByWarehouse {
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  skuCount: number;
+  totalOnHand: number;
+  totalAvailable: number;
+}
+
+export interface MovementSummary {
+  fromDate: string;
+  toDate: string;
+  totalIn: number;
+  totalOut: number;
+  transactionCount: number;
+}
+
+export interface LowStockItem {
+  productVariantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode: string;
+  quantityOnHand: number;
+  quantityAvailable: number;
 }

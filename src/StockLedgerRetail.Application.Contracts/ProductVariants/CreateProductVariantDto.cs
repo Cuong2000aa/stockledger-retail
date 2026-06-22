@@ -28,4 +28,12 @@ public class CreateProductVariantDto
     public string? Unit { get; set; }
 
     public ProductStatus Status { get; set; } = ProductStatus.Active;
+
+    [Range(0, double.MaxValue)]
+    public decimal? CostPrice { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal? SellingPrice { get; set; }
+
+    public CostSource? CostSource { get; set; }
 }
