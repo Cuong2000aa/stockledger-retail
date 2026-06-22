@@ -4,6 +4,9 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Inventory;
 
+/// <summary>
+/// Dịch vụ tra cứu tồn kho hiện tại (CurrentStock) — snapshot sau giao dịch gần nhất.
+/// </summary>
 public class CurrentStockAppService : ICurrentStockAppService
 {
     private readonly ICurrentStockRepository _currentStockRepository;
@@ -13,6 +16,7 @@ public class CurrentStockAppService : ICurrentStockAppService
         _currentStockRepository = currentStockRepository;
     }
 
+    /// <summary>Lấy danh sách tồn, lọc theo kho và/hoặc SKU (tùy chọn).</summary>
     public async Task<List<CurrentStockDto>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,
@@ -22,6 +26,7 @@ public class CurrentStockAppService : ICurrentStockAppService
         return stocks.Select(MapToDto).ToList();
     }
 
+    /// <summary>Lấy một bản ghi tồn theo Id.</summary>
     public async Task<CurrentStockDto> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var stock = await _currentStockRepository.GetByIdAsync(id, cancellationToken)
@@ -30,6 +35,7 @@ public class CurrentStockAppService : ICurrentStockAppService
         return MapToDto(stock);
     }
 
+    /// <summary>Chuyển entity CurrentStock sang DTO kèm mã SKU và thông tin kho.</summary>
     private static CurrentStockDto MapToDto(Domain.Entities.CurrentStock stock) => new()
     {
         Id = stock.Id,

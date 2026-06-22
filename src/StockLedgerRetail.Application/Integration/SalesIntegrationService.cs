@@ -7,6 +7,10 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Integration;
 
+/// <summary>
+/// Dịch vụ tích hợp bán hàng (POS/OMS) — kiểm tra tồn, xác nhận bán/trả hàng.
+/// Dùng SourceSystem + ReferenceNo để đảm bảo idempotent (gọi lại không trừ/cộng tồn 2 lần).
+/// </summary>
 public class SalesIntegrationService : ISalesIntegrationService
 {
     private readonly IInventoryDocumentRepository _inventoryDocumentRepository;
@@ -32,6 +36,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         _options = options.Value;
     }
 
+    /// <summary>Kiểm tra tồn khả dụng theo SKU — chỉ đọc, không thay đổi tồn.</summary>
     public async Task<CheckSalesAvailabilityResponseDto> CheckAvailabilityAsync(
         CheckSalesAvailabilityRequestDto input,
         CancellationToken cancellationToken = default)
@@ -53,6 +58,10 @@ public class SalesIntegrationService : ISalesIntegrationService
         };
     }
 
+    /// <summary>
+    /// Xác nhận bán — tạo phiếu xuất, duyệt và trừ tồn.
+    /// Nếu đã xử lý cùng sourceSystem + orderReference thì trả lại kết quả cũ (isReplay=true).
+    /// </summary>
     public async Task<ConfirmSaleResponseDto> ConfirmSaleAsync(
         ConfirmSaleRequestDto input,
         CancellationToken cancellationToken = default)
@@ -102,6 +111,10 @@ public class SalesIntegrationService : ISalesIntegrationService
         return MapSaleResponse(approved, sourceSystem, orderReference, isReplay: false);
     }
 
+    /// <summary>
+    /// Xác nhận trả hàng — tạo phiếu nhập, duyệt và cộng tồn.
+    /// Idempotent theo sourceSystem + returnReference.
+    /// </summary>
     public async Task<ConfirmReturnResponseDto> ConfirmReturnAsync(
         ConfirmReturnRequestDto input,
         CancellationToken cancellationToken = default)
@@ -151,6 +164,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         return MapReturnResponse(approved, sourceSystem, returnReference, isReplay: false);
     }
 
+    /// <summary>Tính tồn khả dụng cho một dòng SKU trong kho.</summary>
     private async Task<SalesAvailabilityLineDto> BuildAvailabilityLineAsync(
         Guid warehouseId,
         SalesLineRequestDto line,
@@ -188,6 +202,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         };
     }
 
+    /// <summary>Chuyển dòng bán (SKU + số lượng) sang dòng phiếu nghiệp vụ (ProductVariantId).</summary>
     private async Task<List<CreateInventoryDocumentLineDto>> MapToDocumentLinesAsync(
         List<SalesLineRequestDto> lines,
         CancellationToken cancellationToken)
@@ -210,6 +225,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         return result;
     }
 
+    /// <summary>Chuẩn hóa và kiểm tra sourceSystem có trong danh sách cho phép.</summary>
     private string NormalizeSourceSystem(string? sourceSystem)
     {
         var normalized = string.IsNullOrWhiteSpace(sourceSystem)
@@ -225,6 +241,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         return normalized;
     }
 
+    /// <summary>Chuẩn hóa mã tham chiếu đơn/trả hàng (bắt buộc, không rỗng).</summary>
     private static string NormalizeReference(string reference, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(reference))
@@ -235,6 +252,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         return reference.Trim();
     }
 
+    /// <summary>Chuẩn hóa mã SKU (trim, không rỗng).</summary>
     private static string NormalizeSku(string sku)
     {
         if (string.IsNullOrWhiteSpace(sku))
@@ -245,6 +263,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         return sku.Trim();
     }
 
+    /// <summary>Kiểm tra request có ít nhất một dòng và số lượng hợp lệ.</summary>
     private static void ValidateSalesLines(List<SalesLineRequestDto> lines)
     {
         if (lines.Count == 0)
@@ -262,6 +281,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         }
     }
 
+    /// <summary>Đảm bảo kho bán/trả tồn tại.</summary>
     private async Task EnsureWarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken);
@@ -271,12 +291,14 @@ public class SalesIntegrationService : ISalesIntegrationService
         }
     }
 
+    /// <summary>Gắn nhãn SALE/RETURN vào ghi chú phiếu.</summary>
     private static string? BuildSalesNote(string operation, string? note)
     {
         var prefix = $"[{operation}]";
         return string.IsNullOrWhiteSpace(note) ? prefix : $"{prefix} {note.Trim()}";
     }
 
+    /// <summary>Map phiếu đã xử lý sang response xác nhận bán.</summary>
     private static ConfirmSaleResponseDto MapSaleResponse(
         InventoryDocumentDto document,
         string sourceSystem,
@@ -290,6 +312,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         OrderReference = orderReference
     };
 
+    /// <summary>Map phiếu đã xử lý sang response xác nhận trả hàng.</summary>
     private static ConfirmReturnResponseDto MapReturnResponse(
         InventoryDocumentDto document,
         string sourceSystem,

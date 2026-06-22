@@ -4,6 +4,9 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Inventory;
 
+/// <summary>
+/// Dịch vụ tra cứu lịch sử sổ cái (StockTransaction) — mọi thay đổi tồn đều có bản ghi ở đây.
+/// </summary>
 public class StockTransactionAppService : IStockTransactionAppService
 {
     private readonly IStockTransactionRepository _stockTransactionRepository;
@@ -13,6 +16,7 @@ public class StockTransactionAppService : IStockTransactionAppService
         _stockTransactionRepository = stockTransactionRepository;
     }
 
+    /// <summary>Lấy danh sách giao dịch sổ cái, lọc theo kho và/hoặc SKU.</summary>
     public async Task<List<StockTransactionDto>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,
@@ -24,6 +28,7 @@ public class StockTransactionAppService : IStockTransactionAppService
         return transactions.Select(MapToDto).ToList();
     }
 
+    /// <summary>Chuyển entity StockTransaction sang DTO.</summary>
     private static StockTransactionDto MapToDto(Domain.Entities.StockTransaction transaction) => new()
     {
         Id = transaction.Id,

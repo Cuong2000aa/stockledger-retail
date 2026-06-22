@@ -5,6 +5,9 @@ using StockLedgerRetail.Enums;
 
 namespace StockLedgerRetail.Audit;
 
+/// <summary>
+/// Ghi log thay đổi dữ liệu (CREATE/UPDATE/DELETE/APPROVE) vào bảng TransactionLog.
+/// </summary>
 public class TransactionAuditService : ITransactionAuditService
 {
     private readonly ITransactionLogRepository _transactionLogRepository;
@@ -18,6 +21,9 @@ public class TransactionAuditService : ITransactionAuditService
         _auditContext = auditContext;
     }
 
+    /// <summary>
+    /// Ghi một bản ghi audit — lưu giá trị cũ/mới dạng JSON, kèm user và IP từ request.
+    /// </summary>
     public async Task LogAsync(
         string entityName,
         Guid entityId,
