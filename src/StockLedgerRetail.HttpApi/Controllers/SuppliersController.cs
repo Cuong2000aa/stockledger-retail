@@ -21,8 +21,9 @@ public class SuppliersController : ControllerBase
     public Task<PagedResultDto<SupplierDto>> GetListAsync(
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? search,
         CancellationToken cancellationToken) =>
-        _supplierAppService.GetListAsync(page, pageSize, cancellationToken);
+        _supplierAppService.GetListAsync(page, pageSize, search, cancellationToken);
 
     [HttpGet("{id:guid}")]
     public Task<SupplierDto> GetAsync(Guid id, CancellationToken cancellationToken) =>

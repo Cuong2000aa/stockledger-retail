@@ -28,6 +28,7 @@ public class StockTransactionsController : ControllerBase
         [FromQuery] Guid? productVariantId,
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? search,
         CancellationToken cancellationToken) =>
-        _stockTransactionAppService.GetListAsync(warehouseId, productVariantId, page, pageSize, cancellationToken);
+        _stockTransactionAppService.GetListAsync(warehouseId, productVariantId, page, pageSize, search, cancellationToken);
 }

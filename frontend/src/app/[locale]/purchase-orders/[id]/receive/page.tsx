@@ -2,11 +2,12 @@
 
 import { Link, useRouter } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
+import { useNotify } from "@/hooks/useNotify";
 import {
   createGoodsReceipt,
   fetchPurchaseOrder,
-  getApiErrorMessage,
 } from "@/lib/api";
+import { validateGoodsReceiptForm } from "@/lib/validation";
 import { formatNumber } from "@/lib/format";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -24,10 +25,10 @@ export default function ReceivePurchaseOrderPage({
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
+  const { notifyValidation, notifyError } = useNotify();
 
   const [referenceNo, setReferenceNo] = useState("");
   const [note, setNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   const { data: po, isLoading } = useQuery({
     queryKey: ["purchase-order", id],
@@ -59,8 +60,20 @@ export default function ReceivePurchaseOrderPage({
       });
     },
     onSuccess: (gr) => router.push(`/goods-receipts/${gr.id}`),
-    onError: (e) => setError(getApiErrorMessage(e)),
+    onError: notifyError,
   });
+
+  const handleSave = () => {
+    const receiptLines = receivableLines.map((line) => ({
+      receivedQuantity: qtyByLine[line.id] ?? 0,
+    }));
+
+    if (notifyValidation(validateGoodsReceiptForm({ lines: receiptLines }))) {
+      return;
+    }
+
+    mutation.mutate();
+  };
 
   if (isLoading || !po) {
     return <p className="text-slate-500">{tCommon("loading")}</p>;
@@ -78,9 +91,6 @@ export default function ReceivePurchaseOrderPage({
       />
 
       <div className="card max-w-3xl p-6">
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>
-        )}
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm">{tDoc("referenceNo")}</label>
@@ -129,7 +139,7 @@ export default function ReceivePurchaseOrderPage({
           <button
             className="btn-primary"
             disabled={mutation.isPending || receivableLines.length === 0}
-            onClick={() => mutation.mutate()}
+            onClick={handleSave}
           >
             {tGr("title")}
           </button>

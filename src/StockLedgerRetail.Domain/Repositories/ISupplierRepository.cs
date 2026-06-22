@@ -11,6 +11,7 @@ public interface ISupplierRepository
     Task<(List<Supplier> Items, int TotalCount)> GetPagedListAsync(
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task InsertAsync(Supplier supplier, CancellationToken cancellationToken = default);

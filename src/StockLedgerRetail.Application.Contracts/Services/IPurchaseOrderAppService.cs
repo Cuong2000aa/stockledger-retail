@@ -11,6 +11,7 @@ public interface IPurchaseOrderAppService
         Guid? supplierId = null,
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task<PurchaseOrderDto> GetAsync(Guid id, CancellationToken cancellationToken = default);

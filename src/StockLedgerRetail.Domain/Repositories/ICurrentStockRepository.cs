@@ -21,6 +21,7 @@ public interface ICurrentStockRepository
         Guid? productVariantId,
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task InsertAsync(CurrentStock currentStock, CancellationToken cancellationToken = default);

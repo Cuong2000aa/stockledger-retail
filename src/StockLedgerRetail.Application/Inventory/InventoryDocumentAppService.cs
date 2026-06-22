@@ -49,13 +49,15 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     /// <summary>Lấy danh sách phiếu có phân trang, có thể lọc theo loại.</summary>
     public async Task<PagedResultDto<InventoryDocumentDto>> GetListAsync(
         InventoryDocumentType? documentType = null,
+        InventoryDocumentStatus? status = null,
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (documents, totalCount) = await _inventoryDocumentRepository.GetPagedListAsync(
-            documentType, skip, take, cancellationToken);
+            documentType, status, skip, take, search, cancellationToken);
 
         var items = documents.Select(MapToDtoWithoutLines).ToList();
         return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);

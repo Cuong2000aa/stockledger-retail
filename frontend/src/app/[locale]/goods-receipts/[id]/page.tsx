@@ -2,11 +2,11 @@
 
 import { Link } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
+import { useNotify } from "@/hooks/useNotify";
 import {
   approveGoodsReceipt,
   cancelGoodsReceipt,
   fetchGoodsReceipt,
-  getApiErrorMessage,
 } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
 import { GoodsReceiptStatus } from "@/lib/types";
@@ -25,6 +25,7 @@ export default function GoodsReceiptDetailPage({
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const qc = useQueryClient();
+  const { notifyError, confirm } = useNotify();
 
   const { data: gr, isLoading } = useQuery({
     queryKey: ["goods-receipt", id],
@@ -39,7 +40,7 @@ export default function GoodsReceiptDetailPage({
       qc.invalidateQueries({ queryKey: ["current-stocks"] });
       qc.invalidateQueries({ queryKey: ["inventory-summary"] });
     },
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   const cancelMutation = useMutation({
@@ -47,7 +48,7 @@ export default function GoodsReceiptDetailPage({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["goods-receipt", id] });
     },
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   if (isLoading || !gr) {
@@ -112,8 +113,10 @@ export default function GoodsReceiptDetailPage({
             <button
               className="btn-primary"
               disabled={approveMutation.isPending}
-              onClick={() => {
-                if (confirm(t("approveConfirm"))) approveMutation.mutate();
+              onClick={async () => {
+                if (await confirm(t("approveConfirm"))) {
+                  approveMutation.mutate();
+                }
               }}
             >
               {t("approve")}
@@ -121,8 +124,10 @@ export default function GoodsReceiptDetailPage({
             <button
               className="btn-danger"
               disabled={cancelMutation.isPending}
-              onClick={() => {
-                if (confirm(t("cancelConfirm"))) cancelMutation.mutate();
+              onClick={async () => {
+                if (await confirm(t("cancelConfirm"))) {
+                  cancelMutation.mutate();
+                }
               }}
             >
               {tDoc("cancelDoc")}

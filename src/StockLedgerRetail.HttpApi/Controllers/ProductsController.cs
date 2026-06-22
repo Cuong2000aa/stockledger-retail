@@ -24,8 +24,9 @@ public class ProductsController : ControllerBase
     public Task<PagedResultDto<ProductDto>> GetListAsync(
         [FromQuery] int? page,
         [FromQuery] int? pageSize,
+        [FromQuery] string? search,
         CancellationToken cancellationToken) =>
-        _productAppService.GetListAsync(page, pageSize, cancellationToken);
+        _productAppService.GetListAsync(page, pageSize, search, cancellationToken);
 
     /// <summary>Lấy chi tiết một sản phẩm theo Id.</summary>
     [HttpGet("{id:guid}")]

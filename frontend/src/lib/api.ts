@@ -11,6 +11,7 @@ import type {
   GoodsReceipt,
   GoodsReceiptStatus,
   InventoryDocument,
+  InventoryDocumentStatus,
   InventoryDocumentType,
   InventorySummary,
   LowStockItem,
@@ -49,13 +50,29 @@ api.interceptors.response.use(
 );
 
 export function getApiErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error";
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof (error as { response?: { data?: { error?: string } } }).response?.data
+      ?.error === "string"
+  ) {
+    return (error as { response: { data: { error: string } } }).response.data.error;
+  }
+
+  return "Unknown error";
 }
 
 // Products
-export const fetchProducts = (page = 1, pageSize = 20) =>
+export const fetchProducts = (page = 1, pageSize = 20, search?: string) =>
   api
-    .get<PagedResult<Product>>("/api/products", { params: { page, pageSize } })
+    .get<PagedResult<Product>>("/api/products", {
+      params: { page, pageSize, search: search || undefined },
+    })
     .then((r) => r.data);
 
 export const createProduct = (input: CreateProductInput) =>
@@ -68,10 +85,10 @@ export const deleteProduct = (id: string) =>
   api.delete(`/api/products/${id}`);
 
 // Product variants
-export const fetchProductVariants = (page = 1, pageSize = 50) =>
+export const fetchProductVariants = (page = 1, pageSize = 50, search?: string) =>
   api
     .get<PagedResult<ProductVariant>>("/api/product-variants", {
-      params: { page, pageSize },
+      params: { page, pageSize, search: search || undefined },
     })
     .then((r) => r.data);
 
@@ -90,9 +107,11 @@ export const deleteProductVariant = (id: string) =>
   api.delete(`/api/product-variants/${id}`);
 
 // Warehouses
-export const fetchWarehouses = (page = 1, pageSize = 50) =>
+export const fetchWarehouses = (page = 1, pageSize = 50, search?: string) =>
   api
-    .get<PagedResult<Warehouse>>("/api/warehouses", { params: { page, pageSize } })
+    .get<PagedResult<Warehouse>>("/api/warehouses", {
+      params: { page, pageSize, search: search || undefined },
+    })
     .then((r) => r.data);
 
 export const createWarehouse = (input: CreateWarehouseInput) =>
@@ -107,12 +126,20 @@ export const deleteWarehouse = (id: string) =>
 // Inventory documents
 export const fetchInventoryDocuments = (
   documentType?: InventoryDocumentType,
+  status?: InventoryDocumentStatus,
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  search?: string
 ) =>
   api
     .get<PagedResult<InventoryDocument>>("/api/inventory-documents", {
-      params: { documentType, page, pageSize },
+      params: {
+        documentType,
+        status,
+        page,
+        pageSize,
+        search: search || undefined,
+      },
     })
     .then((r) => r.data);
 
@@ -198,11 +225,18 @@ export const fetchCurrentStocks = (
   warehouseId?: string,
   productVariantId?: string,
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  search?: string
 ) =>
   api
     .get<PagedResult<CurrentStock>>("/api/current-stocks", {
-      params: { warehouseId, productVariantId, page, pageSize },
+      params: {
+        warehouseId,
+        productVariantId,
+        page,
+        pageSize,
+        search: search || undefined,
+      },
     })
     .then((r) => r.data);
 
@@ -210,18 +244,27 @@ export const fetchStockTransactions = (
   warehouseId?: string,
   productVariantId?: string,
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  search?: string
 ) =>
   api
     .get<PagedResult<StockTransaction>>("/api/stock-transactions", {
-      params: { warehouseId, productVariantId, page, pageSize },
+      params: {
+        warehouseId,
+        productVariantId,
+        page,
+        pageSize,
+        search: search || undefined,
+      },
     })
     .then((r) => r.data);
 
 // Suppliers
-export const fetchSuppliers = (page = 1, pageSize = 50) =>
+export const fetchSuppliers = (page = 1, pageSize = 50, search?: string) =>
   api
-    .get<PagedResult<Supplier>>("/api/suppliers", { params: { page, pageSize } })
+    .get<PagedResult<Supplier>>("/api/suppliers", {
+      params: { page, pageSize, search: search || undefined },
+    })
     .then((r) => r.data);
 
 export const createSupplier = (input: CreateSupplierInput) =>
@@ -237,11 +280,18 @@ export const fetchPurchaseOrders = (
   status?: PurchaseOrderStatus,
   supplierId?: string,
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  search?: string
 ) =>
   api
     .get<PagedResult<PurchaseOrder>>("/api/purchase-orders", {
-      params: { status, supplierId, page, pageSize },
+      params: {
+        status,
+        supplierId,
+        page,
+        pageSize,
+        search: search || undefined,
+      },
     })
     .then((r) => r.data);
 

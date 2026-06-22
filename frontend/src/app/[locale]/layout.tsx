@@ -2,6 +2,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { AppDialogProvider } from "@/components/AppDialog";
 import { AppLayout } from "@/components/AppLayout";
 import { QueryProvider } from "@/components/QueryProvider";
 import "../globals.css";
@@ -40,7 +41,9 @@ export default async function LocaleLayout({
       <body>
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>
-            <AppLayout>{children}</AppLayout>
+            <AppDialogProvider>
+              <AppLayout>{children}</AppLayout>
+            </AppDialogProvider>
           </QueryProvider>
         </NextIntlClientProvider>
       </body>

@@ -30,6 +30,7 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
         Guid? supplierId,
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.PurchaseOrders
@@ -45,6 +46,18 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
         if (supplierId.HasValue)
         {
             query = query.Where(x => x.SupplierId == supplierId.Value);
+        }
+
+        var term = TextSearchHelper.Normalize(search);
+        if (term is not null)
+        {
+            var pattern = TextSearchHelper.ToLikePattern(term);
+            query = query.Where(x =>
+                EF.Functions.ILike(x.PoNo, pattern) ||
+                (x.ReferenceNo != null && EF.Functions.ILike(x.ReferenceNo, pattern)) ||
+                (x.Supplier != null && (
+                    EF.Functions.ILike(x.Supplier.Code, pattern) ||
+                    EF.Functions.ILike(x.Supplier.Name, pattern))));
         }
 
         query = query.OrderByDescending(x => x.OrderDate).ThenByDescending(x => x.CreatedAt);

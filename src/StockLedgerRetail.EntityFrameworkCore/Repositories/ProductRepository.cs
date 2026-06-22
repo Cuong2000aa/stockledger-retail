@@ -25,9 +25,22 @@ public class ProductRepository : IProductRepository
     public async Task<(List<Product> Items, int TotalCount)> GetPagedListAsync(
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.Products.OrderBy(x => x.ProductCode);
+        var query = _dbContext.Products.AsQueryable();
+        var term = TextSearchHelper.Normalize(search);
+        if (term is not null)
+        {
+            var pattern = TextSearchHelper.ToLikePattern(term);
+            query = query.Where(x =>
+                EF.Functions.ILike(x.ProductCode, pattern) ||
+                EF.Functions.ILike(x.Name, pattern) ||
+                (x.Brand != null && EF.Functions.ILike(x.Brand, pattern)) ||
+                (x.Category != null && EF.Functions.ILike(x.Category, pattern)));
+        }
+
+        query = query.OrderBy(x => x.ProductCode);
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
         return (items, totalCount);

@@ -23,11 +23,12 @@ public class StockTransactionAppService : IStockTransactionAppService
         Guid? productVariantId = null,
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (transactions, totalCount) = await _stockTransactionRepository.GetPagedListAsync(
-            warehouseId, productVariantId, skip, take, cancellationToken);
+            warehouseId, productVariantId, skip, take, search, cancellationToken);
         var items = transactions.Select(MapToDto).ToList();
         return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }

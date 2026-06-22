@@ -2,13 +2,14 @@
 
 import { Link, useRouter } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
+import { useNotify } from "@/hooks/useNotify";
 import {
   createPurchaseOrder,
   fetchProductVariants,
   fetchSuppliers,
   fetchWarehouses,
-  getApiErrorMessage,
 } from "@/lib/api";
+import { validatePurchaseOrderForm } from "@/lib/validation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,6 +19,7 @@ export default function NewPurchaseOrderPage() {
   const tDoc = useTranslations("documents");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const { notifyValidation, notifyError } = useNotify();
 
   const [supplierId, setSupplierId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
@@ -26,7 +28,6 @@ export default function NewPurchaseOrderPage() {
   const [lines, setLines] = useState([
     { productVariantId: "", orderedQuantity: 1, unitCost: undefined as number | undefined },
   ]);
-  const [error, setError] = useState<string | null>(null);
 
   const { data: suppliers } = useQuery({
     queryKey: ["suppliers-all"],
@@ -56,8 +57,26 @@ export default function NewPurchaseOrderPage() {
         })),
       }),
     onSuccess: (po) => router.push(`/purchase-orders/${po.id}`),
-    onError: (e) => setError(getApiErrorMessage(e)),
+    onError: notifyError,
   });
+
+  const hasVariants = (variants?.items.length ?? 0) > 0;
+
+  const handleSave = () => {
+    if (
+      notifyValidation(
+        validatePurchaseOrderForm({
+          supplierId,
+          warehouseId,
+          lines,
+          hasVariants,
+        })
+      )
+    ) {
+      return;
+    }
+    mutation.mutate();
+  };
 
   return (
     <div>
@@ -71,9 +90,6 @@ export default function NewPurchaseOrderPage() {
       />
 
       <div className="card max-w-3xl p-6">
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>
-        )}
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium">{t("supplier")} *</label>
@@ -128,7 +144,7 @@ export default function NewPurchaseOrderPage() {
                     setLines(next);
                   }}
                 >
-                  <option value="">SKU</option>
+                  <option value="">{tDoc("selectSku")}</option>
                   {variants?.items.map((v) => (
                     <option key={v.id} value={v.id}>{v.sku}</option>
                   ))}
@@ -171,8 +187,8 @@ export default function NewPurchaseOrderPage() {
           </div>
           <button
             className="btn-primary"
-            disabled={mutation.isPending || !supplierId || !warehouseId}
-            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            onClick={handleSave}
           >
             {tCommon("save")}
           </button>

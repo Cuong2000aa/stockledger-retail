@@ -23,11 +23,12 @@ public class CurrentStockAppService : ICurrentStockAppService
         Guid? productVariantId = null,
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (stocks, totalCount) = await _currentStockRepository.GetPagedListAsync(
-            warehouseId, productVariantId, skip, take, cancellationToken);
+            warehouseId, productVariantId, skip, take, search, cancellationToken);
         var items = stocks.Select(MapToDto).ToList();
         return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }

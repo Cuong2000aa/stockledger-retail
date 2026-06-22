@@ -10,5 +10,6 @@ public interface IStockTransactionAppService
         Guid? productVariantId = null,
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default);
 }

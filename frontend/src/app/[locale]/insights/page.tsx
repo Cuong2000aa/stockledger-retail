@@ -1,7 +1,8 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
-import { fetchWarehouses, getApiErrorMessage } from "@/lib/api";
+import { useNotify } from "@/hooks/useNotify";
+import { fetchWarehouses } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -26,10 +27,10 @@ export default function InsightsPage() {
   const locale = useLocale();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { notifyError } = useNotify();
   const [warehouseId, setWarehouseId] = useState<string>("");
   const [daysWithoutOutbound, setDaysWithoutOutbound] = useState(60);
   const [lookbackDays, setLookbackDays] = useState(30);
-  const [transferError, setTransferError] = useState<string | null>(null);
   const [creatingTransferKey, setCreatingTransferKey] = useState<string | null>(null);
 
   const { data: warehouses } = useQuery({
@@ -57,14 +58,13 @@ export default function InsightsPage() {
   const createTransferMutation = useMutation({
     mutationFn: createTransferFromSuggestion,
     onSuccess: (doc) => {
-      setTransferError(null);
       setCreatingTransferKey(null);
       void queryClient.invalidateQueries({ queryKey: ["inventory-documents"] });
       router.push(`/inventory-documents/${doc.id}`);
     },
     onError: (error) => {
       setCreatingTransferKey(null);
-      setTransferError(getApiErrorMessage(error));
+      notifyError(error);
     },
   });
 
@@ -74,7 +74,6 @@ export default function InsightsPage() {
   );
 
   const handleCreateTransfer = (item: TransferSuggestion, rowKey: string) => {
-    setTransferError(null);
     setCreatingTransferKey(rowKey);
     createTransferMutation.mutate(item);
   };
@@ -122,10 +121,6 @@ export default function InsightsPage() {
           />
         </label>
       </div>
-
-      {transferError && (
-        <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{transferError}</p>
-      )}
 
       <div className="mb-6 grid gap-6 xl:grid-cols-1">
         <div className="card overflow-hidden">

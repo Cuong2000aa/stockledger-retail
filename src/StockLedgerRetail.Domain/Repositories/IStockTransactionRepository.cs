@@ -18,6 +18,7 @@ public interface IStockTransactionRepository
         Guid? productVariantId,
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task<List<StockTransaction>> GetByDateRangeAsync(

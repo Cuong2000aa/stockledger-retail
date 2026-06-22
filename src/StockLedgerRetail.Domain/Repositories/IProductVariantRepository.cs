@@ -13,6 +13,7 @@ public interface IProductVariantRepository
     Task<(List<ProductVariant> Items, int TotalCount)> GetPagedListAsync(
         int skip,
         int take,
+        string? search = null,
         CancellationToken cancellationToken = default);
 
     Task<List<ProductVariant>> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default);

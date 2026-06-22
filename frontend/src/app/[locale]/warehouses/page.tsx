@@ -1,15 +1,18 @@
 "use client";
 
+import { ListFilterBar } from "@/components/ListFilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { warehouseTypeKey } from "@/components/StatusBadge";
+import { useListSearch } from "@/hooks/useListSearch";
+import { useNotify } from "@/hooks/useNotify";
 import {
   createWarehouse,
   deleteWarehouse,
   fetchWarehouses,
-  getApiErrorMessage,
   updateWarehouse,
 } from "@/lib/api";
+import { validateWarehouseForm } from "@/lib/validation";
 import {
   WarehouseStatus,
   WarehouseType,
@@ -23,11 +26,14 @@ export default function WarehousesPage() {
   const t = useTranslations("warehouses");
   const tTypes = useTranslations("warehouseTypes");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const qc = useQueryClient();
+  const { notifyValidation, notifyError, confirm } = useNotify();
   const [page, setPage] = useState(1);
+  const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
+    useListSearch(() => setPage(1));
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     code: "",
@@ -38,8 +44,8 @@ export default function WarehousesPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["warehouses", page],
-    queryFn: () => fetchWarehouses(page),
+    queryKey: ["warehouses", page, debouncedSearch],
+    queryFn: () => fetchWarehouses(page, 20, debouncedSearch || undefined),
   });
 
   const saveMutation = useMutation({
@@ -64,16 +70,22 @@ export default function WarehousesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["warehouses"] });
       setModalOpen(false);
-      setError(null);
     },
-    onError: (e) => setError(getApiErrorMessage(e)),
+    onError: notifyError,
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteWarehouse,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["warehouses"] }),
-    onError: (e) => alert(getApiErrorMessage(e)),
+    onError: notifyError,
   });
+
+  function handleSave() {
+    if (notifyValidation(validateWarehouseForm(form, !!editing))) {
+      return;
+    }
+    saveMutation.mutate();
+  }
 
   function openCreate() {
     setEditing(null);
@@ -84,7 +96,6 @@ export default function WarehousesPage() {
       parentWarehouseId: "",
       status: WarehouseStatus.Active,
     });
-    setError(null);
     setModalOpen(true);
   }
 
@@ -97,7 +108,6 @@ export default function WarehousesPage() {
       parentWarehouseId: w.parentWarehouseId ?? "",
       status: w.status,
     });
-    setError(null);
     setModalOpen(true);
   }
 
@@ -111,6 +121,14 @@ export default function WarehousesPage() {
             + {t("create")}
           </button>
         }
+      />
+
+      <ListFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={tFilters("searchWarehouse")}
+        onReset={resetSearch}
+        showReset={hasSearch}
       />
 
       <div className="card">
@@ -149,9 +167,10 @@ export default function WarehousesPage() {
                         </button>
                         <button
                           className="text-red-600 hover:underline"
-                          onClick={() => {
-                            if (confirm(t("deleteConfirm")))
+                          onClick={async () => {
+                            if (await confirm(t("deleteConfirm"))) {
                               deleteMutation.mutate(w.id);
+                            }
                           }}
                         >
                           {tCommon("delete")}
@@ -180,11 +199,6 @@ export default function WarehousesPage() {
             <h2 className="mb-4 text-lg font-semibold">
               {editing ? tCommon("edit") : t("create")}
             </h2>
-            {error && (
-              <p className="mb-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">
-                {error}
-              </p>
-            )}
             <div className="space-y-3">
               {!editing && (
                 <div>
@@ -252,7 +266,7 @@ export default function WarehousesPage() {
               <button
                 className="btn-primary"
                 disabled={saveMutation.isPending}
-                onClick={() => saveMutation.mutate()}
+                onClick={handleSave}
               >
                 {tCommon("save")}
               </button>

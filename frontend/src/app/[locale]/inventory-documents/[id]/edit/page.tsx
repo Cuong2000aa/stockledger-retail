@@ -2,13 +2,20 @@
 
 import { Link, useRouter } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
+import { useNotify } from "@/hooks/useNotify";
 import {
   fetchInventoryDocument,
   fetchProductVariants,
-  getApiErrorMessage,
   updateDocumentDraft,
 } from "@/lib/api";
-import { InventoryDocumentStatus, InventoryDocumentType } from "@/lib/types";
+import {
+  InventoryDocumentStatus,
+  InventoryDocumentType,
+} from "@/lib/types";
+import {
+  type InventoryDocumentKind,
+  validateInventoryDocumentDraftLines,
+} from "@/lib/validation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { use, useEffect, useState } from "react";
@@ -17,6 +24,23 @@ type LineState = {
   productVariantId: string;
   quantity: number;
 };
+
+function documentTypeToKind(type: InventoryDocumentType): InventoryDocumentKind {
+  switch (type) {
+    case InventoryDocumentType.StockIn:
+      return "stock-in";
+    case InventoryDocumentType.StockOut:
+      return "stock-out";
+    case InventoryDocumentType.Transfer:
+      return "transfer";
+    case InventoryDocumentType.Adjustment:
+      return "adjustment";
+    case InventoryDocumentType.StockCount:
+      return "stock-count";
+    default:
+      return "stock-in";
+  }
+}
 
 export default function EditDocumentPage({
   params,
@@ -27,11 +51,11 @@ export default function EditDocumentPage({
   const t = useTranslations("documents");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const { notifyValidation, notifyError } = useNotify();
 
   const [referenceNo, setReferenceNo] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<LineState[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
   const { data: doc, isLoading } = useQuery({
@@ -59,6 +83,7 @@ export default function EditDocumentPage({
 
   const isStockCount = doc?.documentType === InventoryDocumentType.StockCount;
   const isAdjustment = doc?.documentType === InventoryDocumentType.Adjustment;
+  const hasVariants = (variants?.items.length ?? 0) > 0;
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -73,8 +98,34 @@ export default function EditDocumentPage({
     onSuccess: () => {
       router.push(`/inventory-documents/${id}`);
     },
-    onError: (e) => setError(getApiErrorMessage(e)),
+    onError: notifyError,
   });
+
+  const handleSave = () => {
+    if (!doc) return;
+
+    const kind = documentTypeToKind(doc.documentType);
+    const validationLines = lines.map((line) => ({
+      productVariantId: line.productVariantId,
+      quantity: isStockCount || isAdjustment ? 0 : line.quantity,
+      adjustmentQuantity: isAdjustment ? line.quantity : 0,
+      countedQuantity: isStockCount ? line.quantity : 0,
+    }));
+
+    if (
+      notifyValidation(
+        validateInventoryDocumentDraftLines({
+          kind,
+          lines: validationLines,
+          hasVariants,
+        })
+      )
+    ) {
+      return;
+    }
+
+    mutation.mutate();
+  };
 
   if (isLoading || !doc) {
     return <p className="text-slate-500">{tCommon("loading")}</p>;
@@ -116,12 +167,6 @@ export default function EditDocumentPage({
       />
 
       <div className="card max-w-3xl p-6">
-        {error && (
-          <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </p>
-        )}
-
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm">{t("referenceNo")}</label>
@@ -173,7 +218,7 @@ export default function EditDocumentPage({
                     updateLine(idx, { productVariantId: e.target.value })
                   }
                 >
-                  <option value="">SKU</option>
+                  <option value="">{t("selectSku")}</option>
                   {variants?.items.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.sku}
@@ -206,7 +251,7 @@ export default function EditDocumentPage({
           <button
             className="btn-primary"
             disabled={mutation.isPending || lines.length === 0}
-            onClick={() => mutation.mutate()}
+            onClick={handleSave}
           >
             {t("saveDraft")}
           </button>

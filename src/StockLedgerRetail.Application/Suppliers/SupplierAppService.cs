@@ -25,10 +25,11 @@ public class SupplierAppService : ISupplierAppService
     public async Task<PagedResultDto<SupplierDto>> GetListAsync(
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
-        var (items, totalCount) = await _supplierRepository.GetPagedListAsync(skip, take, cancellationToken);
+        var (items, totalCount) = await _supplierRepository.GetPagedListAsync(skip, take, search, cancellationToken);
         return PagingNormalizer.Create(items.Select(MapToDto).ToList(), totalCount, normalizedPage, normalizedPageSize);
     }
 

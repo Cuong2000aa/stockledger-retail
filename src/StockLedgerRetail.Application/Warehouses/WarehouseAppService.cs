@@ -28,10 +28,11 @@ public class WarehouseAppService : IWarehouseAppService
     public async Task<PagedResultDto<WarehouseDto>> GetListAsync(
         int? page = null,
         int? pageSize = null,
+        string? search = null,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
-        var (warehouses, totalCount) = await _warehouseRepository.GetPagedListAsync(skip, take, cancellationToken);
+        var (warehouses, totalCount) = await _warehouseRepository.GetPagedListAsync(skip, take, search, cancellationToken);
         var items = warehouses.Select(MapToDto).ToList();
         return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }
