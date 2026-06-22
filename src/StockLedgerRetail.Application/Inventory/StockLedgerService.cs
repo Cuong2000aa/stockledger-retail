@@ -31,7 +31,7 @@ public class StockLedgerService : IStockLedgerService
         _auditContext = auditContext;
     }
 
-    /// <summary>Xử lý phiếu đã duyệt theo loại (hiện hỗ trợ StockIn, StockOut).</summary>
+    /// <summary>Xử lý phiếu đã duyệt theo loại (StockIn, StockOut, Adjustment).</summary>
     public async Task ProcessApprovedDocumentAsync(InventoryDocument document, CancellationToken cancellationToken = default)
     {
         if (document.Lines.Count == 0)
@@ -46,6 +46,9 @@ public class StockLedgerService : IStockLedgerService
                 break;
             case InventoryDocumentType.StockOut:
                 await ProcessStockOutAsync(document, cancellationToken);
+                break;
+            case InventoryDocumentType.Adjustment:
+                await ProcessAdjustmentAsync(document, cancellationToken);
                 break;
             default:
                 throw new InvalidOperationException(
@@ -120,6 +123,62 @@ public class StockLedgerService : IStockLedgerService
                 StockTransactionType.Out,
                 -line.Quantity,
                 cancellationToken);
+        }
+    }
+
+    /// <summary>Xử lý điều chỉnh tồn — dương sinh ADJUSTMENT_IN, âm sinh ADJUSTMENT_OUT.</summary>
+    private async Task ProcessAdjustmentAsync(InventoryDocument document, CancellationToken cancellationToken)
+    {
+        if (document.DestinationWarehouseId is null)
+        {
+            throw new InvalidOperationException("Warehouse is required for adjustment.");
+        }
+
+        var warehouseId = document.DestinationWarehouseId.Value;
+        await EnsureWarehouseExistsAsync(warehouseId, cancellationToken);
+
+        foreach (var line in document.Lines)
+        {
+            await EnsureProductVariantExistsAsync(line.ProductVariantId, cancellationToken);
+
+            if (line.Quantity == 0)
+            {
+                throw new InvalidOperationException("Adjustment quantity cannot be zero.");
+            }
+
+            if (line.Quantity > 0)
+            {
+                await ApplyStockChangeAsync(
+                    document,
+                    line,
+                    warehouseId,
+                    StockTransactionType.AdjustmentIn,
+                    line.Quantity,
+                    cancellationToken);
+            }
+            else
+            {
+                var decreaseQuantity = Math.Abs(line.Quantity);
+                var currentStock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
+                    line.ProductVariantId,
+                    warehouseId,
+                    cancellationToken);
+
+                var available = currentStock?.QuantityAvailable ?? 0;
+                if (available < decreaseQuantity)
+                {
+                    throw new InvalidOperationException(
+                        $"Insufficient available stock for variant '{line.ProductVariantId}'. Available: {available}, requested decrease: {decreaseQuantity}.");
+                }
+
+                await ApplyStockChangeAsync(
+                    document,
+                    line,
+                    warehouseId,
+                    StockTransactionType.AdjustmentOut,
+                    line.Quantity,
+                    cancellationToken);
+            }
         }
     }
 

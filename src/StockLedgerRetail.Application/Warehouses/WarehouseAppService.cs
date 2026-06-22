@@ -1,4 +1,5 @@
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
@@ -24,10 +25,15 @@ public class WarehouseAppService : IWarehouseAppService
     }
 
     /// <summary>Lấy danh sách tất cả kho.</summary>
-    public async Task<List<WarehouseDto>> GetListAsync(CancellationToken cancellationToken = default)
+    public async Task<PagedResultDto<WarehouseDto>> GetListAsync(
+        int? page = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default)
     {
-        var warehouses = await _warehouseRepository.GetListAsync(cancellationToken);
-        return warehouses.Select(MapToDto).ToList();
+        var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
+        var (warehouses, totalCount) = await _warehouseRepository.GetPagedListAsync(skip, take, cancellationToken);
+        var items = warehouses.Select(MapToDto).ToList();
+        return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }
 
     /// <summary>Lấy chi tiết kho theo Id.</summary>

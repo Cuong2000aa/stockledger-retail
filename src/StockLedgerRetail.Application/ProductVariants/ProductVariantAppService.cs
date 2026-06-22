@@ -1,4 +1,5 @@
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
@@ -27,10 +28,15 @@ public class ProductVariantAppService : IProductVariantAppService
     }
 
     /// <summary>Lấy toàn bộ danh sách SKU.</summary>
-    public async Task<List<ProductVariantDto>> GetListAsync(CancellationToken cancellationToken = default)
+    public async Task<PagedResultDto<ProductVariantDto>> GetListAsync(
+        int? page = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default)
     {
-        var variants = await _productVariantRepository.GetListAsync(cancellationToken);
-        return variants.Select(MapToDto).ToList();
+        var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
+        var (variants, totalCount) = await _productVariantRepository.GetPagedListAsync(skip, take, cancellationToken);
+        var items = variants.Select(MapToDto).ToList();
+        return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }
 
     /// <summary>Lấy các SKU thuộc một sản phẩm cha.</summary>

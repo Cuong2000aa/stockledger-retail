@@ -1,10 +1,14 @@
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Warehouses;
 
 namespace StockLedgerRetail.Services;
 
 public interface IWarehouseAppService
 {
-    Task<List<WarehouseDto>> GetListAsync(CancellationToken cancellationToken = default);
+    Task<PagedResultDto<WarehouseDto>> GetListAsync(
+        int? page = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default);
 
     Task<WarehouseDto> GetAsync(Guid id, CancellationToken cancellationToken = default);
 

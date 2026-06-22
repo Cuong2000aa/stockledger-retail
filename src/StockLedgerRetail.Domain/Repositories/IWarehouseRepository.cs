@@ -10,6 +10,11 @@ public interface IWarehouseRepository
 
     Task<List<Warehouse>> GetListAsync(CancellationToken cancellationToken = default);
 
+    Task<(List<Warehouse> Items, int TotalCount)> GetPagedListAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
     Task InsertAsync(Warehouse warehouse, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Warehouse warehouse, CancellationToken cancellationToken = default);

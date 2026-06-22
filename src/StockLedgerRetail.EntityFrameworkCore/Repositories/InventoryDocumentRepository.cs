@@ -54,6 +54,27 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
         return query.OrderByDescending(x => x.DocumentDate).ThenByDescending(x => x.CreatedAt).ToListAsync(cancellationToken);
     }
 
+    public async Task<(List<InventoryDocument> Items, int TotalCount)> GetPagedListAsync(
+        InventoryDocumentType? documentType,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.InventoryDocuments.AsQueryable();
+
+        if (documentType.HasValue)
+        {
+            query = query.Where(x => x.DocumentType == documentType.Value);
+        }
+
+        query = query.OrderByDescending(x => x.DocumentDate).ThenByDescending(x => x.CreatedAt);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public Task<int> CountByTypeAndDatePrefixAsync(
         InventoryDocumentType documentType,
         string datePrefix,

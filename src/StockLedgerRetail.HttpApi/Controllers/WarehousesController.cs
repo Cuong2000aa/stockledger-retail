@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Services;
 using StockLedgerRetail.Warehouses;
 
@@ -18,10 +19,13 @@ public class WarehousesController : ControllerBase
         _warehouseAppService = warehouseAppService;
     }
 
-    /// <summary>Lấy danh sách tất cả kho.</summary>
+    /// <summary>Lấy danh sách kho có phân trang.</summary>
     [HttpGet]
-    public Task<List<WarehouseDto>> GetListAsync(CancellationToken cancellationToken) =>
-        _warehouseAppService.GetListAsync(cancellationToken);
+    public Task<PagedResultDto<WarehouseDto>> GetListAsync(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
+        CancellationToken cancellationToken) =>
+        _warehouseAppService.GetListAsync(page, pageSize, cancellationToken);
 
     /// <summary>Lấy chi tiết một kho theo Id.</summary>
     [HttpGet("{id:guid}")]

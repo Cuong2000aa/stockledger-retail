@@ -1,3 +1,4 @@
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Inventory;
 using StockLedgerRetail.Services;
@@ -17,15 +18,18 @@ public class StockTransactionAppService : IStockTransactionAppService
     }
 
     /// <summary>Lấy danh sách giao dịch sổ cái, lọc theo kho và/hoặc SKU.</summary>
-    public async Task<List<StockTransactionDto>> GetListAsync(
+    public async Task<PagedResultDto<StockTransactionDto>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
-        var transactions = await _stockTransactionRepository.GetListAsync(
-            warehouseId, productVariantId, cancellationToken);
-
-        return transactions.Select(MapToDto).ToList();
+        var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
+        var (transactions, totalCount) = await _stockTransactionRepository.GetPagedListAsync(
+            warehouseId, productVariantId, skip, take, cancellationToken);
+        var items = transactions.Select(MapToDto).ToList();
+        return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }
 
     /// <summary>Chuyển entity StockTransaction sang DTO.</summary>

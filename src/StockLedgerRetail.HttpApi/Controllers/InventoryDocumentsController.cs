@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Enums;
 using StockLedgerRetail.Inventory;
 using StockLedgerRetail.Services;
@@ -20,12 +21,14 @@ public class InventoryDocumentsController : ControllerBase
         _inventoryDocumentAppService = inventoryDocumentAppService;
     }
 
-    /// <summary>Lấy danh sách phiếu. Có thể lọc theo loại phiếu (documentType).</summary>
+    /// <summary>Lấy danh sách phiếu có phân trang. Có thể lọc theo loại phiếu (documentType).</summary>
     [HttpGet]
-    public Task<List<InventoryDocumentDto>> GetListAsync(
+    public Task<PagedResultDto<InventoryDocumentDto>> GetListAsync(
         [FromQuery] InventoryDocumentType? documentType,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken) =>
-        _inventoryDocumentAppService.GetListAsync(documentType, cancellationToken);
+        _inventoryDocumentAppService.GetListAsync(documentType, page, pageSize, cancellationToken);
 
     /// <summary>Lấy chi tiết phiếu kèm danh sách dòng hàng.</summary>
     [HttpGet("{id:guid}")]
@@ -47,10 +50,25 @@ public class InventoryDocumentsController : ControllerBase
         _inventoryDocumentAppService.CreateStockOutAsync(input, cancellationToken);
 
     /// <summary>
+    /// Tạo phiếu điều chỉnh tồn (Adjustment). Số lượng dòng có dấu: dương tăng, âm giảm.
+    /// Bắt buộc nhập lý do (reason). Trạng thái ban đầu: Draft.
+    /// </summary>
+    [HttpPost("adjustment")]
+    public Task<InventoryDocumentDto> CreateAdjustmentAsync(
+        [FromBody] CreateAdjustmentDto input,
+        CancellationToken cancellationToken) =>
+        _inventoryDocumentAppService.CreateAdjustmentAsync(input, cancellationToken);
+
+    /// <summary>
     /// Duyệt phiếu — sinh StockTransaction và cập nhật CurrentStock.
     /// Đây là bước thực sự làm thay đổi tồn kho.
     /// </summary>
     [HttpPost("{id:guid}/approve")]
     public Task<InventoryDocumentDto> ApproveAsync(Guid id, CancellationToken cancellationToken) =>
         _inventoryDocumentAppService.ApproveAsync(id, cancellationToken);
+
+    /// <summary>Hủy phiếu Draft — chỉ áp dụng phiếu chưa duyệt, không tác động tồn kho.</summary>
+    [HttpPost("{id:guid}/cancel")]
+    public Task<InventoryDocumentDto> CancelAsync(Guid id, CancellationToken cancellationToken) =>
+        _inventoryDocumentAppService.CancelAsync(id, cancellationToken);
 }

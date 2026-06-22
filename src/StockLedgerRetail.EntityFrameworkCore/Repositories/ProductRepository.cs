@@ -22,6 +22,17 @@ public class ProductRepository : IProductRepository
     public Task<List<Product>> GetListAsync(CancellationToken cancellationToken = default) =>
         _dbContext.Products.OrderBy(x => x.ProductCode).ToListAsync(cancellationToken);
 
+    public async Task<(List<Product> Items, int TotalCount)> GetPagedListAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Products.OrderBy(x => x.ProductCode);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
+        return (items, totalCount);
+    }
+
     public async Task InsertAsync(Product product, CancellationToken cancellationToken = default) =>
         await _dbContext.Products.AddAsync(product, cancellationToken);
 

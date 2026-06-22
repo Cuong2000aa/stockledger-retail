@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using StockLedgerRetail.Common;
 using StockLedgerRetail.ProductVariants;
 using StockLedgerRetail.Services;
 
@@ -18,10 +19,13 @@ public class ProductVariantsController : ControllerBase
         _productVariantAppService = productVariantAppService;
     }
 
-    /// <summary>Lấy danh sách tất cả SKU.</summary>
+    /// <summary>Lấy danh sách SKU có phân trang.</summary>
     [HttpGet]
-    public Task<List<ProductVariantDto>> GetListAsync(CancellationToken cancellationToken) =>
-        _productVariantAppService.GetListAsync(cancellationToken);
+    public Task<PagedResultDto<ProductVariantDto>> GetListAsync(
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
+        CancellationToken cancellationToken) =>
+        _productVariantAppService.GetListAsync(page, pageSize, cancellationToken);
 
     /// <summary>Lấy danh sách SKU thuộc một sản phẩm cha.</summary>
     [HttpGet("by-product/{productId:guid}")]

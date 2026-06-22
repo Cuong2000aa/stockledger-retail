@@ -22,6 +22,17 @@ public class WarehouseRepository : IWarehouseRepository
     public Task<List<Warehouse>> GetListAsync(CancellationToken cancellationToken = default) =>
         _dbContext.Warehouses.OrderBy(x => x.Code).ToListAsync(cancellationToken);
 
+    public async Task<(List<Warehouse> Items, int TotalCount)> GetPagedListAsync(
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Warehouses.OrderBy(x => x.Code);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
+        return (items, totalCount);
+    }
+
     public async Task InsertAsync(Warehouse warehouse, CancellationToken cancellationToken = default) =>
         await _dbContext.Warehouses.AddAsync(warehouse, cancellationToken);
 

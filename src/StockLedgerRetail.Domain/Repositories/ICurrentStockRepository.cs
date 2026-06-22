@@ -16,6 +16,13 @@ public interface ICurrentStockRepository
         Guid? productVariantId = null,
         CancellationToken cancellationToken = default);
 
+    Task<(List<CurrentStock> Items, int TotalCount)> GetPagedListAsync(
+        Guid? warehouseId,
+        Guid? productVariantId,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
     Task InsertAsync(CurrentStock currentStock, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(CurrentStock currentStock, CancellationToken cancellationToken = default);
