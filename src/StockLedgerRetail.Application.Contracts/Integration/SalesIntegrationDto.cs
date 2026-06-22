@@ -46,6 +46,9 @@ public class ConfirmSaleRequestDto
     /// <summary>Order id from sales system (unique per source system).</summary>
     public string OrderReference { get; set; } = string.Empty;
 
+    /// <summary>Optional cart session to commit when sale is confirmed.</summary>
+    public string? CartSessionId { get; set; }
+
     public Guid WarehouseId { get; set; }
 
     public DateTime? SaleDate { get; set; }

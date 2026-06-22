@@ -18,6 +18,7 @@ public class SalesIntegrationService : ISalesIntegrationService
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryDocumentAppService _inventoryDocumentAppService;
+    private readonly IStockReservationService _stockReservationService;
     private readonly SalesIntegrationOptions _options;
 
     public SalesIntegrationService(
@@ -26,6 +27,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         IProductVariantRepository productVariantRepository,
         IWarehouseRepository warehouseRepository,
         IInventoryDocumentAppService inventoryDocumentAppService,
+        IStockReservationService stockReservationService,
         IOptions<SalesIntegrationOptions> options)
     {
         _inventoryDocumentRepository = inventoryDocumentRepository;
@@ -33,6 +35,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         _productVariantRepository = productVariantRepository;
         _warehouseRepository = warehouseRepository;
         _inventoryDocumentAppService = inventoryDocumentAppService;
+        _stockReservationService = stockReservationService;
         _options = options.Value;
     }
 
@@ -41,6 +44,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         CheckSalesAvailabilityRequestDto input,
         CancellationToken cancellationToken = default)
     {
+        await _stockReservationService.RefreshExpiredReservationsAsync(cancellationToken);
         await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
         ValidateSalesLines(input.Lines);
 
@@ -93,6 +97,13 @@ public class SalesIntegrationService : ISalesIntegrationService
 
         ValidateSalesLines(input.Lines);
         await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
+
+        await _stockReservationService.CommitByReferencesAsync(
+            sourceSystem,
+            input.WarehouseId,
+            input.CartSessionId,
+            orderReference,
+            cancellationToken);
 
         var documentLines = await MapToDocumentLinesAsync(input.Lines, cancellationToken);
 

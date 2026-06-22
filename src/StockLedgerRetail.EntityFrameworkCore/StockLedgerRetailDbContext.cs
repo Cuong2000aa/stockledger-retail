@@ -38,6 +38,10 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<GoodsReceiptLine> GoodsReceiptLines => Set<GoodsReceiptLine>();
 
+    public DbSet<StockReservation> StockReservations => Set<StockReservation>();
+
+    public DbSet<StockReservationLine> StockReservationLines => Set<StockReservationLine>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(StockLedgerRetailDbContext).Assembly);

@@ -15,4 +15,7 @@ public class SalesIntegrationOptions
     };
 
     public string? ApiKey { get; set; }
+
+    /// <summary>Default reservation TTL in minutes for cart/order holds.</summary>
+    public int ReservationExpiryMinutes { get; set; } = 30;
 }

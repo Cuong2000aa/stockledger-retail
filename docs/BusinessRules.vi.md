@@ -199,3 +199,68 @@ CurrentStock
 ```
 
 Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransaction.
+
+---
+
+# Draft Update (Cập nhật phiếu nháp)
+
+| Rule Code | English | Tiếng Việt |
+| --------- | ------- | ---------- |
+| BR801 | Only Draft inventory documents can be updated. | Chỉ phiếu Draft mới được sửa. |
+| BR802 | Approved or Cancelled documents are immutable. | Phiếu đã duyệt hoặc hủy không được sửa. |
+| BR803 | Update replaces line items as provided. | Cập nhật thay thế toàn bộ dòng hàng theo payload. |
+| BR804 | Updating draft must not create StockTransaction. | Sửa nháp không sinh giao dịch tồn kho. |
+
+---
+
+# Purchase Order (Đơn mua hàng)
+
+| Rule Code | English | Tiếng Việt |
+| --------- | ------- | ---------- |
+| BR901 | Supplier and warehouse are required. | Bắt buộc nhà cung cấp và kho nhận. |
+| BR902 | At least one line with OrderedQuantity > 0. | Ít nhất một dòng với số lượng đặt > 0. |
+| BR903 | Only Draft PO can be edited. | Chỉ PO nháp mới sửa được. |
+| BR904 | Submit: Draft → Submitted. | Gửi đơn: Draft → Submitted. |
+| BR905 | Cancel only when nothing received yet. | Hủy chỉ khi chưa nhận hàng. |
+| BR906 | PO does not affect stock. | PO không tác động tồn kho. |
+| BR907 | GR approval updates PO ReceivedQuantity. | Duyệt GR cập nhật số đã nhận trên PO. |
+| BR908 | PO → PartiallyReceived or Received. | PO chuyển trạng thái theo số đã nhận. |
+
+---
+
+# Goods Receipt (Phiếu nhận hàng)
+
+| Rule Code | English | Tiếng Việt |
+| --------- | ------- | ---------- |
+| BR1001 | GR must link to submitted PO. | GR phải gắn PO đã gửi. |
+| BR1002 | Received qty ≤ remaining on PO line. | Số nhận ≤ số còn lại trên dòng PO. |
+| BR1003 | Approve creates Stock In (PROCUREMENT). | Duyệt tạo phiếu nhập (SourceSystem = PROCUREMENT). |
+| BR1004 | Stock In auto-approved with GR. | Phiếu nhập được duyệt cùng lúc với GR. |
+| BR1005 | GR stores InventoryDocumentId. | GR lưu liên kết phiếu nhập. |
+| BR1006 | Only Draft GR can approve/cancel. | Chỉ GR nháp mới duyệt/hủy được. |
+
+---
+
+# POS Integration (Tích hợp bán hàng)
+
+| Rule Code | English | Tiếng Việt |
+| --------- | ------- | ---------- |
+| BR1101 | check-availability is read-only. | Kiểm tra tồn chỉ đọc, không ghi sổ. |
+| BR1102 | confirm-sale → Stock Out + approve. | Xác nhận bán → xuất kho + duyệt. |
+| BR1103 | confirm-return → Stock In + approve. | Xác nhận trả → nhập kho + duyệt. |
+| BR1104 | Idempotent by SourceSystem + ReferenceNo. | Gọi lại cùng mã tham chiếu không trừ/cộng 2 lần. |
+| BR1105 | Duplicate returns existing document. | Trùng tham chiếu trả về phiếu đã tạo. |
+| BR1106 | Sale validates available stock. | Bán phải đủ tồn khả dụng. |
+
+---
+
+# Inventory Valuation (Định giá tồn kho)
+
+| Rule Code | English | Tiếng Việt |
+| --------- | ------- | ---------- |
+| BR1201 | CostPrice, SellingPrice optional on SKU. | Giá vốn, giá bán trên SKU là tùy chọn. |
+| BR1202 | CostSource: Manual, Erp, Pos, PurchaseSystem. | Nguồn giá vốn theo enum CostSource. |
+| BR1203 | Valuation does not affect stock ledger. | Định giá không ảnh hưởng sổ tồn kho. |
+| BR1204 | ProductCostHistory has EffectiveFrom/To. | Lịch sử giá có khoảng hiệu lực. |
+| BR1205 | Cost history API not implemented yet. | Chưa có API ghi lịch sử giá. |
+| BR1206 | Negative prices not allowed. | Không cho giá âm. |
