@@ -10,6 +10,7 @@ import {
   fetchWarehouses,
 } from "@/lib/api";
 import { validatePurchaseOrderForm } from "@/lib/validation";
+import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -105,7 +106,7 @@ export default function NewPurchaseOrderPage() {
             <select className="input" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
               <option value="">—</option>
               {warehouses?.items.map((w) => (
-                <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
+                <option key={w.id} value={w.id}>{formatWarehouseOptionLabel(w)}</option>
               ))}
             </select>
           </div>

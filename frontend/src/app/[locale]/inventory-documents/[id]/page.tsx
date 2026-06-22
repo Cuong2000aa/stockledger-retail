@@ -12,9 +12,11 @@ import {
   fetchWarehouses,
 } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
+import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import {
   InventoryDocumentStatus,
   InventoryDocumentType,
+  type Warehouse,
 } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -40,11 +42,11 @@ function statusLabel(
 
 function warehouseLabel(
   id: string | undefined,
-  map: Map<string, { code: string; name: string }>
+  map: Map<string, Warehouse>
 ) {
   if (!id) return "—";
   const w = map.get(id);
-  return w ? `${w.code} — ${w.name}` : id;
+  return w ? formatWarehouseOptionLabel(w) : id;
 }
 
 export default function DocumentDetailPage({
@@ -70,8 +72,8 @@ export default function DocumentDetailPage({
   });
 
   const warehouseMap = useMemo(() => {
-    const map = new Map<string, { code: string; name: string }>();
-    warehouses?.items.forEach((w) => map.set(w.id, { code: w.code, name: w.name }));
+    const map = new Map<string, Warehouse>();
+    warehouses?.items.forEach((w) => map.set(w.id, w));
     return map;
   }, [warehouses]);
 

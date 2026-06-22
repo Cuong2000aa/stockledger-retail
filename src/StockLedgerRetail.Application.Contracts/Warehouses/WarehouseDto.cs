@@ -16,6 +16,22 @@ public class WarehouseDto
 
     public WarehouseStatus Status { get; set; }
 
+    public string? AddressLine { get; set; }
+
+    public string? Ward { get; set; }
+
+    public string? District { get; set; }
+
+    public string? Province { get; set; }
+
+    public string? PostalCode { get; set; }
+
+    public string? Phone { get; set; }
+
+    public string? ContactName { get; set; }
+
+    public string? FullAddress { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

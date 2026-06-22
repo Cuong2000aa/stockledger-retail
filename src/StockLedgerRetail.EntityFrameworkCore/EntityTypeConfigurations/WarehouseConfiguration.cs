@@ -16,6 +16,14 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
         builder.Property(x => x.Type).IsRequired();
         builder.Property(x => x.Status).IsRequired();
+        builder.Property(x => x.AddressLine).HasMaxLength(300);
+        builder.Property(x => x.Ward).HasMaxLength(100);
+        builder.Property(x => x.District).HasMaxLength(100);
+        builder.Property(x => x.Province).HasMaxLength(100);
+        builder.Property(x => x.PostalCode).HasMaxLength(20);
+        builder.Property(x => x.Phone).HasMaxLength(30);
+        builder.Property(x => x.ContactName).HasMaxLength(150);
+        builder.Property(x => x.FullAddress).HasMaxLength(1000);
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.UpdatedAt).IsRequired();
 

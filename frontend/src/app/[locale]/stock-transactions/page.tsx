@@ -6,6 +6,7 @@ import { Pagination } from "@/components/Pagination";
 import { transactionTypeKey } from "@/components/StatusBadge";
 import { useListSearch } from "@/hooks/useListSearch";
 import { fetchStockTransactions, fetchWarehouses } from "@/lib/api";
+import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -71,7 +72,7 @@ export default function StockTransactionsPage() {
             <option value="">{tFilters("allWarehouses")}</option>
             {warehouses?.items.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.code} — {w.name}
+                {formatWarehouseOptionLabel(w)}
               </option>
             ))}
           </select>

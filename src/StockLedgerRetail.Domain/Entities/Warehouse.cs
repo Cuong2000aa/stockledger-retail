@@ -14,6 +14,22 @@ public class Warehouse : AuditedEntity
 
     public WarehouseStatus Status { get; set; } = WarehouseStatus.Active;
 
+    public string? AddressLine { get; set; }
+
+    public string? Ward { get; set; }
+
+    public string? District { get; set; }
+
+    public string? Province { get; set; }
+
+    public string? PostalCode { get; set; }
+
+    public string? Phone { get; set; }
+
+    public string? ContactName { get; set; }
+
+    public string? FullAddress { get; set; }
+
     public Warehouse? ParentWarehouse { get; set; }
 
     public ICollection<Warehouse> ChildWarehouses { get; set; } = new List<Warehouse>();

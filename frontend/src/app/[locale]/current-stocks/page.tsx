@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { useListSearch } from "@/hooks/useListSearch";
 import { fetchCurrentStocks, fetchWarehouses } from "@/lib/api";
+import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -69,7 +70,7 @@ export default function CurrentStocksPage() {
             <option value="">{tFilters("allWarehouses")}</option>
             {warehouses?.items.map((w) => (
               <option key={w.id} value={w.id}>
-                {w.code} — {w.name}
+                {formatWarehouseOptionLabel(w)}
               </option>
             ))}
           </select>

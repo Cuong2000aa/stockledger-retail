@@ -133,6 +133,14 @@ export interface Warehouse {
   type: WarehouseType;
   parentWarehouseId?: string;
   status: WarehouseStatus;
+  addressLine?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
+  postalCode?: string;
+  phone?: string;
+  contactName?: string;
+  fullAddress?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -143,6 +151,13 @@ export interface CreateWarehouseInput {
   type: WarehouseType;
   parentWarehouseId?: string;
   status: WarehouseStatus;
+  addressLine?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
+  postalCode?: string;
+  phone?: string;
+  contactName?: string;
 }
 
 export interface UpdateWarehouseInput {
@@ -150,6 +165,13 @@ export interface UpdateWarehouseInput {
   type: WarehouseType;
   parentWarehouseId?: string;
   status: WarehouseStatus;
+  addressLine?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
+  postalCode?: string;
+  phone?: string;
+  contactName?: string;
 }
 
 export interface InventoryDocumentLine {

@@ -35,7 +35,14 @@ public class WarehouseRepository : IWarehouseRepository
             var pattern = TextSearchHelper.ToLikePattern(term);
             query = query.Where(x =>
                 EF.Functions.ILike(x.Code, pattern) ||
-                EF.Functions.ILike(x.Name, pattern));
+                EF.Functions.ILike(x.Name, pattern) ||
+                (x.AddressLine != null && EF.Functions.ILike(x.AddressLine, pattern)) ||
+                (x.Ward != null && EF.Functions.ILike(x.Ward, pattern)) ||
+                (x.District != null && EF.Functions.ILike(x.District, pattern)) ||
+                (x.Province != null && EF.Functions.ILike(x.Province, pattern)) ||
+                (x.Phone != null && EF.Functions.ILike(x.Phone, pattern)) ||
+                (x.ContactName != null && EF.Functions.ILike(x.ContactName, pattern)) ||
+                (x.FullAddress != null && EF.Functions.ILike(x.FullAddress, pattern)));
         }
 
         query = query.OrderBy(x => x.Code);
