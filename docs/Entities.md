@@ -46,12 +46,24 @@ Represents a sellable SKU.
 * Season
 * Unit
 * Status
+* CostPrice
+* SellingPrice
+* CostSource
 * CreatedAt
 * UpdatedAt
+
+### CostSource Values
+
+* Manual
+* Erp
+* Pos
+* PurchaseSystem
 
 ### Notes
 
 Inventory is managed at ProductVariant level.
+
+Cost fields support future valuation analytics; they do not drive stock ledger logic.
 
 ---
 
@@ -131,6 +143,7 @@ Represents inventory business documents.
 * DocumentDate
 * ReferenceNo
 * Note
+* SourceSystem
 * CreatedBy
 * CreatedAt
 * ApprovedBy
@@ -151,6 +164,12 @@ Represents inventory business documents.
 * APPROVED
 * COMPLETED
 * CANCELLED
+
+**In use:** Draft → Approved (or Cancelled from Draft). Pending/Completed reserved for future workflow.
+
+### SourceSystem
+
+Optional origin identifier for integration idempotency (e.g. `POS`, `PROCUREMENT`).
 
 ---
 
@@ -249,6 +268,104 @@ StockTransaction:
 TransactionLog:
 
 * User activity history
+
+---
+
+## Supplier
+
+Procurement vendor master data.
+
+### Fields
+
+* Id
+* Code
+* Name
+* ContactName
+* Phone
+* Email
+* Address
+* Status (Active / Inactive)
+* CreatedAt
+* UpdatedAt
+
+---
+
+## PurchaseOrder
+
+Order to supplier. Does not affect stock until goods are received.
+
+### Fields
+
+* Id
+* PoNo
+* SupplierId
+* WarehouseId
+* Status (Draft, Submitted, PartiallyReceived, Received, Cancelled)
+* OrderDate
+* ExpectedDate
+* ReferenceNo
+* Note
+* CreatedBy
+* CreatedAt
+* SubmittedAt
+* CancelledAt
+
+### PurchaseOrderLine
+
+* Id
+* PurchaseOrderId
+* ProductVariantId
+* OrderedQuantity
+* ReceivedQuantity
+* UnitCost
+* Note
+
+---
+
+## GoodsReceipt
+
+Physical receipt against a purchase order.
+
+### Fields
+
+* Id
+* GrNo
+* PurchaseOrderId
+* WarehouseId
+* Status (Draft, Approved, Cancelled)
+* ReceiptDate
+* ReferenceNo
+* Note
+* InventoryDocumentId (set on approve — linked Stock In)
+* CreatedBy
+* CreatedAt
+* ApprovedBy
+* ApprovedAt
+
+### GoodsReceiptLine
+
+* Id
+* GoodsReceiptId
+* PurchaseOrderLineId
+* ProductVariantId
+* ReceivedQuantity
+* UnitCost
+* Note
+
+---
+
+## ProductCostHistory
+
+Time-series cost records per SKU (domain prepared; no write API yet).
+
+### Fields
+
+* Id
+* ProductVariantId
+* CostPrice
+* CostSource
+* EffectiveFrom
+* EffectiveTo (null = current record)
 
 ---
 

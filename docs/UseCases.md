@@ -1,170 +1,254 @@
 # Use Cases
 
-## UC001 - Stock In
-
-### Description
-
-Receive inventory into a warehouse.
-
-### Flow
-
-1. User creates a STOCK_IN document.
-2. User adds product variants and quantities.
-3. User submits the document.
-4. System validates product, warehouse and quantity.
-5. System creates StockTransaction with positive QuantityDelta.
-6. System updates CurrentStock.
-
-### Business Rules
-
-* Quantity must be greater than 0.
-* DestinationWarehouseId is required.
-* SourceWarehouseId is not required.
-* ProductVariant must exist.
-* Warehouse must exist.
-* StockTransaction must be created after approval.
+Retail inventory use cases for StockLedger Retail.  
+**Status:** Phase 1–3 implemented in backend + frontend unless noted.
 
 ---
 
-## UC002 - Stock Out
+# UC001 — Stock In
 
-### Description
+**Actor:** Warehouse Staff
 
-Issue inventory out of a warehouse.
+**Goal:** Increase inventory when goods arrive.
 
-### Flow
+**Flow:**
 
-1. User creates a STOCK_OUT document.
-2. User adds product variants and quantities.
-3. User submits the document.
-4. System validates available stock.
-5. System creates StockTransaction with negative QuantityDelta.
-6. System updates CurrentStock.
+1. Create Stock In document (Draft)
+2. Add SKU lines with quantity
+3. Approve document
+4. System creates IN transactions and updates CurrentStock
 
-### Business Rules
+**API:** `POST /api/inventory-documents/stock-in`, `POST .../{id}/approve`
 
-* Quantity must be greater than 0.
-* SourceWarehouseId is required.
-* DestinationWarehouseId is not required.
-* ProductVariant must exist.
-* Warehouse must exist.
-* Inventory cannot become negative.
-* QuantityAvailable must be greater than or equal to requested quantity.
+**Status:** ✅ Implemented
 
 ---
 
-## UC003 - Inventory Adjustment
+# UC002 — Stock Out
 
-### Description
+**Actor:** Warehouse Staff / POS
 
-Adjust inventory quantity manually.
+**Goal:** Decrease inventory when goods leave the warehouse.
 
-### Flow
+**Flow:**
 
-1. User creates an ADJUSTMENT document.
-2. User selects warehouse and product variants.
-3. User enters adjustment quantity.
-4. System validates current stock.
-5. System creates StockTransaction.
-6. System updates CurrentStock.
+1. Create Stock Out document (Draft)
+2. Add SKU lines
+3. Approve document
+4. System validates available stock, creates OUT transactions, updates CurrentStock
 
-### Business Rules
+**API:** `POST /api/inventory-documents/stock-out`, `POST .../{id}/approve`
 
-* Adjustment can increase or decrease inventory.
-* Adjustment must have a reason.
-* Inventory cannot become negative after adjustment.
-* Positive adjustment creates ADJUSTMENT_IN.
-* Negative adjustment creates ADJUSTMENT_OUT.
+**Status:** ✅ Implemented
 
 ---
 
-## UC004 - Warehouse Transfer
+# UC003 — Transfer Between Warehouses
 
-### Description
+**Actor:** Warehouse Staff
 
-Transfer inventory from one warehouse to another.
+**Goal:** Move stock from one warehouse to another.
 
-### Flow
+**Flow:**
 
-1. User creates a TRANSFER document.
-2. User selects source warehouse.
-3. User selects destination warehouse.
-4. User adds product variants and quantities.
-5. System validates available stock in source warehouse.
-6. System creates TRANSFER_OUT transaction for source warehouse.
-7. System creates TRANSFER_IN transaction for destination warehouse.
-8. System updates CurrentStock for both warehouses.
+1. Create Transfer document (Draft) with source and destination warehouse
+2. Add SKU lines
+3. Approve document
+4. System creates TRANSFER_OUT (source) and TRANSFER_IN (destination) per line
 
-### Business Rules
+**API:** `POST /api/inventory-documents/transfer`, `POST .../{id}/approve`
 
-* SourceWarehouseId is required.
-* DestinationWarehouseId is required.
-* SourceWarehouseId cannot be the same as DestinationWarehouseId.
-* Quantity must be greater than 0.
-* Source warehouse must have enough QuantityAvailable.
-* Transfer must create two StockTransactions:
-
-  * TRANSFER_OUT
-  * TRANSFER_IN
+**Status:** ✅ Implemented
 
 ---
 
-## UC005 - Stock Count
+# UC004 — Stock Adjustment
 
-### Description
+**Actor:** Warehouse Manager
 
-Compare system inventory with physical counted inventory.
+**Goal:** Correct inventory discrepancies (damage, found stock, data errors).
 
-### Flow
+**Flow:**
 
-1. User creates a STOCK_COUNT document.
-2. User selects warehouse.
-3. User enters counted quantity for product variants.
-4. System compares counted quantity with current stock.
-5. System calculates variance.
-6. System creates COUNT_ADJUSTMENT transaction if variance exists.
-7. System updates CurrentStock.
+1. Create Adjustment document (Draft) with reason
+2. Add lines with signed quantity (+ increase, - decrease)
+3. Approve document
+4. System creates ADJUSTMENT_IN or ADJUSTMENT_OUT per line
 
-### Business Rules
+**API:** `POST /api/inventory-documents/adjustment`, `POST .../{id}/approve`
 
-* Counted quantity cannot be negative.
-* Warehouse is required.
-* If counted quantity is greater than current stock, create COUNT_ADJUSTMENT_IN.
-* If counted quantity is less than current stock, create COUNT_ADJUSTMENT_OUT.
-* If counted quantity equals current stock, no StockTransaction is needed.
+**Status:** ✅ Implemented
 
 ---
 
-# Common Rules
+# UC005 — Stock Count
 
-## CR001
+**Actor:** Warehouse Staff
 
-Every inventory movement must create a StockTransaction.
+**Goal:** Reconcile system quantity with physical count.
 
-## CR002
+**Flow:**
 
-CurrentStock must always match the latest approved StockTransaction result.
+1. Create Stock Count document (Draft)
+2. Enter counted quantity per SKU (system quantity shown for reference)
+3. Approve document
+4. For each line with variance ≠ 0: create COUNT_ADJUSTMENT_IN or COUNT_ADJUSTMENT_OUT
 
-## CR003
+**API:** `POST /api/inventory-documents/stock-count`, `POST .../{id}/approve`
 
-Inventory cannot become negative.
+**Status:** ✅ Implemented
 
-## CR004
+---
 
-DocumentNo must be unique.
+# UC006 — Update Draft Inventory Document
 
-## CR005
+**Actor:** Warehouse Staff
 
-TransactionNo must be unique.
+**Goal:** Edit a draft document before approval (lines, reference, note).
 
-## CR006
+**Flow:**
 
-Cancelled documents must not affect CurrentStock.
+1. Open draft document
+2. Update header fields and/or line items
+3. Save — document remains Draft
 
-## CR007
+**API:** `PUT /api/inventory-documents/{id}`
 
-Only approved or completed documents can affect inventory.
+**Rules:** Only `Draft` documents can be updated. Approved or cancelled documents are immutable.
 
-## CR008
+**Status:** ✅ Implemented
 
-Every document must have at least one line.
+---
+
+# UC007 — Purchase Order
+
+**Actor:** Procurement Staff
+
+**Goal:** Order goods from a supplier.
+
+**Flow:**
+
+1. Create Purchase Order (Draft) — select supplier, warehouse, lines
+2. Submit PO → status `Submitted`
+3. Optionally cancel if no goods received yet
+
+**API:** `POST /api/purchase-orders`, `POST .../{id}/submit`, `POST .../{id}/cancel`
+
+**Note:** PO does not change stock. Stock changes only via Goods Receipt.
+
+**Status:** ✅ Implemented
+
+---
+
+# UC008 — Goods Receipt (Procurement)
+
+**Actor:** Warehouse Staff
+
+**Goal:** Receive goods against a submitted purchase order.
+
+**Flow:**
+
+1. Create Goods Receipt (Draft) linked to PO — enter received quantities per line
+2. Approve GR
+3. System auto-creates and approves Stock In document (`SourceSystem = PROCUREMENT`)
+4. PO line `ReceivedQuantity` updated; PO status → `PartiallyReceived` or `Received`
+
+**API:** `POST /api/goods-receipts`, `POST .../{id}/approve`
+
+**Status:** ✅ Implemented
+
+---
+
+# UC009 — POS Sales Integration
+
+**Actor:** POS / OMS / E-commerce
+
+**Goal:** Check stock and confirm sales/returns without managing inventory locally.
+
+**Flows:**
+
+**Check availability (read-only):**
+
+1. POS sends SKU + warehouse + quantity
+2. System returns available quantity
+
+**Confirm sale:**
+
+1. POS sends order reference + lines
+2. System creates Stock Out, approves, deducts stock
+3. Idempotent: duplicate `sourceSystem + orderReference` does not deduct twice
+
+**Confirm return:**
+
+1. POS sends return reference + lines
+2. System creates Stock In, approves, increases stock
+3. Idempotent by `sourceSystem + returnReference`
+
+**API:** `POST /api/integration/sales/check-availability`, `confirm-sale`, `confirm-return`
+
+**Status:** ✅ Implemented
+
+---
+
+# UC010 — Inventory Analytics
+
+**Actor:** Manager / Dashboard
+
+**Goal:** View stock and movement summaries without changing data.
+
+**Queries:**
+
+- Summary totals (SKUs, warehouses, open POs, pending GRs)
+- Stock by warehouse
+- In/out movements over date range
+- Low-stock SKUs below threshold
+
+**API:** `GET /api/analytics/summary`, `stock-by-warehouse`, `movements`, `low-stock`
+
+**Status:** ✅ Implemented (basic analytics)
+
+---
+
+# UC011 — Inventory Valuation (SKU Cost)
+
+**Actor:** Merchandising / Finance
+
+**Goal:** Maintain cost and selling price on SKU for future margin and insight features.
+
+**Current scope:**
+
+1. Set `CostPrice`, `SellingPrice`, `CostSource` on ProductVariant via CRUD API and FE
+2. `ProductCostHistory` table exists for time-series cost (no CRUD API yet)
+
+**API:** `PUT /api/product-variants/{id}` (cost fields on DTO)
+
+**Status:** ⚠️ Partial — master fields on SKU; cost history API not yet built
+
+---
+
+# UC012 — Inventory Insights (Planned)
+
+**Actor:** Manager / AI Copilot
+
+**Goal:** Decision support — dead stock, markdown simulation, transfer suggestions.
+
+**Planned approach:**
+
+- Phase 4A: rule-based insight APIs (no LLM)
+- Phase 4B: optional AI copilot to explain pre-computed results
+
+**Status:** 🔜 Planned
+
+---
+
+# Document Number Prefixes
+
+| Type | Prefix |
+|------|--------|
+| Stock In | SI |
+| Stock Out | SO |
+| Transfer | TR |
+| Adjustment | AD |
+| Stock Count | SC |
+| Purchase Order | PO |
+| Goods Receipt | GR |

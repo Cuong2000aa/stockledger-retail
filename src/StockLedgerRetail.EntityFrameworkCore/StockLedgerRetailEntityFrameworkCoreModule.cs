@@ -21,9 +21,11 @@ public static class StockLedgerRetailEntityFrameworkCoreModule
         services.AddScoped<IInventoryDocumentRepository, InventoryDocumentRepository>();
         services.AddScoped<ICurrentStockRepository, CurrentStockRepository>();
         services.AddScoped<IStockTransactionRepository, StockTransactionRepository>();
+        services.AddScoped<IInventoryInsightReadRepository, InventoryInsightReadRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
         services.AddScoped<IGoodsReceiptRepository, GoodsReceiptRepository>();
+        services.AddScoped<IStockReservationRepository, StockReservationRepository>();
 
         return services;
     }

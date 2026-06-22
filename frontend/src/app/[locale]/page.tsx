@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Boxes,
   FileText,
+  Lightbulb,
   Package,
   ShoppingCart,
   Tags,
@@ -56,6 +57,7 @@ export default function DashboardPage() {
     { href: "/warehouses", label: tNav("warehouses"), icon: Warehouse },
     { href: "/suppliers", label: tNav("suppliers"), icon: Truck },
     { href: "/purchase-orders", label: tNav("purchaseOrders"), icon: ShoppingCart },
+    { href: "/insights", label: tNav("insights"), icon: Lightbulb },
     { href: "/inventory-documents", label: tNav("inventoryDocuments"), icon: FileText },
     { href: "/current-stocks", label: tNav("currentStocks"), icon: Boxes },
   ];

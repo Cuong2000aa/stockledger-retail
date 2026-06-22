@@ -10,6 +10,12 @@
 | InventoryDocumentLine | Chi tiết phiếu          | Danh sách SKU trong phiếu             |
 | StockTransaction      | Sổ cái tồn kho          | Lịch sử biến động tồn kho             |
 | TransactionLog        | Nhật ký hệ thống        | Lịch sử thao tác người dùng           |
+| Supplier              | Nhà cung cấp            | Đối tác mua hàng                      |
+| PurchaseOrder         | Đơn mua hàng (PO)       | Đặt hàng từ NCC, chưa tác động tồn    |
+| PurchaseOrderLine     | Chi tiết PO             | SKU và số lượng đặt / đã nhận        |
+| GoodsReceipt          | Phiếu nhận hàng (GR)    | Nhận hàng theo PO → sinh phiếu nhập   |
+| GoodsReceiptLine      | Chi tiết GR             | Số lượng nhận theo dòng PO            |
+| ProductCostHistory    | Lịch sử giá vốn         | Giá vốn theo thời gian (chưa có API) |
 
 ---
 
@@ -63,6 +69,14 @@ Variants:
 Tồn kho luôn nằm ở ProductVariant.
 
 Không nằm ở Product.
+
+## Trường định giá (tùy chọn)
+
+* CostPrice — giá vốn
+* SellingPrice — giá bán
+* CostSource — Manual, Erp, Pos, PurchaseSystem
+
+Các trường này phục vụ phân tích tương lai; không ảnh hưởng sổ tồn kho.
 
 ---
 
@@ -145,6 +159,14 @@ Phiếu điều chỉnh.
 ### STOCK_COUNT
 
 Phiếu kiểm kê.
+
+## Trạng thái
+
+Draft → Approved (hoặc Cancelled từ Draft).
+
+## SourceSystem
+
+Mã nguồn tích hợp (ví dụ POS, PROCUREMENT) — dùng cho idempotent khi tích hợp hệ thống ngoài.
 
 ---
 
@@ -236,6 +258,69 @@ StockTransaction:
 TransactionLog:
 
 * Lịch sử thao tác người dùng
+
+---
+
+# Supplier (Nhà cung cấp)
+
+## Mục đích
+
+Quản lý đối tác cung cấp hàng cho chuỗi mua hàng.
+
+## Trường chính
+
+Code, Name, ContactName, Phone, Email, Address, Status
+
+---
+
+# PurchaseOrder (Đơn mua hàng)
+
+## Mục đích
+
+Đặt hàng từ nhà cung cấp về kho. **PO không trừ/cộng tồn** — chỉ khi nhận hàng (GR) mới nhập kho.
+
+## Luồng trạng thái
+
+```text
+Draft → Submitted → PartiallyReceived → Received
+                 ↘ Cancelled (nếu chưa nhận)
+```
+
+## PurchaseOrderLine
+
+* OrderedQuantity — số đặt
+* ReceivedQuantity — số đã nhận (cập nhật khi duyệt GR)
+* UnitCost — đơn giá (tùy chọn)
+
+---
+
+# GoodsReceipt (Phiếu nhận hàng)
+
+## Mục đích
+
+Ghi nhận hàng thực nhận theo PO.
+
+## Khi duyệt
+
+1. Tạo và duyệt phiếu nhập kho (SourceSystem = PROCUREMENT)
+2. Cập nhật ReceivedQuantity trên PO
+3. Lưu InventoryDocumentId trên GR
+
+## GoodsReceiptLine
+
+Liên kết PurchaseOrderLineId, ProductVariantId, ReceivedQuantity
+
+---
+
+# ProductCostHistory (Lịch sử giá vốn)
+
+## Mục đích
+
+Lưu giá vốn theo khoảng thời gian (EffectiveFrom / EffectiveTo).
+
+## Ghi chú
+
+Bảng đã có trong DB; chưa có API nghiệp vụ ghi — chuẩn bị cho đồng bộ ERP/POS.
 
 ---
 

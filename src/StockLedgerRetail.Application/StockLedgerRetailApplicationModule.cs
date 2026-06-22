@@ -9,6 +9,7 @@ using StockLedgerRetail.Application.Suppliers;
 using StockLedgerRetail.Application.PurchaseOrders;
 using StockLedgerRetail.Application.GoodsReceipts;
 using StockLedgerRetail.Application.Analytics;
+using StockLedgerRetail.Application.Insights;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Services;
 
@@ -30,10 +31,12 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<ICurrentStockAppService, CurrentStockAppService>();
         services.AddScoped<IStockTransactionAppService, StockTransactionAppService>();
         services.AddScoped<ISalesIntegrationService, SalesIntegrationService>();
+        services.AddScoped<IStockReservationService, StockReservationService>();
         services.AddScoped<ISupplierAppService, SupplierAppService>();
         services.AddScoped<IPurchaseOrderAppService, PurchaseOrderAppService>();
         services.AddScoped<IGoodsReceiptAppService, GoodsReceiptAppService>();
         services.AddScoped<IAnalyticsAppService, AnalyticsAppService>();
+        services.AddScoped<IInventoryInsightsAppService, InventoryInsightsAppService>();
 
         if (configuration is not null)
         {

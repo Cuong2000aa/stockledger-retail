@@ -35,7 +35,8 @@
     "currentStocks": "Tồn hiện tại",
     "stockTransactions": "Lịch sử tồn kho",
     "suppliers": "Nhà cung cấp",
-    "purchaseOrders": "Đơn mua hàng"
+    "purchaseOrders": "Đơn mua hàng",
+    "insights": "Insights"
   },
   "dashboard": {
     "title": "Tổng quan",
@@ -156,6 +157,7 @@
     "title": "Lịch sử tồn kho",
     "subtitle": "Mọi biến động tồn kho theo thời gian",
     "transactionNo": "Mã GD",
+    "sku": "SKU",
     "type": "Loại",
     "delta": "Thay đổi",
     "before": "Trước",
@@ -212,6 +214,38 @@
     "statusDraft": "Nháp",
     "statusApproved": "Đã duyệt",
     "statusCancelled": "Đã hủy"
+  },
+  "insights": {
+    "title": "Insights",
+    "subtitle": "Tín hiệu tồn kho rule-based, sẵn sàng để nối AI copilot sau này",
+    "filters": {
+      "warehouse": "Kho",
+      "allWarehouses": "Tất cả kho",
+      "deadStockDays": "Số ngày tồn chết",
+      "lookbackDays": "Số ngày nhìn lại"
+    },
+    "deadStock": {
+      "title": "Tồn chết",
+      "subtitle": "SKU còn tồn nhưng không có outbound trong khoảng thời gian cấu hình",
+      "days": "Ngày đứng yên",
+      "costValue": "Giá trị vốn"
+    },
+    "salesVelocity": {
+      "title": "Tốc độ bán",
+      "subtitle": "Nhu cầu outbound gần đây và số ngày cover tồn theo kho",
+      "outbound": "SL outbound",
+      "avgDaily": "TB/ngày",
+      "coverDays": "Ngày cover",
+      "noDemand": "Không có nhu cầu"
+    },
+    "transfer": {
+      "title": "Gợi ý chuyển kho",
+      "subtitle": "Đề xuất điều chuyển từ kho dư sang kho có nhu cầu cao",
+      "from": "Từ kho",
+      "to": "Đến kho",
+      "qty": "SL gợi ý",
+      "coverDays": "Cover đích"
+    }
   },
   "warehouseTypes": {
     "Dc": "Kho trung tâm",

@@ -393,3 +393,54 @@ export interface LowStockItem {
   quantityOnHand: number;
   quantityAvailable: number;
 }
+
+export interface DeadStockInsight {
+  productVariantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  quantityOnHand: number;
+  quantityAvailable: number;
+  lastOutboundAt?: string;
+  daysWithoutOutbound: number;
+  costPrice?: number;
+  estimatedCostValue?: number;
+  severity: string;
+  ruleCode: string;
+}
+
+export interface SalesVelocityInsight {
+  productVariantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  quantityOnHand: number;
+  quantityAvailable: number;
+  outboundQuantity: number;
+  averageDailyOutbound: number;
+  estimatedDaysOfCover?: number;
+  lastOutboundAt?: string;
+  lookbackDays: number;
+  severity: string;
+  ruleCode: string;
+}
+
+export interface TransferSuggestion {
+  productVariantId: string;
+  sku: string;
+  sourceWarehouseId: string;
+  sourceWarehouseCode: string;
+  sourceWarehouseName: string;
+  destinationWarehouseId: string;
+  destinationWarehouseCode: string;
+  destinationWarehouseName: string;
+  suggestedQuantity: number;
+  sourceAvailable: number;
+  destinationAvailable: number;
+  destinationAverageDailyOutbound: number;
+  destinationDaysOfCover?: number;
+  severity: string;
+  ruleCode: string;
+}

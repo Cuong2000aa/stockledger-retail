@@ -35,7 +35,8 @@
     "currentStocks": "Current Stock",
     "stockTransactions": "Stock History",
     "suppliers": "Suppliers",
-    "purchaseOrders": "Purchase Orders"
+    "purchaseOrders": "Purchase Orders",
+    "insights": "Insights"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -156,6 +157,7 @@
     "title": "Stock History",
     "subtitle": "All inventory movements over time",
     "transactionNo": "Transaction No",
+    "sku": "SKU",
     "type": "Type",
     "delta": "Change",
     "before": "Before",
@@ -212,6 +214,38 @@
     "statusDraft": "Draft",
     "statusApproved": "Approved",
     "statusCancelled": "Cancelled"
+  },
+  "insights": {
+    "title": "Insights",
+    "subtitle": "Rule-based inventory signals that can later feed an AI copilot",
+    "filters": {
+      "warehouse": "Warehouse",
+      "allWarehouses": "All warehouses",
+      "deadStockDays": "Dead stock days",
+      "lookbackDays": "Lookback days"
+    },
+    "deadStock": {
+      "title": "Dead stock",
+      "subtitle": "SKUs with on-hand stock but no outbound for the configured period",
+      "days": "Days idle",
+      "costValue": "Cost value"
+    },
+    "salesVelocity": {
+      "title": "Sales velocity",
+      "subtitle": "Recent outbound demand and estimated stock cover by warehouse",
+      "outbound": "Outbound qty",
+      "avgDaily": "Avg/day",
+      "coverDays": "Cover days",
+      "noDemand": "No demand"
+    },
+    "transfer": {
+      "title": "Transfer suggestions",
+      "subtitle": "Suggested rebalancing from surplus warehouses to demand-heavy warehouses",
+      "from": "From",
+      "to": "To",
+      "qty": "Suggested qty",
+      "coverDays": "Dest cover"
+    }
   },
   "warehouseTypes": {
     "Dc": "Distribution Center",

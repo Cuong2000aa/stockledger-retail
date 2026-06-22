@@ -37,6 +37,8 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+export const apiClient = api;
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {

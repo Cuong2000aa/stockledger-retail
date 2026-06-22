@@ -133,3 +133,68 @@ All inventory movements must be traceable.
 ## GR005
 
 Every inventory transaction must be linked to a business document.
+
+---
+
+# Draft Update Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR801 | Only Draft inventory documents can be updated. |
+| BR802 | Approved or Cancelled documents are immutable. |
+| BR803 | Update replaces line items as provided (full line set). |
+| BR804 | Updating a draft must not create StockTransaction. |
+
+---
+
+# Purchase Order Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR901 | Supplier and destination warehouse are required. |
+| BR902 | PO must have at least one line with OrderedQuantity > 0. |
+| BR903 | Draft PO can be edited; Submitted PO cannot change lines. |
+| BR904 | Submit transitions status Draft → Submitted. |
+| BR905 | Cancel allowed only when no goods received (ReceivedQuantity = 0 on all lines). |
+| BR906 | PO does not affect CurrentStock — stock changes via Goods Receipt only. |
+| BR907 | ReceivedQuantity on PO line is updated when GR is approved. |
+| BR908 | PO status becomes PartiallyReceived or Received based on line quantities. |
+
+---
+
+# Goods Receipt Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1001 | GR must reference a Submitted (or partially received) Purchase Order. |
+| BR1002 | ReceivedQuantity per line must be > 0 and ≤ remaining on PO line. |
+| BR1003 | Approve creates Stock In document with SourceSystem = PROCUREMENT. |
+| BR1004 | Stock In from GR is auto-approved in the same operation. |
+| BR1005 | GR stores link to created InventoryDocument (InventoryDocumentId). |
+| BR1006 | Only Draft GR can be approved or cancelled. |
+
+---
+
+# POS Integration Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1101 | check-availability is read-only — no StockTransaction created. |
+| BR1102 | confirm-sale creates Stock Out and approves in one call. |
+| BR1103 | confirm-return creates Stock In and approves in one call. |
+| BR1104 | Idempotent by SourceSystem + ReferenceNo + DocumentType (unique index). |
+| BR1105 | Duplicate confirm with same reference returns existing document, no double deduction. |
+| BR1106 | Sale must pass available-stock validation (same as manual Stock Out). |
+
+---
+
+# Inventory Valuation Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1201 | CostPrice and SellingPrice on SKU are optional (nullable). |
+| BR1202 | CostSource indicates origin: Manual, Erp, Pos, PurchaseSystem. |
+| BR1203 | Valuation fields do not affect stock ledger processing. |
+| BR1204 | ProductCostHistory records time-bounded cost (EffectiveFrom / EffectiveTo). |
+| BR1205 | ProductCostHistory has no business write API yet — domain preparation only. |
+| BR1206 | Negative CostPrice or SellingPrice is not allowed on SKU update. |
