@@ -19,6 +19,30 @@ public class ProductVariantRepository : IProductVariantRepository
     public Task<ProductVariant?> GetBySkuAsync(string sku, CancellationToken cancellationToken = default) =>
         _dbContext.ProductVariants.FirstOrDefaultAsync(x => x.Sku == sku, cancellationToken);
 
+    public Task<ProductVariant?> GetByBrandIdAndSkuAsync(
+        Guid? brandId,
+        string sku,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.ProductVariants.FirstOrDefaultAsync(
+            x => x.Sku == sku && x.BrandId == brandId,
+            cancellationToken);
+
+    public async Task<Dictionary<Guid, Guid?>> GetBrandIdsByVariantIdsAsync(
+        IReadOnlyCollection<Guid> variantIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (variantIds.Count == 0)
+        {
+            return new Dictionary<Guid, Guid?>();
+        }
+
+        return await _dbContext.ProductVariants
+            .AsNoTracking()
+            .Where(x => variantIds.Contains(x.Id))
+            .Select(x => new { x.Id, BrandId = x.BrandId ?? x.Product.BrandId })
+            .ToDictionaryAsync(x => x.Id, x => x.BrandId, cancellationToken);
+    }
+
     public Task<List<ProductVariant>> GetListAsync(CancellationToken cancellationToken = default) =>
         _dbContext.ProductVariants.OrderBy(x => x.Sku).ToListAsync(cancellationToken);
 

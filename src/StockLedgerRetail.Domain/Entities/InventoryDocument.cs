@@ -35,11 +35,21 @@ public class InventoryDocument
 
     public DateTime? ApprovedAt { get; set; }
 
+    public TransferLifecycleStatus TransferLifecycleStatus { get; set; } = TransferLifecycleStatus.None;
+
+    public Guid? InTransitWarehouseId { get; set; }
+
+    public DateTime? ShippedAt { get; set; }
+
+    public DateTime? ReceivedAt { get; set; }
+
     public uint RowVersion { get; set; }
 
     public Warehouse? SourceWarehouse { get; set; }
 
     public Warehouse? DestinationWarehouse { get; set; }
+
+    public Warehouse? InTransitWarehouse { get; set; }
 
     public ICollection<InventoryDocumentLine> Lines { get; set; } = new List<InventoryDocumentLine>();
 

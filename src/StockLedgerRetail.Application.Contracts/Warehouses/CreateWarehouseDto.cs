@@ -19,6 +19,12 @@ public class CreateWarehouseDto
 
     public WarehouseStatus Status { get; set; } = WarehouseStatus.Active;
 
+    public Guid? BrandId { get; set; }
+
+    public string? RegionCode { get; set; }
+
+    public int FulfillmentPriority { get; set; }
+
     [MaxLength(300)]
     public string? AddressLine { get; set; }
 

@@ -30,5 +30,7 @@ public interface IInventoryDocumentAppService
 
     Task<InventoryDocumentDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<InventoryDocumentDto> ReceiveTransferAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<InventoryDocumentDto> CancelAsync(Guid id, CancellationToken cancellationToken = default);
 }

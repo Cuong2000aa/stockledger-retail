@@ -12,6 +12,8 @@ public class ProductDto
 
     public string? Brand { get; set; }
 
+    public Guid? BrandId { get; set; }
+
     public string? Category { get; set; }
 
     public ProductStatus Status { get; set; }

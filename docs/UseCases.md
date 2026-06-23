@@ -43,22 +43,22 @@ Retail inventory use cases for StockLedger Retail.
 
 ---
 
-# UC003 — Transfer Between Warehouses
+# UC003 — Transfer Between Warehouses (In-Transit)
 
 **Actor:** Warehouse Staff
 
-**Goal:** Move stock from one warehouse to another.
+**Goal:** Move stock from one warehouse to another via an in-transit leg.
 
 **Flow:**
 
-1. Create Transfer document (Draft) with source and destination warehouse
+1. Create Transfer document (Draft) with source and destination warehouse — transfer policy validated
 2. Add SKU lines
-3. Approve document
-4. System creates TRANSFER_OUT (source) and TRANSFER_IN (destination) per line
+3. Approve document (**ship**) — TRANSFER_OUT at source, TRANSFER_IN at in-transit warehouse
+4. Call `receive-transfer` — TRANSFER_OUT at in-transit, TRANSFER_IN at destination; status `Completed`
 
-**API:** `POST /api/inventory-documents/transfer`, `POST .../{id}/approve`
+**API:** `POST /api/inventory-documents/transfer`, `POST .../{id}/approve`, `POST .../{id}/receive-transfer`
 
-**Status:** ✅ Implemented
+**Status:** ✅ Implemented (multi-brand + in-transit)
 
 ---
 
@@ -226,18 +226,63 @@ Retail inventory use cases for StockLedger Retail.
 
 ---
 
-# UC012 — Inventory Insights (Planned)
+# UC012 — Inventory Insights
 
 **Actor:** Manager / AI Copilot
 
-**Goal:** Decision support — dead stock, markdown simulation, transfer suggestions.
+**Goal:** Decision support — dead stock, sales velocity, transfer suggestions.
 
-**Planned approach:**
+**API:** `GET /api/inventory-insights/dead-stock`, `sales-velocity`, `transfer-suggestions` (optional `brandId`, `regionCode`)
 
-- Phase 4A: rule-based insight APIs (no LLM)
-- Phase 4B: optional AI copilot to explain pre-computed results
+**Status:** ✅ Implemented (rule-based)
 
-**Status:** 🔜 Planned
+---
+
+# UC013 — Brand Master Data
+
+**Actor:** Admin / Merchandising
+
+**Goal:** Define brands and scope products, SKUs, and warehouses.
+
+**API:** `GET/POST /api/brands`, `GET/PUT /api/brands/{id}`
+
+**Status:** ✅ Implemented (backend API)
+
+---
+
+# UC014 — Cross-Brand Transfer Policy
+
+**Actor:** Operations / Admin
+
+**Goal:** Allow or deny transfers between warehouses of different brands.
+
+**Flow:** `TransferPolicy` rows in DB; validated on transfer create/approve.
+
+**Status:** ✅ Implemented (domain + validation; admin API planned)
+
+---
+
+# UC015 — Omni-Channel Warehouse Allocation
+
+**Actor:** OMS / Marketplace integration
+
+**Goal:** Select best warehouse to fulfill an order with brand and region scope.
+
+**API:** `POST /api/integration/fulfillment/check-availability-multi-warehouse`, `allocate-warehouse`
+
+**Status:** ✅ Implemented
+
+---
+
+# UC016 — API Scope Headers
+
+**Actor:** Integration / Portal
+
+**Goal:** Restrict fulfillment and insights to a brand, warehouse list, or region via headers.
+
+**Headers:** `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`
+
+**Status:** ✅ Implemented (RBAC-lite)
 
 ---
 

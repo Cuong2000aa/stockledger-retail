@@ -1,3 +1,4 @@
+using StockLedgerRetail.Audit;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Insights;
 using StockLedgerRetail.Services;
@@ -10,14 +11,20 @@ namespace StockLedgerRetail.Application.Insights;
 public class InventoryInsightsAppService : IInventoryInsightsAppService
 {
     private readonly IInventoryInsightReadRepository _inventoryInsightReadRepository;
+    private readonly IBrandScopeContext _brandScopeContext;
 
-    public InventoryInsightsAppService(IInventoryInsightReadRepository inventoryInsightReadRepository)
+    public InventoryInsightsAppService(
+        IInventoryInsightReadRepository inventoryInsightReadRepository,
+        IBrandScopeContext brandScopeContext)
     {
         _inventoryInsightReadRepository = inventoryInsightReadRepository;
+        _brandScopeContext = brandScopeContext;
     }
 
     public async Task<List<DeadStockInsightDto>> GetDeadStockAsync(
         Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
         int daysWithoutOutbound = 60,
         decimal minOnHand = 1,
         int maxResults = 50,
@@ -27,9 +34,13 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         var normalizedMinOnHand = minOnHand <= 0 ? 1 : minOnHand;
         var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
         var referenceDateUtc = DateTime.UtcNow;
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
 
         var facts = await _inventoryInsightReadRepository.GetDeadStockFactsAsync(
             warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
             referenceDateUtc,
             normalizedDays,
             normalizedMinOnHand,
@@ -70,6 +81,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
 
     public async Task<List<SalesVelocityInsightDto>> GetSalesVelocityAsync(
         Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
         int lookbackDays = 30,
         int maxResults = 100,
         CancellationToken cancellationToken = default)
@@ -78,9 +91,13 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         var normalizedMaxResults = NormalizePositive(maxResults, 100, 300);
         var toDateUtc = DateTime.UtcNow;
         var fromDateUtc = toDateUtc.Date.AddDays(-normalizedLookbackDays);
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
 
         var facts = await _inventoryInsightReadRepository.GetSalesVelocityFactsAsync(
             warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
             fromDateUtc,
             toDateUtc,
             normalizedMaxResults,
@@ -125,6 +142,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     public async Task<List<TransferSuggestionDto>> GetTransferSuggestionsAsync(
         Guid? sourceWarehouseId = null,
         Guid? destinationWarehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
         int lookbackDays = 30,
         int targetCoverDays = 14,
         int reserveCoverDays = 7,
@@ -135,12 +154,16 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         var normalizedTargetCoverDays = NormalizePositive(targetCoverDays, 14, 90);
         var normalizedReserveCoverDays = NormalizePositive(reserveCoverDays, 7, 60);
         var normalizedMaxResults = NormalizePositive(maxResults, 20, 100);
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
 
         var toDateUtc = DateTime.UtcNow;
         var fromDateUtc = toDateUtc.Date.AddDays(-normalizedLookbackDays);
 
         var facts = await _inventoryInsightReadRepository.GetSalesVelocityFactsAsync(
             null,
+            scopedBrandId,
+            scopedRegionCode,
             fromDateUtc,
             toDateUtc,
             5000,
@@ -191,7 +214,11 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
 
             foreach (var destination in destinations)
             {
-                var source = sources.FirstOrDefault(x => x.Fact.WarehouseId != destination.Fact.WarehouseId && x.RemainingQuantity > 0);
+                var source = sources.FirstOrDefault(x =>
+                    x.Fact.WarehouseId != destination.Fact.WarehouseId
+                    && x.RemainingQuantity > 0
+                    && IsSameBrandScope(x.Fact.BrandId, destination.Fact.BrandId)
+                    && IsSameRegionScope(x.Fact.RegionCode, destination.Fact.RegionCode));
                 if (source is null)
                 {
                     continue;
@@ -281,6 +308,18 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         var (actionCode, parameters) = InsightRecommendationBuilder.ForTransfer(insight);
         insight.RecommendedActionCode = actionCode;
         insight.RecommendationParams = parameters;
+    }
+
+    private static bool IsSameBrandScope(Guid? left, Guid? right) => left == right;
+
+    private static bool IsSameRegionScope(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return true;
+        }
+
+        return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class TransferCandidate

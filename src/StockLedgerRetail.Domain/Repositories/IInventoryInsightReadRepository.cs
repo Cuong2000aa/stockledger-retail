@@ -4,6 +4,8 @@ public interface IInventoryInsightReadRepository
 {
     Task<List<DeadStockFact>> GetDeadStockFactsAsync(
         Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
         DateTime referenceDateUtc,
         int daysWithoutOutbound,
         decimal minOnHand,
@@ -12,6 +14,8 @@ public interface IInventoryInsightReadRepository
 
     Task<List<SalesVelocityFact>> GetSalesVelocityFactsAsync(
         Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,

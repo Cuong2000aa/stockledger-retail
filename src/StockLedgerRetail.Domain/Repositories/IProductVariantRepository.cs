@@ -8,6 +8,15 @@ public interface IProductVariantRepository
 
     Task<ProductVariant?> GetBySkuAsync(string sku, CancellationToken cancellationToken = default);
 
+    Task<ProductVariant?> GetByBrandIdAndSkuAsync(
+        Guid? brandId,
+        string sku,
+        CancellationToken cancellationToken = default);
+
+    Task<Dictionary<Guid, Guid?>> GetBrandIdsByVariantIdsAsync(
+        IReadOnlyCollection<Guid> variantIds,
+        CancellationToken cancellationToken = default);
+
     Task<List<ProductVariant>> GetListAsync(CancellationToken cancellationToken = default);
 
     Task<(List<ProductVariant> Items, int TotalCount)> GetPagedListAsync(

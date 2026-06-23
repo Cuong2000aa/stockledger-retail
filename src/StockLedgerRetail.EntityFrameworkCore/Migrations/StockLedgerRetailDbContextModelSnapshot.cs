@@ -22,6 +22,39 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Brand", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("brands", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.CurrentStock", b =>
                 {
                     b.Property<Guid>("Id")
@@ -206,9 +239,15 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<int>("DocumentType")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("InTransitWarehouseId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ReferenceNo")
                         .HasMaxLength(100)
@@ -220,6 +259,9 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<DateTime?>("ShippedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("SourceSystem")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
@@ -230,12 +272,17 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<int>("TransferLifecycleStatus")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DestinationWarehouseId");
 
                     b.HasIndex("DocumentNo")
                         .IsUnique();
+
+                    b.HasIndex("InTransitWarehouseId");
 
                     b.HasIndex("SourceWarehouseId");
 
@@ -289,6 +336,9 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("BrandId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Category")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -313,6 +363,8 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BrandId");
 
                     b.HasIndex("ProductCode")
                         .IsUnique();
@@ -363,6 +415,9 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<string>("Barcode")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("BrandId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Color")
                         .HasMaxLength(50)
@@ -415,7 +470,7 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("Sku")
+                    b.HasIndex("BrandId", "Sku")
                         .IsUnique();
 
                     b.ToTable("product_variants", null, t =>
@@ -774,6 +829,37 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.ToTable("transaction_logs", (string)null);
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.TransferPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AllowCrossBrand")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("DestinationBrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("SourceBrandId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DestinationBrandId");
+
+                    b.HasIndex("SourceBrandId", "DestinationBrandId", "IsActive");
+
+                    b.ToTable("transfer_policies", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Warehouse", b =>
                 {
                     b.Property<Guid>("Id")
@@ -783,6 +869,9 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<string>("AddressLine")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("BrandId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -799,6 +888,9 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<string>("District")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<int>("FulfillmentPriority")
+                        .HasColumnType("integer");
 
                     b.Property<string>("FullAddress")
                         .HasMaxLength(1000)
@@ -824,6 +916,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("RegionCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -839,10 +935,14 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BrandId");
+
                     b.HasIndex("Code")
                         .IsUnique();
 
                     b.HasIndex("ParentWarehouseId");
+
+                    b.HasIndex("Type", "BrandId");
 
                     b.ToTable("warehouses", (string)null);
                 });
@@ -933,12 +1033,19 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasForeignKey("DestinationWarehouseId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Warehouse", "InTransitWarehouse")
+                        .WithMany()
+                        .HasForeignKey("InTransitWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("StockLedgerRetail.Domain.Entities.Warehouse", "SourceWarehouse")
                         .WithMany()
                         .HasForeignKey("SourceWarehouseId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("DestinationWarehouse");
+
+                    b.Navigation("InTransitWarehouse");
 
                     b.Navigation("SourceWarehouse");
                 });
@@ -960,6 +1067,16 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("Document");
 
                     b.Navigation("ProductVariant");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Product", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Brand", "BrandEntity")
+                        .WithMany("Products")
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("BrandEntity");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.ProductCostHistory", b =>
@@ -1087,14 +1204,45 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.TransferPolicy", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Brand", "DestinationBrand")
+                        .WithMany()
+                        .HasForeignKey("DestinationBrandId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Brand", "SourceBrand")
+                        .WithMany()
+                        .HasForeignKey("SourceBrandId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("DestinationBrand");
+
+                    b.Navigation("SourceBrand");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Warehouse", b =>
                 {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Brand", "Brand")
+                        .WithMany("Warehouses")
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("StockLedgerRetail.Domain.Entities.Warehouse", "ParentWarehouse")
                         .WithMany("ChildWarehouses")
                         .HasForeignKey("ParentWarehouseId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("Brand");
+
                     b.Navigation("ParentWarehouse");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Brand", b =>
+                {
+                    b.Navigation("Products");
+
+                    b.Navigation("Warehouses");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.GoodsReceipt", b =>

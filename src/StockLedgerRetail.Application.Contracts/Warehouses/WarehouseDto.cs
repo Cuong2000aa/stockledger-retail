@@ -16,6 +16,12 @@ public class WarehouseDto
 
     public WarehouseStatus Status { get; set; }
 
+    public Guid? BrandId { get; set; }
+
+    public string? RegionCode { get; set; }
+
+    public int FulfillmentPriority { get; set; }
+
     public string? AddressLine { get; set; }
 
     public string? Ward { get; set; }

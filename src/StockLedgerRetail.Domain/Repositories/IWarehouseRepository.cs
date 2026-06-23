@@ -20,6 +20,12 @@ public interface IWarehouseRepository
     Task<List<Warehouse>> GetActiveFulfillmentWarehousesAsync(
         IReadOnlyCollection<WarehouseType> types,
         IReadOnlyCollection<Guid>? warehouseIds = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        CancellationToken cancellationToken = default);
+
+    Task<Warehouse?> GetInTransitByBrandIdAsync(
+        Guid? brandId,
         CancellationToken cancellationToken = default);
 
     Task InsertAsync(Warehouse warehouse, CancellationToken cancellationToken = default);

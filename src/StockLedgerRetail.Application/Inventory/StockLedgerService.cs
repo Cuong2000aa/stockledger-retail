@@ -58,7 +58,7 @@ public class StockLedgerService : IStockLedgerService
                 await ProcessAdjustmentAsync(document, cancellationToken);
                 break;
             case InventoryDocumentType.Transfer:
-                await ProcessTransferAsync(document, cancellationToken);
+                await ProcessTransferShipAsync(document, cancellationToken);
                 break;
             case InventoryDocumentType.StockCount:
                 await ProcessStockCountAsync(document, cancellationToken);
@@ -158,23 +158,19 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
-    private async Task ProcessTransferAsync(InventoryDocument document, CancellationToken cancellationToken)
+    public async Task ProcessTransferShipAsync(InventoryDocument document, CancellationToken cancellationToken = default)
     {
-        if (document.SourceWarehouseId is null || document.DestinationWarehouseId is null)
+        if (document.SourceWarehouseId is null || document.InTransitWarehouseId is null)
         {
-            throw new InvalidOperationException("Source and destination warehouses are required for transfer.");
-        }
-
-        if (document.SourceWarehouseId == document.DestinationWarehouseId)
-        {
-            throw new InvalidOperationException("Source and destination warehouse cannot be the same.");
+            throw new InvalidOperationException(
+                "Source warehouse and in-transit warehouse are required for transfer ship.");
         }
 
         var sourceWarehouseId = document.SourceWarehouseId.Value;
-        var destinationWarehouseId = document.DestinationWarehouseId.Value;
+        var inTransitWarehouseId = document.InTransitWarehouseId.Value;
 
         await EnsureWarehouseExistsAsync(sourceWarehouseId, cancellationToken);
-        await EnsureWarehouseExistsAsync(destinationWarehouseId, cancellationToken);
+        await EnsureWarehouseExistsAsync(inTransitWarehouseId, cancellationToken);
 
         foreach (var line in document.Lines)
         {
@@ -189,6 +185,47 @@ public class StockLedgerService : IStockLedgerService
                 document,
                 line,
                 sourceWarehouseId,
+                StockTransactionType.TransferOut,
+                -line.Quantity,
+                cancellationToken);
+
+            await ApplyStockChangeAsync(
+                document,
+                line,
+                inTransitWarehouseId,
+                StockTransactionType.TransferIn,
+                line.Quantity,
+                cancellationToken);
+        }
+    }
+
+    public async Task ProcessTransferReceiveAsync(InventoryDocument document, CancellationToken cancellationToken = default)
+    {
+        if (document.InTransitWarehouseId is null || document.DestinationWarehouseId is null)
+        {
+            throw new InvalidOperationException(
+                "In-transit warehouse and destination warehouse are required for transfer receive.");
+        }
+
+        var inTransitWarehouseId = document.InTransitWarehouseId.Value;
+        var destinationWarehouseId = document.DestinationWarehouseId.Value;
+
+        await EnsureWarehouseExistsAsync(inTransitWarehouseId, cancellationToken);
+        await EnsureWarehouseExistsAsync(destinationWarehouseId, cancellationToken);
+
+        foreach (var line in document.Lines)
+        {
+            await EnsureProductVariantExistsAsync(line.ProductVariantId, cancellationToken);
+
+            if (line.Quantity <= 0)
+            {
+                throw new InvalidOperationException("Line quantity must be greater than zero.");
+            }
+
+            await ApplyStockChangeAsync(
+                document,
+                line,
+                inTransitWarehouseId,
                 StockTransactionType.TransferOut,
                 -line.Quantity,
                 cancellationToken);

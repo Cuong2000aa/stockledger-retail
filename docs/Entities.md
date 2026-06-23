@@ -9,25 +9,42 @@ Represents a product master record.
 * Id
 * ProductCode
 * Name
-* Brand
+* Brand (text, legacy)
+* BrandId (FK → Brand, optional)
 * Category
 * Status
 * CreatedAt
 * UpdatedAt
 
-### Notes
+---
 
-A Product is a parent entity.
+## Brand
 
-Example:
+Multi-brand master.
 
-Product: Polo Shirt
+### Fields
 
-Variants:
+* Id
+* Code (unique)
+* Name
+* Status (`Active`, `Inactive`)
+* CreatedAt
+* UpdatedAt
 
-* POLO-BLK-M
-* POLO-BLK-L
-* POLO-WHT-M
+---
+
+## TransferPolicy
+
+Cross-brand transfer rules.
+
+### Fields
+
+* Id
+* SourceBrandId (nullable)
+* DestinationBrandId (nullable)
+* AllowCrossBrand
+* IsActive
+* Note
 
 ---
 
@@ -39,6 +56,7 @@ Represents a sellable SKU.
 
 * Id
 * ProductId
+* BrandId (optional)
 * SKU
 * Barcode
 * Color
@@ -63,7 +81,15 @@ Represents a sellable SKU.
 
 Inventory is managed at ProductVariant level.
 
+SKU is unique per `(BrandId, Sku)`.
+
 Cost fields support future valuation analytics; they do not drive stock ledger logic.
+
+---
+
+## Product (notes)
+
+A Product is a parent entity. Example: Polo Shirt with variants POLO-BLK-M, POLO-BLK-L.
 
 ---
 
@@ -78,6 +104,9 @@ Represents a warehouse, store, or sub warehouse.
 * Name
 * Type
 * ParentWarehouseId
+* BrandId (optional)
+* RegionCode (optional)
+* FulfillmentPriority
 * Status
 * CreatedAt
 * UpdatedAt
@@ -89,6 +118,7 @@ Represents a warehouse, store, or sub warehouse.
 * SUB_WAREHOUSE
 * DEFECT
 * RETURN
+* IN_TRANSIT
 
 ### Examples
 
@@ -148,6 +178,10 @@ Represents inventory business documents.
 * CreatedAt
 * ApprovedBy
 * ApprovedAt
+* TransferLifecycleStatus
+* InTransitWarehouseId
+* ShippedAt
+* ReceivedAt
 
 ### Document Types
 
@@ -165,7 +199,7 @@ Represents inventory business documents.
 * COMPLETED
 * CANCELLED
 
-**In use:** Draft → Approved (or Cancelled from Draft). Pending/Completed reserved for future workflow.
+**In use:** Draft → Approved (or Cancelled from Draft). Transfer: Approved (shipped) → Completed (received). Pending reserved for future workflow.
 
 ### SourceSystem
 

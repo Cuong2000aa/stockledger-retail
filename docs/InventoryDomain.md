@@ -6,10 +6,21 @@ Overview of the retail inventory domain as implemented in StockLedger Retail.
 
 ## Core Entities
 
+### Brand
+
+- **Brand** — master for multi-brand retail (`Code`, `Name`, `Status`).
+- Products, SKUs, and warehouses may reference `BrandId`.
+- SKU uniqueness is scoped: `(BrandId, Sku)`.
+
+### TransferPolicy
+
+- Controls **cross-brand** warehouse transfers (`AllowCrossBrand`, optional source/destination brand).
+- Same-brand transfers do not require a policy row.
+
 ### Product & ProductVariant (SKU)
 
-- **Product** — parent master data (code, name, brand, category).
-- **ProductVariant** — the actual inventory unit. All stock is tracked at SKU level.
+- **Product** — parent master data (code, name, brand text, optional `BrandId`, category).
+- **ProductVariant** — the actual inventory unit. All stock is tracked at SKU level. Optional `BrandId`.
 - **Valuation fields** on SKU (optional, for future analytics):
   - `CostPrice` — cost price (may come from ERP, POS, Purchase System, or Manual entry)
   - `SellingPrice` — retail selling price
@@ -18,7 +29,7 @@ Overview of the retail inventory domain as implemented in StockLedger Retail.
 
 ### Warehouse
 
-Physical or logical storage location: DC, Store, Sub-warehouse, Defect, Return. Supports parent-child hierarchy.
+Physical or logical storage location: DC, Store, Sub-warehouse, Defect, Return, **InTransit**. Supports parent-child hierarchy. Optional `BrandId`, `RegionCode`, `FulfillmentPriority` for omni-channel and replenishment.
 
 ### CurrentStock
 
@@ -34,9 +45,13 @@ QuantityAvailable = QuantityOnHand - QuantityReserved
 
 Business document header. Types: `StockIn`, `StockOut`, `Transfer`, `Adjustment`, `StockCount`.
 
-Statuses: `Draft` → `Approved` (or `Cancelled` while Draft).
+Statuses: `Draft` → `Approved` (or `Cancelled` while Draft). Transfer documents may become `Completed` after receive.
 
-Only **approved** documents generate `StockTransaction` records.
+Transfer lifecycle (type `Transfer`): **Approve** = ship (source → in-transit); **Receive** = in-transit → destination.
+
+Fields: `TransferLifecycleStatus`, `InTransitWarehouseId`, `ShippedAt`, `ReceivedAt`.
+
+Only **approved** documents generate `StockTransaction` records (transfer receive generates additional transactions).
 
 ### StockTransaction
 
@@ -73,25 +88,45 @@ Physical receipt against a submitted PO. On **approve**:
 
 ---
 
-## POS Integration
+## POS & Omni-Channel Integration
 
-External sales systems (POS, OMS) call integration APIs instead of managing stock directly.
+External sales systems (POS, OMS, marketplaces) call integration APIs instead of managing stock directly.
 
-- **Check availability** — read-only
+- **Check availability** — read-only (single warehouse)
+- **Multi-warehouse ATP** — optional `brandId`, `regionCode`
+- **Allocate warehouse** — ship-from-store / DC selection with brand scope
 - **Confirm sale** — Stock Out, auto-approved, idempotent by `sourceSystem + orderReference`
 - **Confirm return** — Stock In, auto-approved, idempotent by `sourceSystem + returnReference`
+
+Optional API scope headers: `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
+
+---
+
+## Inventory Insights (Read-Only)
+
+Rule-based APIs: dead stock, sales velocity, transfer suggestions. Filterable by `brandId` and `regionCode`. See [MultiBrand.md](MultiBrand.md).
 
 ---
 
 ## Analytics (Read-Only)
 
-Aggregated views over `CurrentStock`, `StockTransaction`, and procurement data. No write operations.
-
-Planned extension: **Inventory Insights** (dead stock, markdown simulation, transfer suggestions) as rule-based APIs without AI.
-
 ---
 
 ## Processing Flow
+
+### Transfer (in-transit)
+
+```text
+Create Transfer (Draft) — transfer policy validated
+        ↓
+Approve (ship)
+        ↓
+TRANSFER_OUT @ source, TRANSFER_IN @ in-transit warehouse
+        ↓
+POST receive-transfer
+        ↓
+TRANSFER_OUT @ in-transit, TRANSFER_IN @ destination → Completed
+```
 
 ### Standard inventory document
 

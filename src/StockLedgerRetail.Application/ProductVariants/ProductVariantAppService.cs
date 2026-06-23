@@ -62,10 +62,14 @@ public class ProductVariantAppService : IProductVariantAppService
         var product = await _productRepository.GetByIdAsync(input.ProductId, cancellationToken)
             ?? throw new KeyNotFoundException($"Product '{input.ProductId}' was not found.");
 
-        var existingSku = await _productVariantRepository.GetBySkuAsync(input.Sku, cancellationToken);
+        var brandId = input.BrandId ?? product.BrandId;
+        var existingSku = await _productVariantRepository.GetByBrandIdAndSkuAsync(
+            brandId,
+            input.Sku,
+            cancellationToken);
         if (existingSku is not null)
         {
-            throw new InvalidOperationException($"SKU '{input.Sku}' already exists.");
+            throw new InvalidOperationException($"SKU '{input.Sku}' already exists for this brand scope.");
         }
 
         ValidateValuation(input.CostPrice, input.SellingPrice);
@@ -76,6 +80,7 @@ public class ProductVariantAppService : IProductVariantAppService
         {
             Id = Guid.NewGuid(),
             ProductId = product.Id,
+            BrandId = brandId,
             Sku = input.Sku.Trim(),
             Barcode = input.Barcode?.Trim(),
             Color = input.Color?.Trim(),
@@ -149,6 +154,7 @@ public class ProductVariantAppService : IProductVariantAppService
     {
         Id = variant.Id,
         ProductId = variant.ProductId,
+        BrandId = variant.BrandId,
         Sku = variant.Sku,
         Barcode = variant.Barcode,
         Color = variant.Color,

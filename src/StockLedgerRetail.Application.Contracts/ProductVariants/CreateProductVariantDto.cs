@@ -8,6 +8,8 @@ public class CreateProductVariantDto
     [Required]
     public Guid ProductId { get; set; }
 
+    public Guid? BrandId { get; set; }
+
     [Required]
     [MaxLength(50)]
     public string Sku { get; set; } = string.Empty;

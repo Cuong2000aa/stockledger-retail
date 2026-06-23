@@ -8,6 +8,10 @@ public class DeadStockFact
 
     public Guid WarehouseId { get; set; }
 
+    public Guid? BrandId { get; set; }
+
+    public string? RegionCode { get; set; }
+
     public string WarehouseCode { get; set; } = string.Empty;
 
     public string WarehouseName { get; set; } = string.Empty;
@@ -28,6 +32,10 @@ public class SalesVelocityFact
     public string Sku { get; set; } = string.Empty;
 
     public Guid WarehouseId { get; set; }
+
+    public Guid? BrandId { get; set; }
+
+    public string? RegionCode { get; set; }
 
     public string WarehouseCode { get; set; } = string.Empty;
 

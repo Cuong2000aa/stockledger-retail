@@ -15,6 +15,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
 
     public Task<List<DeadStockFact>> GetDeadStockFactsAsync(
         Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
         DateTime referenceDateUtc,
         int daysWithoutOutbound,
         decimal minOnHand,
@@ -22,6 +24,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         CancellationToken cancellationToken = default) =>
         GetDeadStockFactsCoreAsync(
             warehouseId,
+            brandId,
+            regionCode,
             referenceDateUtc,
             daysWithoutOutbound,
             minOnHand,
@@ -30,12 +34,16 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
 
     public Task<List<SalesVelocityFact>> GetSalesVelocityFactsAsync(
         Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
         CancellationToken cancellationToken = default) =>
         GetSalesVelocityFactsCoreAsync(
             warehouseId,
+            brandId,
+            regionCode,
             fromDateUtc,
             toDateUtc,
             maxResults,
@@ -43,6 +51,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
 
     private async Task<List<DeadStockFact>> GetDeadStockFactsCoreAsync(
         Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
         DateTime referenceDateUtc,
         int daysWithoutOutbound,
         decimal minOnHand,
@@ -50,19 +60,32 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         CancellationToken cancellationToken)
     {
         var cutoffDate = referenceDateUtc.Date.AddDays(-daysWithoutOutbound);
+        var normalizedRegion = NormalizeRegion(regionCode);
+
         var stocks = await (
             from stock in _dbContext.CurrentStocks.AsNoTracking()
             join productVariant in _dbContext.ProductVariants.AsNoTracking()
                 on stock.ProductVariantId equals productVariant.Id
+            join product in _dbContext.Products.AsNoTracking()
+                on productVariant.ProductId equals product.Id
             join warehouse in _dbContext.Warehouses.AsNoTracking()
                 on stock.WarehouseId equals warehouse.Id
             where stock.QuantityOnHand >= minOnHand
             where !warehouseId.HasValue || stock.WarehouseId == warehouseId.Value
+            where !brandId.HasValue
+                || warehouse.BrandId == brandId
+                || productVariant.BrandId == brandId
+                || product.BrandId == brandId
+            where normalizedRegion == null
+                || warehouse.RegionCode == null
+                || warehouse.RegionCode.ToUpper() == normalizedRegion
             select new DeadStockFact
             {
                 ProductVariantId = stock.ProductVariantId,
                 Sku = productVariant.Sku,
                 WarehouseId = stock.WarehouseId,
+                BrandId = warehouse.BrandId ?? productVariant.BrandId ?? product.BrandId,
+                RegionCode = warehouse.RegionCode,
                 WarehouseCode = warehouse.Code,
                 WarehouseName = warehouse.Name,
                 QuantityOnHand = stock.QuantityOnHand,
@@ -102,23 +125,39 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
 
     private async Task<List<SalesVelocityFact>> GetSalesVelocityFactsCoreAsync(
         Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
         CancellationToken cancellationToken)
     {
+        var normalizedRegion = NormalizeRegion(regionCode);
+
         var stocks = await (
             from stock in _dbContext.CurrentStocks.AsNoTracking()
             join productVariant in _dbContext.ProductVariants.AsNoTracking()
                 on stock.ProductVariantId equals productVariant.Id
+            join product in _dbContext.Products.AsNoTracking()
+                on productVariant.ProductId equals product.Id
             join warehouse in _dbContext.Warehouses.AsNoTracking()
                 on stock.WarehouseId equals warehouse.Id
             where !warehouseId.HasValue || stock.WarehouseId == warehouseId.Value
+            where !brandId.HasValue
+                || warehouse.BrandId == brandId
+                || productVariant.BrandId == brandId
+                || product.BrandId == brandId
+            where normalizedRegion == null
+                || warehouse.RegionCode == null
+                || warehouse.RegionCode.ToUpper() == normalizedRegion
+            where warehouse.Type != WarehouseType.InTransit
             select new SalesVelocityFact
             {
                 ProductVariantId = stock.ProductVariantId,
                 Sku = productVariant.Sku,
                 WarehouseId = stock.WarehouseId,
+                BrandId = warehouse.BrandId ?? productVariant.BrandId ?? product.BrandId,
+                RegionCode = warehouse.RegionCode,
                 WarehouseCode = warehouse.Code,
                 WarehouseName = warehouse.Name,
                 QuantityOnHand = stock.QuantityOnHand,
@@ -163,4 +202,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             .Take(maxResults)
             .ToList();
     }
+
+    private static string? NormalizeRegion(string? regionCode) =>
+        string.IsNullOrWhiteSpace(regionCode) ? null : regionCode.Trim().ToUpperInvariant();
 }

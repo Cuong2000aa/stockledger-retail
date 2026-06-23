@@ -55,6 +55,8 @@ public class WarehouseRepository : IWarehouseRepository
     public Task<List<Warehouse>> GetActiveFulfillmentWarehousesAsync(
         IReadOnlyCollection<WarehouseType> types,
         IReadOnlyCollection<Guid>? warehouseIds = null,
+        Guid? brandId = null,
+        string? regionCode = null,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.Warehouses
@@ -65,8 +67,32 @@ public class WarehouseRepository : IWarehouseRepository
             query = query.Where(x => warehouseIds.Contains(x.Id));
         }
 
-        return query.OrderBy(x => x.Type).ThenBy(x => x.Code).ToListAsync(cancellationToken);
+        if (brandId.HasValue)
+        {
+            query = query.Where(x => !x.BrandId.HasValue || x.BrandId == brandId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(regionCode))
+        {
+            var normalizedRegion = regionCode.Trim().ToUpperInvariant();
+            query = query.Where(x =>
+                x.RegionCode == null
+                || x.RegionCode.ToUpper() == normalizedRegion);
+        }
+
+        return query
+            .OrderBy(x => x.FulfillmentPriority)
+            .ThenBy(x => x.Type)
+            .ThenBy(x => x.Code)
+            .ToListAsync(cancellationToken);
     }
+
+    public Task<Warehouse?> GetInTransitByBrandIdAsync(
+        Guid? brandId,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.Warehouses.FirstOrDefaultAsync(
+            x => x.Type == WarehouseType.InTransit && x.BrandId == brandId,
+            cancellationToken);
 
     public async Task InsertAsync(Warehouse warehouse, CancellationToken cancellationToken = default) =>
         await _dbContext.Warehouses.AddAsync(warehouse, cancellationToken);
