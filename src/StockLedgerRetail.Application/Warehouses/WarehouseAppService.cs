@@ -83,6 +83,9 @@ public class WarehouseAppService : IWarehouseAppService
             Type = input.Type,
             ParentWarehouseId = input.ParentWarehouseId,
             Status = input.Status,
+            BrandId = input.BrandId,
+            RegionCode = NormalizeOptional(input.RegionCode)?.ToUpperInvariant(),
+            FulfillmentPriority = input.FulfillmentPriority,
             AddressLine = addressLine,
             Ward = ward,
             District = district,
@@ -139,6 +142,9 @@ public class WarehouseAppService : IWarehouseAppService
         warehouse.Type = input.Type;
         warehouse.ParentWarehouseId = input.ParentWarehouseId;
         warehouse.Status = input.Status;
+        warehouse.BrandId = input.BrandId;
+        warehouse.RegionCode = NormalizeOptional(input.RegionCode)?.ToUpperInvariant();
+        warehouse.FulfillmentPriority = input.FulfillmentPriority;
         warehouse.AddressLine = NormalizeOptional(input.AddressLine);
         warehouse.Ward = NormalizeOptional(input.Ward);
         warehouse.District = NormalizeOptional(input.District);
@@ -186,6 +192,9 @@ public class WarehouseAppService : IWarehouseAppService
         Type = warehouse.Type,
         ParentWarehouseId = warehouse.ParentWarehouseId,
         Status = warehouse.Status,
+        BrandId = warehouse.BrandId,
+        RegionCode = warehouse.RegionCode,
+        FulfillmentPriority = warehouse.FulfillmentPriority,
         AddressLine = warehouse.AddressLine,
         Ward = warehouse.Ward,
         District = warehouse.District,

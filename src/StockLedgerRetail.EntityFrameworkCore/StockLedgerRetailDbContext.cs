@@ -12,6 +12,10 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<Product> Products => Set<Product>();
 
+    public DbSet<Brand> Brands => Set<Brand>();
+
+    public DbSet<TransferPolicy> TransferPolicies => Set<TransferPolicy>();
+
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
 
     public DbSet<ProductCostHistory> ProductCostHistories => Set<ProductCostHistory>();

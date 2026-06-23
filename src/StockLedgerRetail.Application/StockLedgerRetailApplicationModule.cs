@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using StockLedgerRetail.Application.Brands;
 using StockLedgerRetail.Application.Integration;
 using StockLedgerRetail.Application.Inventory;
 using StockLedgerRetail.Application.ProductVariants;
@@ -23,11 +24,15 @@ public static class StockLedgerRetailApplicationModule
         IConfiguration? configuration = null)
     {
         services.AddScoped<IAuditContext, DefaultAuditContext>();
+        services.AddScoped<IBrandScopeContext, BrandScopeContext>();
         services.AddScoped<ITransactionAuditService, TransactionAuditService>();
+        services.AddScoped<IBrandAppService, BrandAppService>();
         services.AddScoped<IProductAppService, ProductAppService>();
         services.AddScoped<IProductVariantAppService, ProductVariantAppService>();
         services.AddScoped<IWarehouseAppService, WarehouseAppService>();
         services.AddScoped<IStockLedgerService, StockLedgerService>();
+        services.AddScoped<ITransferPolicyService, TransferPolicyService>();
+        services.AddScoped<IInTransitWarehouseService, InTransitWarehouseService>();
         services.AddScoped<IInventoryValuationService, InventoryValuationService>();
         services.AddScoped<IStockReconciliationService, StockReconciliationService>();
         services.AddScoped<IInventoryDocumentAppService, InventoryDocumentAppService>();

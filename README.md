@@ -29,8 +29,12 @@ CurrentStock      ← fast lookup
 | **Phase 1** | Product, SKU, Warehouse, Stock In/Out, Adjustment, Current Stock, Stock History, POS integration | ✅ Done |
 | **Phase 2** | Transfer, Stock Count, Update Draft document | ✅ Done |
 | **Phase 3** | Supplier, Purchase Order, Goods Receipt, Analytics dashboard | ✅ Done |
+| **Sprint 2** | Concurrency (xmin), WAC valuation, stock reconciliation | ✅ Done |
+| **Omni-channel** | Multi-warehouse ATP, allocate warehouse, stock reservation | ✅ Done |
+| **Multi-brand (MB-1→4)** | Brand entity, transfer policy, in-transit transfer, brand-scoped insights & fulfillment, scope headers | ✅ Done |
 | **Valuation** | CostPrice, SellingPrice, CostSource on SKU; ProductCostHistory entity | ✅ Domain + DB |
-| **Phase 4** | Dead stock, Markdown simulation, Transfer suggestions, AI Copilot | 🔜 Planned |
+| **Insights** | Dead stock, sales velocity, transfer suggestions (rule-based) | ✅ Done |
+| **AI Copilot** | Natural-language Q&A on insight APIs | 🔜 Planned |
 
 ---
 
@@ -38,10 +42,12 @@ CurrentStock      ← fast lookup
 
 ### Master Data
 
-- **Product** — parent product (code, name, brand, category)
-- **ProductVariant (SKU)** — actual inventory unit; optional `CostPrice`, `SellingPrice`, `CostSource`
-- **Warehouse** — DC, Store, Sub-warehouse, Defect, Return; hierarchy via `ParentWarehouseId`
+- **Brand** — multi-brand master (`Code`, `Name`, `Status`); scopes products, SKUs, and warehouses
+- **Product** — parent product (code, name, brand text, optional `BrandId`, category)
+- **ProductVariant (SKU)** — actual inventory unit; optional `BrandId`; SKU unique per `(BrandId, Sku)`
+- **Warehouse** — DC, Store, Sub-warehouse, Defect, Return, **InTransit**; hierarchy via `ParentWarehouseId`; optional `BrandId`, `RegionCode`, `FulfillmentPriority`
 - **Supplier** — procurement partner master data
+- **TransferPolicy** — rules for cross-brand transfers
 
 ### Inventory Documents
 
@@ -52,10 +58,12 @@ All documents start as **Draft**; stock changes only after **Approve**.
 | Stock In | `POST /api/inventory-documents/stock-in` | +IN |
 | Stock Out | `POST /api/inventory-documents/stock-out` | -OUT |
 | Adjustment | `POST /api/inventory-documents/adjustment` | +/- ADJUSTMENT |
-| Transfer | `POST /api/inventory-documents/transfer` | TRANSFER_OUT + TRANSFER_IN |
+| Transfer | `POST /api/inventory-documents/transfer` | Ship on approve: OUT source + IN in-transit |
 | Stock Count | `POST /api/inventory-documents/stock-count` | COUNT_ADJUSTMENT if variance ≠ 0 |
 
-Additional: `PUT /api/inventory-documents/{id}` (update draft), `POST .../approve`, `POST .../cancel`.
+**Transfer (in-transit):** `POST .../approve` ships to in-transit warehouse; `POST .../{id}/receive-transfer` completes receipt at destination.
+
+Additional: `PUT /api/inventory-documents/{id}` (update draft), `POST .../approve`, `POST .../receive-transfer`, `POST .../cancel`.
 
 ### Procurement
 
@@ -69,11 +77,25 @@ Supplier → Purchase Order (Draft → Submitted)
          CurrentStock updated; PO received qty updated
 ```
 
-### POS Integration
+### POS & Omni-Channel Integration
 
 `POST /api/integration/sales/check-availability` — read-only stock check  
 `POST /api/integration/sales/confirm-sale` — create + approve Stock Out (idempotent)  
-`POST /api/integration/sales/confirm-return` — create + approve Stock In (idempotent)
+`POST /api/integration/sales/confirm-return` — create + approve Stock In (idempotent)  
+`POST /api/integration/fulfillment/check-availability-multi-warehouse` — ATP across warehouses (optional `brandId`, `regionCode`)  
+`POST /api/integration/fulfillment/allocate-warehouse` — auto-select ship-from warehouse  
+
+Optional scope headers (RBAC-lite): `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
+
+### Brands
+
+- `GET/POST /api/brands`, `GET/PUT /api/brands/{id}`
+
+### Inventory Insights (read-only)
+
+- `GET /api/inventory-insights/dead-stock`
+- `GET /api/inventory-insights/sales-velocity`
+- `GET /api/inventory-insights/transfer-suggestions` — filter by `brandId`, `regionCode`
 
 ### Analytics (read-only)
 
@@ -213,11 +235,19 @@ cd stockledger-retail
 
 **2. Configure the database** — edit `appsettings.json` (or a local override) with your PostgreSQL connection string.
 
-**3. Apply migrations**
+**3. Apply migrations** (run from **repository root**):
+
+```bash
+dotnet ef database update \
+  --project src/StockLedgerRetail.EntityFrameworkCore/StockLedgerRetail.EntityFrameworkCore.csproj \
+  --startup-project host/StockLedgerRetail.HttpApi.Host/StockLedgerRetail.HttpApi.Host.csproj
+```
+
+Or from the EF project folder:
 
 ```bash
 cd src/StockLedgerRetail.EntityFrameworkCore
-dotnet ef database update --project .
+dotnet ef database update --project . --startup-project ../../host/StockLedgerRetail.HttpApi.Host/StockLedgerRetail.HttpApi.Host.csproj
 cd ../..
 ```
 
@@ -250,11 +280,12 @@ dotnet run --project host/StockLedgerRetail.HttpApi.Host --launch-profile http
 
 Configure the connection string in `host/StockLedgerRetail.HttpApi.Host/appsettings.json` (or a `*.local.json` file).
 
-Apply migrations:
+Apply migrations (from repo root):
 
 ```bash
-cd src/StockLedgerRetail.EntityFrameworkCore
-dotnet ef database update --project .
+dotnet ef database update \
+  --project src/StockLedgerRetail.EntityFrameworkCore/StockLedgerRetail.EntityFrameworkCore.csproj \
+  --startup-project host/StockLedgerRetail.HttpApi.Host/StockLedgerRetail.HttpApi.Host.csproj
 ```
 
 ### Frontend (quick reference)
@@ -273,7 +304,9 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 
 | File | Content |
 |------|---------|
-| [docs/UseCases.md](docs/UseCases.md) | Use cases UC001–UC011 |
+| [docs/MultiBrand.md](docs/MultiBrand.md) | Multi-brand phases, in-transit transfer, scope headers (EN) |
+| [docs/MultiBrand.vi.md](docs/MultiBrand.vi.md) | Đa thương hiệu (VI) |
+| [docs/UseCases.md](docs/UseCases.md) | Use cases UC001–UC016 |
 | [docs/BusinessRules.md](docs/BusinessRules.md) | Business rules (EN) |
 | [docs/BusinessRules.vi.md](docs/BusinessRules.vi.md) | Business rules (VI) |
 | [docs/Entities.md](docs/Entities.md) | Entity dictionary (EN) |
@@ -283,14 +316,15 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 
 ---
 
-## Planned (Phase 4+)
+## Planned
 
-- **Inventory Insights** — dead stock, markdown simulation, transfer suggestions (rule-based, no AI cost)
 - **AI Copilot** — natural-language Q&A on top of insight APIs (optional LLM layer)
-- Auth / JWT, stock reservation, Docker deployment
+- Auth / JWT (scope headers are RBAC-lite today)
+- TransferPolicy admin API, frontend multi-brand screens
+- Docker deployment
 
 ---
 
 ## Project Status
 
-🚧 **Active development** — Phase 1–3 complete; valuation domain in place; Phase 4 insights planned.
+🚧 **Active development** — Phases 1–3, Sprint 2, omni-channel, and multi-brand (MB-1→4) complete; AI copilot planned.

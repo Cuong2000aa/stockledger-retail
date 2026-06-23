@@ -49,7 +49,11 @@
 | BR304     | Source warehouse must have enough available stock.        |
 | BR305     | Create TRANSFER_OUT transaction.                          |
 | BR306     | Create TRANSFER_IN transaction.                           |
-| BR307     | One transfer operation must create two StockTransactions. |
+| BR307     | One transfer ship/receive step creates two StockTransactions per line. |
+| BR308     | Cross-brand transfer requires an active TransferPolicy with AllowCrossBrand. |
+| BR309     | In-transit warehouses cannot be used as manual transfer source/destination. |
+| BR310     | Approve on Transfer ships to in-transit; receive completes at destination. |
+| BR311     | Product/SKU brand must be compatible with source and destination warehouse brand. |
 
 ---
 
@@ -198,3 +202,16 @@ Every inventory transaction must be linked to a business document.
 | BR1204 | ProductCostHistory records time-bounded cost (EffectiveFrom / EffectiveTo). |
 | BR1205 | ProductCostHistory has no business write API yet — domain preparation only. |
 | BR1206 | Negative CostPrice or SellingPrice is not allowed on SKU update. |
+
+---
+
+# Multi-Brand Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1301 | Brand `Code` must be unique. |
+| BR1302 | SKU is unique per `(BrandId, Sku)` scope. |
+| BR1303 | Warehouse with `BrandId` may only hold SKUs of that brand (or null-brand SKUs). |
+| BR1304 | Fulfillment and insights respect optional `brandId` and `regionCode` filters. |
+| BR1305 | Scope headers (`X-Brand-Id`, etc.) apply when request parameters are omitted. |
+| BR1306 | Transfer suggestions pair warehouses with same brand and compatible region. |

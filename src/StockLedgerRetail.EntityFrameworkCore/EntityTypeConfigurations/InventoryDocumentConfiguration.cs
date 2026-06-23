@@ -39,5 +39,10 @@ public class InventoryDocumentConfiguration : IEntityTypeConfiguration<Inventory
             .WithMany()
             .HasForeignKey(x => x.DestinationWarehouseId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.InTransitWarehouse)
+            .WithMany()
+            .HasForeignKey(x => x.InTransitWarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

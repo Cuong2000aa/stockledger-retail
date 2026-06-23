@@ -47,5 +47,13 @@ public class InventoryDocumentDto
 
     public DateTime? ApprovedAt { get; set; }
 
+    public TransferLifecycleStatus TransferLifecycleStatus { get; set; }
+
+    public Guid? InTransitWarehouseId { get; set; }
+
+    public DateTime? ShippedAt { get; set; }
+
+    public DateTime? ReceivedAt { get; set; }
+
     public List<InventoryDocumentLineDto> Lines { get; set; } = new();
 }

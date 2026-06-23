@@ -16,6 +16,8 @@ public static class StockLedgerRetailEntityFrameworkCoreModule
             options.UseNpgsql(connectionString));
 
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IBrandRepository, BrandRepository>();
+        services.AddScoped<ITransferPolicyRepository, TransferPolicyRepository>();
         services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<ITransactionLogRepository, TransactionLogRepository>();

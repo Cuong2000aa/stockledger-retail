@@ -22,6 +22,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         builder.HasIndex(x => x.ProductCode).IsUnique();
 
+        builder.HasOne(x => x.BrandEntity)
+            .WithMany(x => x.Products)
+            .HasForeignKey(x => x.BrandId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasMany(x => x.Variants)
             .WithOne(x => x.Product)
             .HasForeignKey(x => x.ProductId)

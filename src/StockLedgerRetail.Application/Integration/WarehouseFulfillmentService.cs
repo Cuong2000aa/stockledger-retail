@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using StockLedgerRetail.Application.Integration;
+using StockLedgerRetail.Audit;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
@@ -17,6 +18,7 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
     private readonly ICurrentStockRepository _currentStockRepository;
     private readonly IStockReservationRepository _stockReservationRepository;
     private readonly IProductVariantRepository _productVariantRepository;
+    private readonly IBrandScopeContext _brandScopeContext;
     private readonly SalesIntegrationOptions _options;
 
     public WarehouseFulfillmentService(
@@ -24,12 +26,14 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
         ICurrentStockRepository currentStockRepository,
         IStockReservationRepository stockReservationRepository,
         IProductVariantRepository productVariantRepository,
+        IBrandScopeContext brandScopeContext,
         IOptions<SalesIntegrationOptions> options)
     {
         _warehouseRepository = warehouseRepository;
         _currentStockRepository = currentStockRepository;
         _stockReservationRepository = stockReservationRepository;
         _productVariantRepository = productVariantRepository;
+        _brandScopeContext = brandScopeContext;
         _options = options.Value;
     }
 
@@ -38,12 +42,16 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
         CancellationToken cancellationToken = default)
     {
         ValidateSalesLines(input.Lines);
-        var mappedLines = await MapLinesAsync(input.Lines, cancellationToken);
+        var brandId = ResolveBrandId(input.BrandId);
+        var regionCode = ResolveRegionCode(input.RegionCode);
+        var mappedLines = await MapLinesAsync(input.Lines, brandId, cancellationToken);
         var warehouses = await ResolveWarehousesAsync(
             input.WarehouseId,
             input.CandidateWarehouseIds,
             WarehouseSelectionMode.StoreFirst,
             null,
+            brandId,
+            regionCode,
             cancellationToken);
 
         var summaries = await BuildWarehouseSummariesAsync(mappedLines, warehouses, cancellationToken);
@@ -64,12 +72,16 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
         CancellationToken cancellationToken = default)
     {
         ValidateSalesLines(input.Lines);
-        var mappedLines = await MapLinesAsync(input.Lines, cancellationToken);
+        var brandId = ResolveBrandId(input.BrandId);
+        var regionCode = ResolveRegionCode(input.RegionCode);
+        var mappedLines = await MapLinesAsync(input.Lines, brandId, cancellationToken);
 
         if (input.WarehouseId.HasValue)
         {
             var warehouse = await _warehouseRepository.GetByIdAsync(input.WarehouseId.Value, cancellationToken)
                 ?? throw new InvalidOperationException($"Warehouse '{input.WarehouseId}' was not found.");
+
+            EnsureWarehouseInScope(warehouse, brandId, regionCode);
 
             var summary = (await BuildWarehouseSummariesAsync(
                 mappedLines,
@@ -91,6 +103,8 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
             input.CandidateWarehouseIds,
             input.SelectionMode,
             input.PreferredWarehouseId,
+            brandId,
+            regionCode,
             cancellationToken);
 
         if (warehouses.Count == 0)
@@ -191,14 +205,19 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
         IReadOnlyCollection<Guid>? candidateWarehouseIds,
         WarehouseSelectionMode selectionMode,
         Guid? preferredWarehouseId,
+        Guid? brandId,
+        string? regionCode,
         CancellationToken cancellationToken)
     {
         var types = ParseFulfillmentTypes();
+        var scopedWarehouseIds = MergeWarehouseScope(candidateWarehouseIds);
 
         if (warehouseId.HasValue)
         {
             var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId.Value, cancellationToken)
                 ?? throw new InvalidOperationException($"Warehouse '{warehouseId}' was not found.");
+
+            EnsureWarehouseInScope(warehouse, brandId, regionCode);
 
             if (warehouse.Status is not WarehouseStatus.Active)
             {
@@ -216,10 +235,52 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
 
         var warehouses = await _warehouseRepository.GetActiveFulfillmentWarehousesAsync(
             types,
-            candidateWarehouseIds,
+            scopedWarehouseIds,
+            brandId,
+            regionCode,
             cancellationToken);
 
-        return OrderWarehouses(warehouses, selectionMode, preferredWarehouseId, candidateWarehouseIds);
+        return OrderWarehouses(warehouses, selectionMode, preferredWarehouseId, scopedWarehouseIds);
+    }
+
+    private IReadOnlyCollection<Guid>? MergeWarehouseScope(IReadOnlyCollection<Guid>? candidateWarehouseIds)
+    {
+        if (_brandScopeContext.WarehouseIds is not { Count: > 0 })
+        {
+            return candidateWarehouseIds;
+        }
+
+        if (candidateWarehouseIds is not { Count: > 0 })
+        {
+            return _brandScopeContext.WarehouseIds;
+        }
+
+        return candidateWarehouseIds
+            .Intersect(_brandScopeContext.WarehouseIds)
+            .ToList();
+    }
+
+    private Guid? ResolveBrandId(Guid? requestBrandId) =>
+        _brandScopeContext.BrandId ?? requestBrandId;
+
+    private string? ResolveRegionCode(string? requestRegionCode) =>
+        _brandScopeContext.RegionCode ?? requestRegionCode;
+
+    private static void EnsureWarehouseInScope(Warehouse warehouse, Guid? brandId, string? regionCode)
+    {
+        if (brandId.HasValue && warehouse.BrandId.HasValue && warehouse.BrandId != brandId)
+        {
+            throw new InvalidOperationException(
+                $"Warehouse '{warehouse.Code}' does not belong to the requested brand scope.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(regionCode)
+            && !string.IsNullOrWhiteSpace(warehouse.RegionCode)
+            && !string.Equals(warehouse.RegionCode, regionCode, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Warehouse '{warehouse.Code}' is outside the requested region scope.");
+        }
     }
 
     private List<Warehouse> OrderWarehouses(
@@ -252,11 +313,12 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
 
         ordered = selectionMode switch
         {
-            WarehouseSelectionMode.HighestAvailableStock => ordered.OrderBy(x => x.Code),
+            WarehouseSelectionMode.HighestAvailableStock => ordered.OrderBy(x => x.FulfillmentPriority).ThenBy(x => x.Code),
             _ when _options.PreferStoreOverDc => ordered
-                .OrderBy(x => x.Type == WarehouseType.Store ? 0 : x.Type == WarehouseType.Dc ? 1 : 2)
+                .OrderBy(x => x.FulfillmentPriority)
+                .ThenBy(x => x.Type == WarehouseType.Store ? 0 : x.Type == WarehouseType.Dc ? 1 : 2)
                 .ThenBy(x => x.Code),
-            _ => ordered.OrderBy(x => x.Code)
+            _ => ordered.OrderBy(x => x.FulfillmentPriority).ThenBy(x => x.Code)
         };
 
         return ordered.ToList();
@@ -314,6 +376,7 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
 
     private async Task<List<MappedSalesLine>> MapLinesAsync(
         List<SalesLineRequestDto> lines,
+        Guid? brandId,
         CancellationToken cancellationToken)
     {
         var result = new List<MappedSalesLine>();
@@ -321,7 +384,8 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
         foreach (var line in lines)
         {
             var sku = NormalizeSku(line.Sku);
-            var variant = await _productVariantRepository.GetBySkuAsync(sku, cancellationToken)
+            var variant = await _productVariantRepository.GetByBrandIdAndSkuAsync(brandId, sku, cancellationToken)
+                ?? await _productVariantRepository.GetBySkuAsync(sku, cancellationToken)
                 ?? throw new InvalidOperationException($"SKU '{sku}' was not found.");
 
             result.Add(new MappedSalesLine(sku, variant.Id, line.Quantity));

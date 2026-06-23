@@ -14,6 +14,14 @@ public class Warehouse : AuditedEntity
 
     public WarehouseStatus Status { get; set; } = WarehouseStatus.Active;
 
+    public Guid? BrandId { get; set; }
+
+    /// <summary>Mã vùng (HCM, HN, ...) — dùng cho replenishment và allocate.</summary>
+    public string? RegionCode { get; set; }
+
+  /// <summary>Ưu tiên thấp = ưu tiên cao khi allocate.</summary>
+    public int FulfillmentPriority { get; set; }
+
     public string? AddressLine { get; set; }
 
     public string? Ward { get; set; }
@@ -29,6 +37,8 @@ public class Warehouse : AuditedEntity
     public string? ContactName { get; set; }
 
     public string? FullAddress { get; set; }
+
+    public Brand? Brand { get; set; }
 
     public Warehouse? ParentWarehouse { get; set; }
 

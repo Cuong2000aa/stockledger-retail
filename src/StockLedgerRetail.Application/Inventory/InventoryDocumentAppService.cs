@@ -18,6 +18,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IStockLedgerService _stockLedgerService;
+    private readonly ITransferPolicyService _transferPolicyService;
+    private readonly IInTransitWarehouseService _inTransitWarehouseService;
     private readonly ITransactionAuditService _transactionAuditService;
     private readonly IAuditContext _auditContext;
     private readonly IUnitOfWork _unitOfWork;
@@ -27,6 +29,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         IProductVariantRepository productVariantRepository,
         IWarehouseRepository warehouseRepository,
         IStockLedgerService stockLedgerService,
+        ITransferPolicyService transferPolicyService,
+        IInTransitWarehouseService inTransitWarehouseService,
         ITransactionAuditService transactionAuditService,
         IAuditContext auditContext,
         IUnitOfWork unitOfWork)
@@ -35,6 +39,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         _productVariantRepository = productVariantRepository;
         _warehouseRepository = warehouseRepository;
         _stockLedgerService = stockLedgerService;
+        _transferPolicyService = transferPolicyService;
+        _inTransitWarehouseService = inTransitWarehouseService;
         _transactionAuditService = transactionAuditService;
         _auditContext = auditContext;
         _unitOfWork = unitOfWork;
@@ -189,6 +195,13 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
         ValidateLines(input.Lines);
 
+        var variantIds = input.Lines.Select(x => x.ProductVariantId).ToList();
+        await _transferPolicyService.ValidateTransferAsync(
+            input.SourceWarehouseId,
+            input.DestinationWarehouseId,
+            variantIds,
+            cancellationToken);
+
         var now = DateTime.UtcNow;
         var document = await CreateDocumentAsync(
             InventoryDocumentType.Transfer,
@@ -328,14 +341,90 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
 
         var oldDto = MapToDto(document);
 
+        if (document.DocumentType == InventoryDocumentType.Transfer)
+        {
+            var variantIds = document.Lines.Select(x => x.ProductVariantId).ToList();
+            await _transferPolicyService.ValidateTransferAsync(
+                document.SourceWarehouseId!.Value,
+                document.DestinationWarehouseId!.Value,
+                variantIds,
+                cancellationToken);
+
+            var sourceWarehouse = await _warehouseRepository.GetByIdAsync(
+                document.SourceWarehouseId!.Value,
+                cancellationToken)
+                ?? throw new InvalidOperationException("Source warehouse was not found.");
+
+            document.InTransitWarehouseId = await _inTransitWarehouseService.GetOrCreateInTransitWarehouseIdAsync(
+                sourceWarehouse.BrandId,
+                cancellationToken);
+        }
+
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            await _stockLedgerService.ProcessApprovedDocumentAsync(document, ct);
+            if (document.DocumentType == InventoryDocumentType.Transfer)
+            {
+                await _stockLedgerService.ProcessTransferShipAsync(document, ct);
+            }
+            else
+            {
+                await _stockLedgerService.ProcessApprovedDocumentAsync(document, ct);
+            }
 
             var now = DateTime.UtcNow;
             document.Status = InventoryDocumentStatus.Approved;
             document.ApprovedBy = _auditContext.UserName;
             document.ApprovedAt = now;
+
+            if (document.DocumentType == InventoryDocumentType.Transfer)
+            {
+                document.TransferLifecycleStatus = TransferLifecycleStatus.Shipped;
+                document.ShippedAt = now;
+            }
+
+            await _inventoryDocumentRepository.UpdateAsync(document, ct);
+        }, cancellationToken);
+
+        var newDto = await LoadDtoAsync(document.Id, cancellationToken);
+        await _transactionAuditService.LogAsync(
+            nameof(InventoryDocument), document.Id, AuditActionType.Approve, oldDto, newDto, cancellationToken);
+
+        return newDto;
+    }
+
+    /// <summary>Nhận hàng chuyển kho — ghi nhận TransferIn tại kho đích sau khi đã ship.</summary>
+    public async Task<InventoryDocumentDto> ReceiveTransferAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        if (document.DocumentType is not InventoryDocumentType.Transfer)
+        {
+            throw new InvalidOperationException("Only transfer documents can be received.");
+        }
+
+        if (document.Status is not InventoryDocumentStatus.Approved)
+        {
+            throw new InvalidOperationException("Transfer must be approved (shipped) before receive.");
+        }
+
+        if (document.TransferLifecycleStatus is not TransferLifecycleStatus.Shipped)
+        {
+            throw new InvalidOperationException("Transfer is not in shipped state.");
+        }
+
+        var oldDto = MapToDto(document);
+
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            await _stockLedgerService.ProcessTransferReceiveAsync(document, ct);
+
+            var now = DateTime.UtcNow;
+            document.TransferLifecycleStatus = TransferLifecycleStatus.Received;
+            document.ReceivedAt = now;
+            document.Status = InventoryDocumentStatus.Completed;
 
             await _inventoryDocumentRepository.UpdateAsync(document, ct);
         }, cancellationToken);
@@ -619,6 +708,10 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreatedAt = document.CreatedAt,
         ApprovedBy = document.ApprovedBy,
         ApprovedAt = document.ApprovedAt,
+        TransferLifecycleStatus = document.TransferLifecycleStatus,
+        InTransitWarehouseId = document.InTransitWarehouseId,
+        ShippedAt = document.ShippedAt,
+        ReceivedAt = document.ReceivedAt,
         Lines = document.Lines.Select(line => new InventoryDocumentLineDto
         {
             Id = line.Id,
@@ -646,6 +739,10 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreatedBy = document.CreatedBy,
         CreatedAt = document.CreatedAt,
         ApprovedBy = document.ApprovedBy,
-        ApprovedAt = document.ApprovedAt
+        ApprovedAt = document.ApprovedAt,
+        TransferLifecycleStatus = document.TransferLifecycleStatus,
+        InTransitWarehouseId = document.InTransitWarehouseId,
+        ShippedAt = document.ShippedAt,
+        ReceivedAt = document.ReceivedAt
     };
 }

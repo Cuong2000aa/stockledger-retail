@@ -15,6 +15,12 @@ public class UpdateWarehouseDto
 
     public WarehouseStatus Status { get; set; }
 
+    public Guid? BrandId { get; set; }
+
+    public string? RegionCode { get; set; }
+
+    public int FulfillmentPriority { get; set; }
+
     [MaxLength(300)]
     public string? AddressLine { get; set; }
 

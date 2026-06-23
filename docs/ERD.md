@@ -667,3 +667,53 @@ PO received_quantity is updated when GR is approved; PO status reflects partial 
 product_variants.cost_price / selling_price / cost_source are master fields on SKU.
 
 product_cost_histories is prepared for time-bounded cost tracking; not yet wired to application services.
+
+---
+
+# Multi-Brand Extension (Migration: AddMultiBrandPhases)
+
+## brands
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| code | varchar(50) UNIQUE | |
+| name | varchar(200) | |
+| status | int | Active / Inactive |
+| created_at, updated_at | timestamptz | |
+
+## transfer_policies
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| source_brand_id | uuid FK → brands | nullable wildcard |
+| destination_brand_id | uuid FK → brands | nullable wildcard |
+| allow_cross_brand | bool | |
+| is_active | bool | |
+| note | varchar(500) | |
+
+## Column additions
+
+| Table | New columns |
+|-------|-------------|
+| products | brand_id → brands |
+| product_variants | brand_id; UNIQUE (brand_id, sku) replaces global sku unique |
+| warehouses | brand_id, region_code, fulfillment_priority; type includes IN_TRANSIT |
+| inventory_documents | in_transit_warehouse_id, transfer_lifecycle_status, shipped_at, received_at |
+
+## Relationships
+
+```text
+brands
+  ├── products (brand_id)
+  ├── warehouses (brand_id)
+  └── transfer_policies (source/destination brand)
+
+inventory_documents (TRANSFER)
+  ├── source_warehouse_id
+  ├── in_transit_warehouse_id  ← on approve (ship)
+  └── destination_warehouse_id ← on receive-transfer
+```
+
+See [MultiBrand.md](MultiBrand.md) for API and workflow details.

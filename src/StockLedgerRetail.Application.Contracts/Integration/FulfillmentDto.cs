@@ -4,6 +4,12 @@ namespace StockLedgerRetail.Integration;
 
 public class FulfillmentScopeDto
 {
+    /// <summary>Brand scope — SKU lookup và lọc kho fulfillment.</summary>
+    public Guid? BrandId { get; set; }
+
+    /// <summary>Lọc kho theo vùng (HCM, HN...).</summary>
+    public string? RegionCode { get; set; }
+
     /// <summary>Kho xuất cố định. Null = tự chọn trong phạm vi candidate / fulfillment types.</summary>
     public Guid? WarehouseId { get; set; }
 
@@ -53,6 +59,10 @@ public class WarehouseFulfillmentSummaryDto
 public class CheckMultiWarehouseAvailabilityRequestDto
 {
     public List<SalesLineRequestDto> Lines { get; set; } = new();
+
+    public Guid? BrandId { get; set; }
+
+    public string? RegionCode { get; set; }
 
     public Guid? WarehouseId { get; set; }
 

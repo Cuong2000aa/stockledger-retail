@@ -97,7 +97,11 @@ Store Q7
 | BR304     | Source warehouse must have enough stock.         | Kho nguồn phải đủ tồn kho.                         |
 | BR305     | Create TRANSFER_OUT transaction.                 | Sinh giao dịch TRANSFER_OUT.                       |
 | BR306     | Create TRANSFER_IN transaction.                  | Sinh giao dịch TRANSFER_IN.                        |
-| BR307     | One transfer must create two stock transactions. | Một lần chuyển kho phải tạo hai giao dịch tồn kho. |
+| BR307     | One transfer step creates two stock transactions. | Mỗi bước ship/receive tạo hai giao dịch. |
+| BR308     | Cross-brand transfer needs active TransferPolicy. | Chuyển khác brand cần policy AllowCrossBrand. |
+| BR309     | In-transit warehouse not allowed as transfer endpoint. | Không dùng kho in-transit làm nguồn/đích thủ công. |
+| BR310     | Approve = ship; receive-transfer = nhận tại đích. | Approve xuất hàng; receive nhận tại kho đích. |
+| BR311     | SKU brand must match warehouse brand scope. | Brand SKU phải tương thích brand kho. |
 
 ---
 
@@ -264,3 +268,16 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1204 | ProductCostHistory has EffectiveFrom/To. | Lịch sử giá có khoảng hiệu lực. |
 | BR1205 | Cost history API not implemented yet. | Chưa có API ghi lịch sử giá. |
 | BR1206 | Negative prices not allowed. | Không cho giá âm. |
+
+---
+
+# Multi-Brand (Đa thương hiệu)
+
+| Rule Code | English | Tiếng Việt |
+| --------- | ------- | ---------- |
+| BR1301 | Brand Code unique. | Mã brand duy nhất. |
+| BR1302 | SKU unique per (BrandId, Sku). | SKU unique theo brand. |
+| BR1303 | Warehouse brand must match SKU brand scope. | Brand kho phải khớp phạm vi SKU. |
+| BR1304 | Fulfillment/insights filter by brandId, regionCode. | Allocate/insights lọc brand/vùng. |
+| BR1305 | Scope headers apply when params omitted. | Header phạm vi khi không truyền param. |
+| BR1306 | Transfer suggestions same brand + region. | Gợi ý chuyển cùng brand và vùng. |

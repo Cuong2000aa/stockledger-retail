@@ -32,7 +32,7 @@ public class ProductVariantConfiguration : IEntityTypeConfiguration<ProductVaria
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.UpdatedAt).IsRequired();
 
-        builder.HasIndex(x => x.Sku).IsUnique();
+        builder.HasIndex(x => new { x.BrandId, x.Sku }).IsUnique();
         builder.HasIndex(x => x.Barcode).IsUnique();
     }
 }

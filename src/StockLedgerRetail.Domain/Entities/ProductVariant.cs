@@ -6,6 +6,8 @@ public class ProductVariant : AuditedEntity
 {
     public Guid ProductId { get; set; }
 
+    public Guid? BrandId { get; set; }
+
     public string Sku { get; set; } = string.Empty;
 
     public string? Barcode { get; set; }

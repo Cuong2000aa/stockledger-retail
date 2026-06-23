@@ -16,6 +16,8 @@ public class CreateProductDto
     [MaxLength(100)]
     public string? Brand { get; set; }
 
+    public Guid? BrandId { get; set; }
+
     [MaxLength(100)]
     public string? Category { get; set; }
 

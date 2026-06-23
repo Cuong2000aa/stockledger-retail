@@ -59,6 +59,7 @@ builder.Services.AddHostedService<StockReconciliationHostedService>();
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<BrandScopeMiddleware>();
 app.UseMiddleware<IntegrationApiKeyMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 

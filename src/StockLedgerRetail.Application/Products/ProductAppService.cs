@@ -62,6 +62,7 @@ public class ProductAppService : IProductAppService
             ProductCode = input.ProductCode.Trim(),
             Name = input.Name.Trim(),
             Brand = input.Brand?.Trim(),
+            BrandId = input.BrandId,
             Category = input.Category?.Trim(),
             Status = input.Status,
             CreatedAt = now,
@@ -87,6 +88,7 @@ public class ProductAppService : IProductAppService
 
         product.Name = input.Name.Trim();
         product.Brand = input.Brand?.Trim();
+        product.BrandId = input.BrandId;
         product.Category = input.Category?.Trim();
         product.Status = input.Status;
         product.UpdatedAt = DateTime.UtcNow;
@@ -121,6 +123,7 @@ public class ProductAppService : IProductAppService
         ProductCode = product.ProductCode,
         Name = product.Name,
         Brand = product.Brand,
+        BrandId = product.BrandId,
         Category = product.Category,
         Status = product.Status,
         CreatedAt = product.CreatedAt,

@@ -16,6 +16,23 @@
 | GoodsReceipt          | Phiếu nhận hàng (GR)    | Nhận hàng theo PO → sinh phiếu nhập   |
 | GoodsReceiptLine      | Chi tiết GR             | Số lượng nhận theo dòng PO            |
 | ProductCostHistory    | Lịch sử giá vốn         | Giá vốn theo thời gian (chưa có API) |
+| Brand                 | Thương hiệu             | Master đa brand                      |
+| TransferPolicy        | Chính sách chuyển kho   | Quy tắc chuyển khác brand             |
+
+---
+
+# Brand (Thương hiệu)
+
+* Code (duy nhất), Name, Status
+* API: `/api/brands`
+* Product / SKU / Warehouse có thể gắn `BrandId`
+
+---
+
+# TransferPolicy (Chính sách chuyển kho)
+
+* Cho phép chuyển giữa kho khác brand khi `AllowCrossBrand = true`
+* Cùng brand: không cần policy
 
 ---
 
@@ -93,6 +110,13 @@ Lưu thông tin kho.
 * Sub Warehouse (Kho con)
 * Defect (Kho hàng lỗi)
 * Return (Kho hàng trả)
+* InTransit (Kho đang luân chuyển — tự tạo theo brand)
+
+## Trường bổ sung
+
+* BrandId — brand sở hữu kho (null = dùng chung)
+* RegionCode — mã vùng (HCM, HN...)
+* FulfillmentPriority — ưu tiên allocate (số nhỏ = ưu tiên cao)
 
 ## Ví dụ
 

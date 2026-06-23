@@ -24,12 +24,16 @@ public class InventoryInsightsController : ControllerBase
     [HttpGet("dead-stock")]
     public Task<List<DeadStockInsightDto>> GetDeadStockAsync(
         [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
         [FromQuery] int daysWithoutOutbound = 60,
         [FromQuery] decimal minOnHand = 1,
         [FromQuery] int maxResults = 50,
         CancellationToken cancellationToken = default) =>
         _inventoryInsightsAppService.GetDeadStockAsync(
             warehouseId,
+            brandId,
+            regionCode,
             daysWithoutOutbound,
             minOnHand,
             maxResults,
@@ -41,11 +45,15 @@ public class InventoryInsightsController : ControllerBase
     [HttpGet("sales-velocity")]
     public Task<List<SalesVelocityInsightDto>> GetSalesVelocityAsync(
         [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
         [FromQuery] int lookbackDays = 30,
         [FromQuery] int maxResults = 100,
         CancellationToken cancellationToken = default) =>
         _inventoryInsightsAppService.GetSalesVelocityAsync(
             warehouseId,
+            brandId,
+            regionCode,
             lookbackDays,
             maxResults,
             cancellationToken);
@@ -57,6 +65,8 @@ public class InventoryInsightsController : ControllerBase
     public Task<List<TransferSuggestionDto>> GetTransferSuggestionsAsync(
         [FromQuery] Guid? sourceWarehouseId,
         [FromQuery] Guid? destinationWarehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
         [FromQuery] int lookbackDays = 30,
         [FromQuery] int targetCoverDays = 14,
         [FromQuery] int reserveCoverDays = 7,
@@ -65,6 +75,8 @@ public class InventoryInsightsController : ControllerBase
         _inventoryInsightsAppService.GetTransferSuggestionsAsync(
             sourceWarehouseId,
             destinationWarehouseId,
+            brandId,
+            regionCode,
             lookbackDays,
             targetCoverDays,
             reserveCoverDays,
