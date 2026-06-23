@@ -1,10 +1,18 @@
+using StockLedgerRetail.Enums;
+
 namespace StockLedgerRetail.Integration;
 
 public class ReserveStockRequestDto
 {
     public string SourceSystem { get; set; } = IntegrationSourceSystems.Pos;
 
-    public Guid WarehouseId { get; set; }
+    public Guid? WarehouseId { get; set; }
+
+    public List<Guid>? CandidateWarehouseIds { get; set; }
+
+    public WarehouseSelectionMode SelectionMode { get; set; } = WarehouseSelectionMode.StoreFirst;
+
+    public Guid? PreferredWarehouseId { get; set; }
 
     /// <summary>POS cart/session id while customer is still shopping.</summary>
     public string? CartSessionId { get; set; }

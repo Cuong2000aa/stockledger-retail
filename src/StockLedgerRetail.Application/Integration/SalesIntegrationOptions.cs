@@ -18,4 +18,13 @@ public class SalesIntegrationOptions
 
     /// <summary>Default reservation TTL in minutes for cart/order holds.</summary>
     public int ReservationExpiryMinutes { get; set; } = 30;
+
+    /// <summary>Warehouse types eligible for omni-channel fulfillment (Store, Dc, ...).</summary>
+    public List<string> FulfillmentWarehouseTypes { get; set; } = new()
+    {
+        "Store",
+        "Dc"
+    };
+
+    public bool PreferStoreOverDc { get; set; } = true;
 }

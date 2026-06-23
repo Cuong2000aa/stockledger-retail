@@ -1,4 +1,5 @@
 using StockLedgerRetail.Domain.Entities;
+using StockLedgerRetail.Enums;
 
 namespace StockLedgerRetail.Domain.Repositories;
 
@@ -14,6 +15,11 @@ public interface IWarehouseRepository
         int skip,
         int take,
         string? search = null,
+        CancellationToken cancellationToken = default);
+
+    Task<List<Warehouse>> GetActiveFulfillmentWarehousesAsync(
+        IReadOnlyCollection<WarehouseType> types,
+        IReadOnlyCollection<Guid>? warehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task InsertAsync(Warehouse warehouse, CancellationToken cancellationToken = default);

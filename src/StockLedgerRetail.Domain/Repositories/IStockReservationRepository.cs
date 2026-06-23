@@ -19,6 +19,11 @@ public interface IStockReservationRepository
         Guid warehouseId,
         CancellationToken cancellationToken = default);
 
+    Task<Dictionary<(Guid ProductVariantId, Guid WarehouseId), decimal>> GetActiveReservedQuantitiesAsync(
+        IReadOnlyCollection<Guid> productVariantIds,
+        IReadOnlyCollection<Guid> warehouseIds,
+        CancellationToken cancellationToken = default);
+
     Task<List<StockReservation>> GetExpiredActiveReservationsAsync(
         DateTime asOfUtc,
         CancellationToken cancellationToken = default);

@@ -35,6 +35,7 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IStockTransactionAppService, StockTransactionAppService>();
         services.AddScoped<ISalesIntegrationService, SalesIntegrationService>();
         services.AddScoped<IStockReservationService, StockReservationService>();
+        services.AddScoped<IWarehouseFulfillmentService, WarehouseFulfillmentService>();
         services.AddScoped<ISupplierAppService, SupplierAppService>();
         services.AddScoped<IPurchaseOrderAppService, PurchaseOrderAppService>();
         services.AddScoped<IGoodsReceiptAppService, GoodsReceiptAppService>();

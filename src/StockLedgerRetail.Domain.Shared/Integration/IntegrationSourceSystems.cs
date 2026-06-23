@@ -12,4 +12,10 @@ public static class IntegrationSourceSystems
     public const string Ecommerce = "ECOM";
 
     public const string Erp = "ERP";
+
+    public const string Shopee = "SHOPEE";
+
+    public const string Lazada = "LAZADA";
+
+    public const string TikTokShop = "TIKTOKSHOP";
 }

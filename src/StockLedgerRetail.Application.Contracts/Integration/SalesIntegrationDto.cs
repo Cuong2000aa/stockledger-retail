@@ -1,3 +1,5 @@
+using StockLedgerRetail.Enums;
+
 namespace StockLedgerRetail.Integration;
 
 public class SalesLineRequestDto
@@ -49,7 +51,13 @@ public class ConfirmSaleRequestDto
     /// <summary>Optional cart session to commit when sale is confirmed.</summary>
     public string? CartSessionId { get; set; }
 
-    public Guid WarehouseId { get; set; }
+    public Guid? WarehouseId { get; set; }
+
+    public List<Guid>? CandidateWarehouseIds { get; set; }
+
+    public WarehouseSelectionMode SelectionMode { get; set; } = WarehouseSelectionMode.StoreFirst;
+
+    public Guid? PreferredWarehouseId { get; set; }
 
     public DateTime? SaleDate { get; set; }
 
@@ -69,6 +77,8 @@ public class ConfirmSaleResponseDto
     public string SourceSystem { get; set; } = string.Empty;
 
     public string OrderReference { get; set; } = string.Empty;
+
+    public Guid SelectedWarehouseId { get; set; }
 }
 
 public class ConfirmReturnRequestDto
