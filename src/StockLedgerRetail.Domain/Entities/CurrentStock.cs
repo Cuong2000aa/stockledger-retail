@@ -18,6 +18,8 @@ public class CurrentStock
 
     public DateTime LastUpdatedAt { get; set; }
 
+    public uint RowVersion { get; set; }
+
     public ProductVariant ProductVariant { get; set; } = null!;
 
     public Warehouse Warehouse { get; set; } = null!;

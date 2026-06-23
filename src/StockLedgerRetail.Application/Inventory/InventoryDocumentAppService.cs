@@ -20,6 +20,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     private readonly IStockLedgerService _stockLedgerService;
     private readonly ITransactionAuditService _transactionAuditService;
     private readonly IAuditContext _auditContext;
+    private readonly IUnitOfWork _unitOfWork;
 
     public InventoryDocumentAppService(
         IInventoryDocumentRepository inventoryDocumentRepository,
@@ -27,7 +28,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         IWarehouseRepository warehouseRepository,
         IStockLedgerService stockLedgerService,
         ITransactionAuditService transactionAuditService,
-        IAuditContext auditContext)
+        IAuditContext auditContext,
+        IUnitOfWork unitOfWork)
     {
         _inventoryDocumentRepository = inventoryDocumentRepository;
         _productVariantRepository = productVariantRepository;
@@ -35,6 +37,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         _stockLedgerService = stockLedgerService;
         _transactionAuditService = transactionAuditService;
         _auditContext = auditContext;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>Lấy chi tiết phiếu kèm danh sách dòng hàng.</summary>
@@ -325,15 +328,17 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
 
         var oldDto = MapToDto(document);
 
-        await _stockLedgerService.ProcessApprovedDocumentAsync(document, cancellationToken);
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            await _stockLedgerService.ProcessApprovedDocumentAsync(document, ct);
 
-        var now = DateTime.UtcNow;
-        document.Status = InventoryDocumentStatus.Approved;
-        document.ApprovedBy = _auditContext.UserName;
-        document.ApprovedAt = now;
+            var now = DateTime.UtcNow;
+            document.Status = InventoryDocumentStatus.Approved;
+            document.ApprovedBy = _auditContext.UserName;
+            document.ApprovedAt = now;
 
-        await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
-        await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
+            await _inventoryDocumentRepository.UpdateAsync(document, ct);
+        }, cancellationToken);
 
         var newDto = await LoadDtoAsync(document.Id, cancellationToken);
         await _transactionAuditService.LogAsync(

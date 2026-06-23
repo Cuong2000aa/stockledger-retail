@@ -22,6 +22,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
     private readonly IInventoryDocumentAppService _inventoryDocumentAppService;
     private readonly ITransactionAuditService _transactionAuditService;
     private readonly IAuditContext _auditContext;
+    private readonly IUnitOfWork _unitOfWork;
 
     public GoodsReceiptAppService(
         IGoodsReceiptRepository goodsReceiptRepository,
@@ -29,7 +30,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         IInventoryDocumentRepository inventoryDocumentRepository,
         IInventoryDocumentAppService inventoryDocumentAppService,
         ITransactionAuditService transactionAuditService,
-        IAuditContext auditContext)
+        IAuditContext auditContext,
+        IUnitOfWork unitOfWork)
     {
         _goodsReceiptRepository = goodsReceiptRepository;
         _purchaseOrderRepository = purchaseOrderRepository;
@@ -37,6 +39,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         _inventoryDocumentAppService = inventoryDocumentAppService;
         _transactionAuditService = transactionAuditService;
         _auditContext = auditContext;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<PagedResultDto<GoodsReceiptDto>> GetListAsync(
@@ -144,61 +147,63 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         var oldDto = MapToDto(gr);
         var referenceNo = gr.GrNo;
 
-        var existingDoc = await _inventoryDocumentRepository.GetBySourceReferenceAsync(
-            ProcurementSourceSystem,
-            referenceNo,
-            InventoryDocumentType.StockIn,
-            cancellationToken);
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            var existingDoc = await _inventoryDocumentRepository.GetBySourceReferenceAsync(
+                ProcurementSourceSystem,
+                referenceNo,
+                InventoryDocumentType.StockIn,
+                ct);
 
-        InventoryDocumentDto stockInDoc;
-        if (existingDoc is not null)
-        {
-            stockInDoc = await _inventoryDocumentAppService.GetAsync(existingDoc.Id, cancellationToken);
-            if (existingDoc.Status is InventoryDocumentStatus.Draft)
+            InventoryDocumentDto stockInDoc;
+            if (existingDoc is not null)
             {
-                stockInDoc = await _inventoryDocumentAppService.ApproveAsync(existingDoc.Id, cancellationToken);
-            }
-        }
-        else
-        {
-            var created = await _inventoryDocumentAppService.CreateStockInAsync(new CreateStockInDto
-            {
-                DestinationWarehouseId = gr.WarehouseId,
-                DocumentDate = gr.ReceiptDate,
-                ReferenceNo = referenceNo,
-                SourceSystem = ProcurementSourceSystem,
-                Note = BuildStockInNote(gr),
-                Lines = gr.Lines.Select(l => new CreateInventoryDocumentLineDto
+                stockInDoc = await _inventoryDocumentAppService.GetAsync(existingDoc.Id, ct);
+                if (existingDoc.Status is InventoryDocumentStatus.Draft)
                 {
-                    ProductVariantId = l.ProductVariantId,
-                    Quantity = l.ReceivedQuantity,
-                    UnitCost = l.UnitCost,
-                    Note = l.Note
-                }).ToList()
-            }, cancellationToken);
+                    stockInDoc = await _inventoryDocumentAppService.ApproveAsync(existingDoc.Id, ct);
+                }
+            }
+            else
+            {
+                var created = await _inventoryDocumentAppService.CreateStockInAsync(new CreateStockInDto
+                {
+                    DestinationWarehouseId = gr.WarehouseId,
+                    DocumentDate = gr.ReceiptDate,
+                    ReferenceNo = referenceNo,
+                    SourceSystem = ProcurementSourceSystem,
+                    Note = BuildStockInNote(gr),
+                    Lines = gr.Lines.Select(l => new CreateInventoryDocumentLineDto
+                    {
+                        ProductVariantId = l.ProductVariantId,
+                        Quantity = l.ReceivedQuantity,
+                        UnitCost = l.UnitCost,
+                        Note = l.Note
+                    }).ToList()
+                }, ct);
 
-            stockInDoc = await _inventoryDocumentAppService.ApproveAsync(created.Id, cancellationToken);
-        }
+                stockInDoc = await _inventoryDocumentAppService.ApproveAsync(created.Id, ct);
+            }
 
-        foreach (var grLine in gr.Lines)
-        {
-            var poLine = po.Lines.First(l => l.Id == grLine.PurchaseOrderLineId);
-            poLine.ReceivedQuantity += grLine.ReceivedQuantity;
-        }
+            foreach (var grLine in gr.Lines)
+            {
+                var poLine = po.Lines.First(l => l.Id == grLine.PurchaseOrderLineId);
+                poLine.ReceivedQuantity += grLine.ReceivedQuantity;
+            }
 
-        po.Status = po.Lines.All(l => l.ReceivedQuantity >= l.OrderedQuantity)
-            ? PurchaseOrderStatus.Received
-            : PurchaseOrderStatus.PartiallyReceived;
+            po.Status = po.Lines.All(l => l.ReceivedQuantity >= l.OrderedQuantity)
+                ? PurchaseOrderStatus.Received
+                : PurchaseOrderStatus.PartiallyReceived;
 
-        var now = DateTime.UtcNow;
-        gr.Status = GoodsReceiptStatus.Approved;
-        gr.InventoryDocumentId = stockInDoc.Id;
-        gr.ApprovedBy = _auditContext.UserName;
-        gr.ApprovedAt = now;
+            var now = DateTime.UtcNow;
+            gr.Status = GoodsReceiptStatus.Approved;
+            gr.InventoryDocumentId = stockInDoc.Id;
+            gr.ApprovedBy = _auditContext.UserName;
+            gr.ApprovedAt = now;
 
-        await _purchaseOrderRepository.UpdateAsync(po, cancellationToken);
-        await _goodsReceiptRepository.UpdateAsync(gr, cancellationToken);
-        await _goodsReceiptRepository.SaveChangesAsync(cancellationToken);
+            await _purchaseOrderRepository.UpdateAsync(po, ct);
+            await _goodsReceiptRepository.UpdateAsync(gr, ct);
+        }, cancellationToken);
 
         var newDto = await GetAsync(gr.Id, cancellationToken);
         await _transactionAuditService.LogAsync(nameof(GoodsReceipt), gr.Id, AuditActionType.Approve, oldDto, newDto, cancellationToken);

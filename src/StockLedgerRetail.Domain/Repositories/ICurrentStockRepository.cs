@@ -1,4 +1,5 @@
 using StockLedgerRetail.Domain.Entities;
+using StockLedgerRetail.Domain.Inventory;
 
 namespace StockLedgerRetail.Domain.Repositories;
 
@@ -9,6 +10,26 @@ public interface ICurrentStockRepository
     Task<CurrentStock?> GetByVariantAndWarehouseAsync(
         Guid productVariantId,
         Guid warehouseId,
+        CancellationToken cancellationToken = default);
+
+    Task LockVariantWarehouseAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default);
+
+    Task<StockOnHandChangeResult> ApplyOnHandDeltaAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        decimal quantityDelta,
+        DateTime updatedAt,
+        Guid lastTransactionId,
+        CancellationToken cancellationToken = default);
+
+    Task SyncReservedQuantityAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        decimal reservedQuantity,
+        DateTime updatedAt,
         CancellationToken cancellationToken = default);
 
     Task<List<CurrentStock>> GetListAsync(

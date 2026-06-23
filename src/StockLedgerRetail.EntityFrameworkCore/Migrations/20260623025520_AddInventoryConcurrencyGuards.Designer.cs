@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using StockLedgerRetail.EntityFrameworkCore;
@@ -11,9 +12,11 @@ using StockLedgerRetail.EntityFrameworkCore;
 namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(StockLedgerRetailDbContext))]
-    partial class StockLedgerRetailDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260623025520_AddInventoryConcurrencyGuards")]
+    partial class AddInventoryConcurrencyGuards
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,12 +51,6 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<decimal>("QuantityReserved")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
@@ -213,12 +210,6 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<string>("ReferenceNo")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
 
                     b.Property<string>("SourceSystem")
                         .HasMaxLength(50)
@@ -653,10 +644,6 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<int>("TransactionType")
                         .HasColumnType("integer");
-
-                    b.Property<decimal?>("UnitCost")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");

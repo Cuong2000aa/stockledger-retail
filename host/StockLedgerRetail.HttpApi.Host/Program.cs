@@ -1,7 +1,9 @@
 using Serilog;
 using StockLedgerRetail;
 using StockLedgerRetail.EntityFrameworkCore;
+using StockLedgerRetail.HttpApi.Host.HostedServices;
 using StockLedgerRetail.HttpApi.Host.Middleware;
+using StockLedgerRetail.Inventory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +52,9 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 
 builder.Services.AddStockLedgerRetailEntityFrameworkCore(connectionString);
 builder.Services.AddStockLedgerRetailApplication(builder.Configuration);
+builder.Services.Configure<StockReconciliationOptions>(
+    builder.Configuration.GetSection(StockReconciliationOptions.SectionName));
+builder.Services.AddHostedService<StockReconciliationHostedService>();
 
 var app = builder.Build();
 

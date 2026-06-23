@@ -47,6 +47,7 @@ public class StockTransactionAppService : IStockTransactionAppService
         QuantityDelta = transaction.QuantityDelta,
         BeforeQuantity = transaction.BeforeQuantity,
         AfterQuantity = transaction.AfterQuantity,
+        UnitCost = transaction.UnitCost,
         TransactionDate = transaction.TransactionDate,
         CreatedBy = transaction.CreatedBy,
         CreatedAt = transaction.CreatedAt

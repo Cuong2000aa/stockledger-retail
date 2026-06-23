@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using StockLedgerRetail.Domain.Entities;
+using StockLedgerRetail.Domain.Inventory;
 using StockLedgerRetail.Domain.Repositories;
 
 namespace StockLedgerRetail.EntityFrameworkCore.Repositories;
@@ -26,6 +27,138 @@ public class CurrentStockRepository : ICurrentStockRepository
         _dbContext.CurrentStocks.FirstOrDefaultAsync(
             x => x.ProductVariantId == productVariantId && x.WarehouseId == warehouseId,
             cancellationToken);
+
+    public async Task LockVariantWarehouseAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+             SELECT "Id"
+             FROM current_stocks
+             WHERE "ProductVariantId" = {productVariantId}
+               AND "WarehouseId" = {warehouseId}
+             FOR UPDATE
+             """,
+            cancellationToken);
+    }
+
+    public async Task<StockOnHandChangeResult> ApplyOnHandDeltaAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        decimal quantityDelta,
+        DateTime updatedAt,
+        Guid lastTransactionId,
+        CancellationToken cancellationToken = default)
+    {
+        await LockVariantWarehouseAsync(productVariantId, warehouseId, cancellationToken);
+
+        var stock = await _dbContext.CurrentStocks
+            .FirstOrDefaultAsync(
+                x => x.ProductVariantId == productVariantId && x.WarehouseId == warehouseId,
+                cancellationToken);
+
+        if (stock is null)
+        {
+            if (quantityDelta < 0)
+            {
+                throw new InvalidOperationException(
+                    $"Insufficient available stock for variant '{productVariantId}'. Available: 0, requested: {Math.Abs(quantityDelta)}.");
+            }
+
+            stock = new CurrentStock
+            {
+                Id = Guid.NewGuid(),
+                ProductVariantId = productVariantId,
+                WarehouseId = warehouseId,
+                QuantityOnHand = quantityDelta,
+                QuantityReserved = 0,
+                QuantityAvailable = quantityDelta,
+                LastTransactionId = lastTransactionId,
+                LastUpdatedAt = updatedAt
+            };
+
+            await _dbContext.CurrentStocks.AddAsync(stock, cancellationToken);
+
+            return new StockOnHandChangeResult(
+                stock.Id,
+                0,
+                quantityDelta,
+                0,
+                quantityDelta);
+        }
+
+        var beforeOnHand = stock.QuantityOnHand;
+
+        if (quantityDelta < 0)
+        {
+            var decreaseQuantity = Math.Abs(quantityDelta);
+            if (stock.QuantityAvailable < decreaseQuantity)
+            {
+                throw new InvalidOperationException(
+                    $"Insufficient available stock for variant '{productVariantId}'. Available: {stock.QuantityAvailable}, requested: {decreaseQuantity}.");
+            }
+        }
+
+        var afterOnHand = beforeOnHand + quantityDelta;
+        if (afterOnHand < 0)
+        {
+            throw new InvalidOperationException("Inventory quantity cannot become negative.");
+        }
+
+        stock.QuantityOnHand = afterOnHand;
+        stock.QuantityAvailable = afterOnHand - stock.QuantityReserved;
+        stock.LastTransactionId = lastTransactionId;
+        stock.LastUpdatedAt = updatedAt;
+
+        _dbContext.CurrentStocks.Update(stock);
+
+        return new StockOnHandChangeResult(
+            stock.Id,
+            beforeOnHand,
+            afterOnHand,
+            stock.QuantityReserved,
+            stock.QuantityAvailable);
+    }
+
+    public async Task SyncReservedQuantityAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        decimal reservedQuantity,
+        DateTime updatedAt,
+        CancellationToken cancellationToken = default)
+    {
+        await LockVariantWarehouseAsync(productVariantId, warehouseId, cancellationToken);
+
+        var stock = await _dbContext.CurrentStocks
+            .FirstOrDefaultAsync(
+                x => x.ProductVariantId == productVariantId && x.WarehouseId == warehouseId,
+                cancellationToken);
+
+        if (stock is null)
+        {
+            if (reservedQuantity > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot reserve stock for variant '{productVariantId}' because no on-hand balance exists.");
+            }
+
+            return;
+        }
+
+        if (reservedQuantity > stock.QuantityOnHand)
+        {
+            throw new InvalidOperationException(
+                $"Reserved quantity cannot exceed on-hand stock for variant '{productVariantId}'.");
+        }
+
+        stock.QuantityReserved = reservedQuantity;
+        stock.QuantityAvailable = stock.QuantityOnHand - reservedQuantity;
+        stock.LastUpdatedAt = updatedAt;
+
+        _dbContext.CurrentStocks.Update(stock);
+    }
 
     public Task<List<CurrentStock>> GetListAsync(
         Guid? warehouseId = null,

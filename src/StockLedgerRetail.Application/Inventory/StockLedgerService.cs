@@ -2,6 +2,7 @@ using StockLedgerRetail.Audit;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
+using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Inventory;
 
@@ -15,6 +16,8 @@ public class StockLedgerService : IStockLedgerService
     private readonly IStockTransactionRepository _stockTransactionRepository;
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IWarehouseRepository _warehouseRepository;
+    private readonly IDocumentNumberGenerator _documentNumberGenerator;
+    private readonly IInventoryValuationService _inventoryValuationService;
     private readonly IAuditContext _auditContext;
 
     public StockLedgerService(
@@ -22,12 +25,16 @@ public class StockLedgerService : IStockLedgerService
         IStockTransactionRepository stockTransactionRepository,
         IProductVariantRepository productVariantRepository,
         IWarehouseRepository warehouseRepository,
+        IDocumentNumberGenerator documentNumberGenerator,
+        IInventoryValuationService inventoryValuationService,
         IAuditContext auditContext)
     {
         _currentStockRepository = currentStockRepository;
         _stockTransactionRepository = stockTransactionRepository;
         _productVariantRepository = productVariantRepository;
         _warehouseRepository = warehouseRepository;
+        _documentNumberGenerator = documentNumberGenerator;
+        _inventoryValuationService = inventoryValuationService;
         _auditContext = auditContext;
     }
 
@@ -62,7 +69,6 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
-    /// <summary>Xử lý nhập kho — tăng tồn tại kho đích cho từng dòng.</summary>
     private async Task ProcessStockInAsync(InventoryDocument document, CancellationToken cancellationToken)
     {
         if (document.DestinationWarehouseId is null)
@@ -91,7 +97,6 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
-    /// <summary>Xử lý xuất kho — kiểm tra đủ tồn rồi giảm tại kho nguồn.</summary>
     private async Task ProcessStockOutAsync(InventoryDocument document, CancellationToken cancellationToken)
     {
         if (document.SourceWarehouseId is null)
@@ -110,18 +115,6 @@ public class StockLedgerService : IStockLedgerService
                 throw new InvalidOperationException("Line quantity must be greater than zero.");
             }
 
-            var currentStock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
-                line.ProductVariantId,
-                document.SourceWarehouseId.Value,
-                cancellationToken);
-
-            var available = currentStock?.QuantityAvailable ?? 0;
-            if (available < line.Quantity)
-            {
-                throw new InvalidOperationException(
-                    $"Insufficient available stock for variant '{line.ProductVariantId}'. Available: {available}, requested: {line.Quantity}.");
-            }
-
             await ApplyStockChangeAsync(
                 document,
                 line,
@@ -132,7 +125,6 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
-    /// <summary>Xử lý điều chỉnh tồn — dương sinh ADJUSTMENT_IN, âm sinh ADJUSTMENT_OUT.</summary>
     private async Task ProcessAdjustmentAsync(InventoryDocument document, CancellationToken cancellationToken)
     {
         if (document.DestinationWarehouseId is null)
@@ -152,43 +144,20 @@ public class StockLedgerService : IStockLedgerService
                 throw new InvalidOperationException("Adjustment quantity cannot be zero.");
             }
 
-            if (line.Quantity > 0)
-            {
-                await ApplyStockChangeAsync(
-                    document,
-                    line,
-                    warehouseId,
-                    StockTransactionType.AdjustmentIn,
-                    line.Quantity,
-                    cancellationToken);
-            }
-            else
-            {
-                var decreaseQuantity = Math.Abs(line.Quantity);
-                var currentStock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
-                    line.ProductVariantId,
-                    warehouseId,
-                    cancellationToken);
+            var transactionType = line.Quantity > 0
+                ? StockTransactionType.AdjustmentIn
+                : StockTransactionType.AdjustmentOut;
 
-                var available = currentStock?.QuantityAvailable ?? 0;
-                if (available < decreaseQuantity)
-                {
-                    throw new InvalidOperationException(
-                        $"Insufficient available stock for variant '{line.ProductVariantId}'. Available: {available}, requested decrease: {decreaseQuantity}.");
-                }
-
-                await ApplyStockChangeAsync(
-                    document,
-                    line,
-                    warehouseId,
-                    StockTransactionType.AdjustmentOut,
-                    line.Quantity,
-                    cancellationToken);
-            }
+            await ApplyStockChangeAsync(
+                document,
+                line,
+                warehouseId,
+                transactionType,
+                line.Quantity,
+                cancellationToken);
         }
     }
 
-    /// <summary>Xử lý chuyển kho — TRANSFER_OUT tại nguồn, TRANSFER_IN tại đích cho từng dòng.</summary>
     private async Task ProcessTransferAsync(InventoryDocument document, CancellationToken cancellationToken)
     {
         if (document.SourceWarehouseId is null || document.DestinationWarehouseId is null)
@@ -216,18 +185,6 @@ public class StockLedgerService : IStockLedgerService
                 throw new InvalidOperationException("Line quantity must be greater than zero.");
             }
 
-            var currentStock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
-                line.ProductVariantId,
-                sourceWarehouseId,
-                cancellationToken);
-
-            var available = currentStock?.QuantityAvailable ?? 0;
-            if (available < line.Quantity)
-            {
-                throw new InvalidOperationException(
-                    $"Insufficient available stock for variant '{line.ProductVariantId}'. Available: {available}, requested: {line.Quantity}.");
-            }
-
             await ApplyStockChangeAsync(
                 document,
                 line,
@@ -246,7 +203,6 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
-    /// <summary>Xử lý kiểm kê — so sánh số kiểm với tồn hệ thống, sinh COUNT_ADJUSTMENT nếu có chênh lệch.</summary>
     private async Task ProcessStockCountAsync(InventoryDocument document, CancellationToken cancellationToken)
     {
         if (document.DestinationWarehouseId is null)
@@ -266,6 +222,11 @@ public class StockLedgerService : IStockLedgerService
                 throw new InvalidOperationException("Counted quantity cannot be negative.");
             }
 
+            await _currentStockRepository.LockVariantWarehouseAsync(
+                line.ProductVariantId,
+                warehouseId,
+                cancellationToken);
+
             var currentStock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
                 line.ProductVariantId,
                 warehouseId,
@@ -279,40 +240,20 @@ public class StockLedgerService : IStockLedgerService
                 continue;
             }
 
-            if (variance > 0)
-            {
-                await ApplyStockChangeAsync(
-                    document,
-                    line,
-                    warehouseId,
-                    StockTransactionType.CountAdjustmentIn,
-                    variance,
-                    cancellationToken);
-            }
-            else
-            {
-                var decreaseQuantity = Math.Abs(variance);
-                var available = currentStock?.QuantityAvailable ?? 0;
-                if (available < decreaseQuantity)
-                {
-                    throw new InvalidOperationException(
-                        $"Insufficient available stock for variant '{line.ProductVariantId}'. Available: {available}, count decrease: {decreaseQuantity}.");
-                }
+            var transactionType = variance > 0
+                ? StockTransactionType.CountAdjustmentIn
+                : StockTransactionType.CountAdjustmentOut;
 
-                await ApplyStockChangeAsync(
-                    document,
-                    line,
-                    warehouseId,
-                    StockTransactionType.CountAdjustmentOut,
-                    variance,
-                    cancellationToken);
-            }
+            await ApplyStockChangeAsync(
+                document,
+                line,
+                warehouseId,
+                transactionType,
+                variance,
+                cancellationToken);
         }
     }
 
-    /// <summary>
-    /// Áp dụng thay đổi tồn: ghi StockTransaction (before/after) rồi cập nhật hoặc tạo CurrentStock.
-    /// </summary>
     private async Task ApplyStockChangeAsync(
         InventoryDocument document,
         InventoryDocumentLine line,
@@ -322,23 +263,33 @@ public class StockLedgerService : IStockLedgerService
         CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
-        var currentStock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
+        var transactionId = Guid.NewGuid();
+
+        var change = await _currentStockRepository.ApplyOnHandDeltaAsync(
             line.ProductVariantId,
             warehouseId,
+            quantityDelta,
+            now,
+            transactionId,
             cancellationToken);
 
-        var beforeQuantity = currentStock?.QuantityOnHand ?? 0;
-        var afterQuantity = beforeQuantity + quantityDelta;
+        var unitCost = await ResolveTransactionUnitCostAsync(
+            document,
+            line,
+            transactionType,
+            quantityDelta,
+            change.BeforeOnHand,
+            cancellationToken);
 
-        if (afterQuantity < 0)
-        {
-            throw new InvalidOperationException("Inventory quantity cannot become negative.");
-        }
+        var transactionNo = await _documentNumberGenerator.NextAsync(
+            $"ST-{now:yyyyMMdd}-",
+            _stockTransactionRepository.CountByDatePrefixAsync,
+            6,
+            cancellationToken);
 
-        var transactionNo = await GenerateTransactionNoAsync(now, cancellationToken);
         var transaction = new StockTransaction
         {
-            Id = Guid.NewGuid(),
+            Id = transactionId,
             TransactionNo = transactionNo,
             DocumentId = document.Id,
             DocumentLineId = line.Id,
@@ -346,49 +297,65 @@ public class StockLedgerService : IStockLedgerService
             WarehouseId = warehouseId,
             TransactionType = transactionType,
             QuantityDelta = quantityDelta,
-            BeforeQuantity = beforeQuantity,
-            AfterQuantity = afterQuantity,
+            BeforeQuantity = change.BeforeOnHand,
+            AfterQuantity = change.AfterOnHand,
+            UnitCost = unitCost,
             TransactionDate = document.DocumentDate,
             CreatedBy = _auditContext.UserName,
             CreatedAt = now
         };
 
         await _stockTransactionRepository.InsertAsync(transaction, cancellationToken);
-
-        if (currentStock is null)
-        {
-            currentStock = new CurrentStock
-            {
-                Id = Guid.NewGuid(),
-                ProductVariantId = line.ProductVariantId,
-                WarehouseId = warehouseId,
-                QuantityOnHand = afterQuantity,
-                QuantityReserved = 0,
-                QuantityAvailable = afterQuantity,
-                LastTransactionId = transaction.Id,
-                LastUpdatedAt = now
-            };
-            await _currentStockRepository.InsertAsync(currentStock, cancellationToken);
-        }
-        else
-        {
-            currentStock.QuantityOnHand = afterQuantity;
-            currentStock.QuantityAvailable = afterQuantity - currentStock.QuantityReserved;
-            currentStock.LastTransactionId = transaction.Id;
-            currentStock.LastUpdatedAt = now;
-            await _currentStockRepository.UpdateAsync(currentStock, cancellationToken);
-        }
     }
 
-    /// <summary>Sinh mã giao dịch sổ cái, ví dụ ST-20250622-000001.</summary>
-    private async Task<string> GenerateTransactionNoAsync(DateTime now, CancellationToken cancellationToken)
+    private async Task<decimal?> ResolveTransactionUnitCostAsync(
+        InventoryDocument document,
+        InventoryDocumentLine line,
+        StockTransactionType transactionType,
+        decimal quantityDelta,
+        decimal onHandBeforeChange,
+        CancellationToken cancellationToken)
     {
-        var prefix = $"ST-{now:yyyyMMdd}-";
-        var count = await _stockTransactionRepository.CountByDatePrefixAsync(prefix, cancellationToken);
-        return $"{prefix}{(count + 1).ToString().PadLeft(6, '0')}";
+        if (transactionType is StockTransactionType.TransferIn or StockTransactionType.TransferOut)
+        {
+            return null;
+        }
+
+        if (quantityDelta > 0)
+        {
+            if (line.UnitCost is decimal receiptUnitCost)
+            {
+                var updatedCost = await _inventoryValuationService.ApplyReceiptCostAsync(
+                    line.ProductVariantId,
+                    quantityDelta,
+                    receiptUnitCost,
+                    ResolveCostSource(document),
+                    onHandBeforeChange,
+                    document.DocumentDate,
+                    cancellationToken);
+
+                return updatedCost ?? receiptUnitCost;
+            }
+
+            return await _inventoryValuationService.ResolveIssueUnitCostAsync(
+                line.ProductVariantId,
+                cancellationToken);
+        }
+
+        return await _inventoryValuationService.ResolveIssueUnitCostAsync(
+            line.ProductVariantId,
+            cancellationToken);
     }
 
-    /// <summary>Kiểm tra kho tồn tại trước khi ghi sổ.</summary>
+    private static CostSource ResolveCostSource(InventoryDocument document) =>
+        document.SourceSystem?.ToUpperInvariant() switch
+        {
+            "PROCUREMENT" => CostSource.PurchaseSystem,
+            "POS" or "OMS" or "ECOM" => CostSource.Pos,
+            "ERP" => CostSource.Erp,
+            _ => CostSource.Manual
+        };
+
     private async Task EnsureWarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken);
@@ -398,7 +365,6 @@ public class StockLedgerService : IStockLedgerService
         }
     }
 
-    /// <summary>Kiểm tra SKU tồn tại trước khi ghi sổ.</summary>
     private async Task EnsureProductVariantExistsAsync(Guid productVariantId, CancellationToken cancellationToken)
     {
         var variant = await _productVariantRepository.GetByIdAsync(productVariantId, cancellationToken);

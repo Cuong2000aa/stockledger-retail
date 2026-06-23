@@ -11,6 +11,7 @@ using StockLedgerRetail.Application.GoodsReceipts;
 using StockLedgerRetail.Application.Analytics;
 using StockLedgerRetail.Application.Insights;
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Inventory;
 using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail;
@@ -27,6 +28,8 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IProductVariantAppService, ProductVariantAppService>();
         services.AddScoped<IWarehouseAppService, WarehouseAppService>();
         services.AddScoped<IStockLedgerService, StockLedgerService>();
+        services.AddScoped<IInventoryValuationService, InventoryValuationService>();
+        services.AddScoped<IStockReconciliationService, StockReconciliationService>();
         services.AddScoped<IInventoryDocumentAppService, InventoryDocumentAppService>();
         services.AddScoped<ICurrentStockAppService, CurrentStockAppService>();
         services.AddScoped<IStockTransactionAppService, StockTransactionAppService>();
@@ -42,6 +45,8 @@ public static class StockLedgerRetailApplicationModule
         {
             services.Configure<SalesIntegrationOptions>(
                 configuration.GetSection(SalesIntegrationOptions.SectionName));
+            services.Configure<StockReconciliationOptions>(
+                configuration.GetSection(StockReconciliationOptions.SectionName));
         }
 
         return services;

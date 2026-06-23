@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using StockLedgerRetail.Domain.Entities;
+using StockLedgerRetail.Domain.Inventory;
 using StockLedgerRetail.Domain.Repositories;
 
 namespace StockLedgerRetail.EntityFrameworkCore.Repositories;
@@ -98,6 +99,18 @@ public class StockTransactionRepository : IStockTransactionRepository
         CancellationToken cancellationToken = default) =>
         _dbContext.StockTransactions
             .Where(x => x.TransactionDate >= fromDate && x.TransactionDate <= toDate)
+            .ToListAsync(cancellationToken);
+
+    public async Task<List<StockLedgerAggregate>> GetAggregatedQuantitiesAsync(
+        CancellationToken cancellationToken = default) =>
+        await _dbContext.StockTransactions
+            .GroupBy(x => new { x.ProductVariantId, x.WarehouseId })
+            .Select(g => new StockLedgerAggregate
+            {
+                ProductVariantId = g.Key.ProductVariantId,
+                WarehouseId = g.Key.WarehouseId,
+                LedgerQuantity = g.Sum(x => x.QuantityDelta)
+            })
             .ToListAsync(cancellationToken);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
