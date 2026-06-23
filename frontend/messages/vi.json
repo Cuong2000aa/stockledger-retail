@@ -250,7 +250,31 @@
   "insights": {
     "title": "Insights",
     "subtitle": "Tín hiệu tồn kho rule-based, sẵn sàng để nối AI copilot sau này",
+    "aiReady": "Sẵn sàng AI copilot",
+    "stats": {
+      "deadSkus": "SKU tồn chết",
+      "tiedCapital": "Vốn bị chiếm",
+      "lowCover": "Cảnh báo cover thấp",
+      "transfers": "Gợi ý chuyển kho"
+    },
+    "tabs": {
+      "deadStock": "Tồn chết",
+      "velocity": "Tốc độ bán",
+      "transfer": "Chuyển kho"
+    },
+    "charts": {
+      "deadStockValue": "Top SKU theo giá trị vốn",
+      "lowCover": "Cover tồn thấp nhất",
+      "transferQty": "SL chuyển kho lớn nhất"
+    },
+    "severity": {
+      "label": "Mức độ",
+      "critical": "Khẩn",
+      "warning": "Cảnh báo",
+      "info": "Bình thường"
+    },
     "filters": {
+      "title": "Bộ lọc",
       "warehouse": "Kho",
       "allWarehouses": "Tất cả kho",
       "deadStockDays": "Số ngày tồn chết",

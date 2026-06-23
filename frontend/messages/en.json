@@ -250,7 +250,31 @@
   "insights": {
     "title": "Insights",
     "subtitle": "Rule-based inventory signals that can later feed an AI copilot",
+    "aiReady": "AI copilot ready",
+    "stats": {
+      "deadSkus": "Dead stock SKUs",
+      "tiedCapital": "Capital tied up",
+      "lowCover": "Low cover alerts",
+      "transfers": "Transfer suggestions"
+    },
+    "tabs": {
+      "deadStock": "Dead stock",
+      "velocity": "Sales velocity",
+      "transfer": "Transfers"
+    },
+    "charts": {
+      "deadStockValue": "Top SKUs by tied capital",
+      "lowCover": "Lowest stock cover",
+      "transferQty": "Largest transfer quantities"
+    },
+    "severity": {
+      "label": "Priority",
+      "critical": "Critical",
+      "warning": "Warning",
+      "info": "Normal"
+    },
     "filters": {
+      "title": "Filters",
       "warehouse": "Warehouse",
       "allWarehouses": "All warehouses",
       "deadStockDays": "Dead stock days",
