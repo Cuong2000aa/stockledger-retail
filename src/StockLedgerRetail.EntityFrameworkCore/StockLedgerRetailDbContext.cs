@@ -16,6 +16,20 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<TransferPolicy> TransferPolicies => Set<TransferPolicy>();
 
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
+
+    public DbSet<Permission> Permissions => Set<Permission>();
+
+    public DbSet<PermissionGroup> PermissionGroups => Set<PermissionGroup>();
+
+    public DbSet<GroupPermission> GroupPermissions => Set<GroupPermission>();
+
+    public DbSet<UserGroupAssignment> UserGroupAssignments => Set<UserGroupAssignment>();
+
+    public DbSet<Team> Teams => Set<Team>();
+
+    public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
+
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
 
     public DbSet<ProductCostHistory> ProductCostHistories => Set<ProductCostHistory>();

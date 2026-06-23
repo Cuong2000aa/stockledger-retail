@@ -9,11 +9,11 @@ import {
 import clsx from "clsx";
 
 const statusStyles: Record<InventoryDocumentStatus, string> = {
-  [InventoryDocumentStatus.Draft]: "bg-slate-100 text-slate-700",
-  [InventoryDocumentStatus.Pending]: "bg-amber-100 text-amber-800",
-  [InventoryDocumentStatus.Approved]: "bg-green-100 text-green-800",
-  [InventoryDocumentStatus.Completed]: "bg-blue-100 text-blue-800",
-  [InventoryDocumentStatus.Cancelled]: "bg-red-100 text-red-800",
+  [InventoryDocumentStatus.Draft]: "bg-slate-50 text-slate-700 ring-slate-200",
+  [InventoryDocumentStatus.Pending]: "bg-amber-50 text-amber-800 ring-amber-200",
+  [InventoryDocumentStatus.Approved]: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  [InventoryDocumentStatus.Completed]: "bg-sky-50 text-sky-800 ring-sky-200",
+  [InventoryDocumentStatus.Cancelled]: "bg-red-50 text-red-800 ring-red-200",
 };
 
 export function DocStatusBadge({
@@ -24,14 +24,7 @@ export function DocStatusBadge({
   label: string;
 }) {
   return (
-    <span
-      className={clsx(
-        "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
-        statusStyles[status]
-      )}
-    >
-      {label}
-    </span>
+    <span className={clsx("badge", statusStyles[status])}>{label}</span>
   );
 }
 
@@ -39,8 +32,10 @@ export function ActiveBadge({ active, label }: { active: boolean; label: string 
   return (
     <span
       className={clsx(
-        "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
-        active ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-600"
+        "badge",
+        active
+          ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+          : "bg-slate-50 text-slate-600 ring-slate-200"
       )}
     >
       {label}

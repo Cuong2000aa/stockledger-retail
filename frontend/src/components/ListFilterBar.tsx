@@ -25,7 +25,7 @@ export function ListFilterBar({
   const canReset = showReset ?? Boolean(search || children);
 
   return (
-    <div className="card mb-4 p-4">
+    <div className="card mb-5 p-4 shadow-card">
       <div className="flex flex-wrap items-end gap-3">
         <label className="min-w-[220px] flex-1 text-sm text-slate-600">
           <span className="mb-1 block">{tCommon("search")}</span>

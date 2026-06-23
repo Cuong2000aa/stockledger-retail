@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using StockLedgerRetail.Application.Authorization;
 using StockLedgerRetail.Application.Brands;
+using StockLedgerRetail.Application.Identity;
 using StockLedgerRetail.Application.Integration;
 using StockLedgerRetail.Application.Inventory;
 using StockLedgerRetail.Application.ProductVariants;
@@ -13,6 +15,7 @@ using StockLedgerRetail.Application.Analytics;
 using StockLedgerRetail.Application.Insights;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Inventory;
+using StockLedgerRetail.Identity;
 using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail;
@@ -24,8 +27,14 @@ public static class StockLedgerRetailApplicationModule
         IConfiguration? configuration = null)
     {
         services.AddScoped<IAuditContext, DefaultAuditContext>();
+        services.AddScoped<ICurrentUserContext, CurrentUserContext>();
         services.AddScoped<IBrandScopeContext, BrandScopeContext>();
+        services.AddScoped<IPermissionAuthorizationService, PermissionAuthorizationService>();
         services.AddScoped<ITransactionAuditService, TransactionAuditService>();
+        services.AddScoped<IAuthAppService, AuthAppService>();
+        services.AddScoped<IAppUserAppService, AppUserAppService>();
+        services.AddScoped<IPermissionAdminAppService, PermissionAdminAppService>();
+        services.AddScoped<ITeamAppService, TeamAppService>();
         services.AddScoped<IBrandAppService, BrandAppService>();
         services.AddScoped<IProductAppService, ProductAppService>();
         services.AddScoped<IProductVariantAppService, ProductVariantAppService>();
@@ -53,6 +62,8 @@ public static class StockLedgerRetailApplicationModule
                 configuration.GetSection(SalesIntegrationOptions.SectionName));
             services.Configure<StockReconciliationOptions>(
                 configuration.GetSection(StockReconciliationOptions.SectionName));
+            services.Configure<StubAuthOptions>(
+                configuration.GetSection(StubAuthOptions.SectionName));
         }
 
         return services;

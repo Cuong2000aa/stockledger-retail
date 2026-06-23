@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
+    "clean:next": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
+    "dev:fresh": "npm run clean:next && next dev --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

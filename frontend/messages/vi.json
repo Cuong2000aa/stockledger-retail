@@ -71,7 +71,9 @@
     "transactions": "Giao dịch",
     "stockByWarehouse": "Tồn theo kho",
     "lowStock": "Tồn thấp",
-    "threshold": "Ngưỡng"
+    "threshold": "Ngưỡng",
+    "warehousePreviewHint": "Hiển thị {shown} / {total} kho",
+    "viewAllStock": "Xem tồn chi tiết"
   },
   "products": {
     "title": "Sản phẩm",
@@ -359,5 +361,14 @@
     "SubWarehouse": "Kho con",
     "Defect": "Hàng lỗi",
     "Return": "Hàng trả"
+  },
+  "auth": {
+    "subtitle": "Đăng nhập để tiếp tục",
+    "username": "Tên đăng nhập",
+    "password": "Mật khẩu",
+    "signIn": "Đăng nhập",
+    "signOut": "Đăng xuất",
+    "stubHint": "Tạm thời: admin / 1234 (sẽ thay bằng SSO/API sau)",
+    "loginTagline": "Quản lý tồn kho thông minh — theo dõi biến động, tối ưu luân chuyển hàng hóa."
   }
 }

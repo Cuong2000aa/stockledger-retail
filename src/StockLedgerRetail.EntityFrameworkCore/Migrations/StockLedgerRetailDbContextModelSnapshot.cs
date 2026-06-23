@@ -22,6 +22,39 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.AppUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("app_users", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Brand", b =>
                 {
                     b.Property<Guid>("Id")
@@ -204,6 +237,21 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.ToTable("goods_receipt_lines", (string)null);
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.GroupPermission", b =>
+                {
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("GroupId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("group_permissions", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -324,6 +372,71 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("ProductVariantId");
 
                     b.ToTable("inventory_document_lines", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("permissions", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.PermissionGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("permission_groups", (string)null);
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Product", b =>
@@ -783,6 +896,62 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.ToTable("suppliers", (string)null);
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Team", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("LeaderUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("LeaderUserId");
+
+                    b.ToTable("teams", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.TeamMember", b =>
+                {
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("TeamId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("team_members", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.TransactionLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -858,6 +1027,24 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("SourceBrandId", "DestinationBrandId", "IsActive");
 
                     b.ToTable("transfer_policies", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.UserGroupAssignment", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "GroupId");
+
+                    b.HasIndex("GroupId");
+
+                    b.ToTable("user_group_assignments", (string)null);
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Warehouse", b =>
@@ -1024,6 +1211,25 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("ProductVariant");
 
                     b.Navigation("PurchaseOrderLine");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.GroupPermission", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.PermissionGroup", "Group")
+                        .WithMany("Permissions")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Permission", "Permission")
+                        .WithMany("Groups")
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Permission");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDocument", b =>
@@ -1204,6 +1410,36 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Team", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.AppUser", "Leader")
+                        .WithMany("LedTeams")
+                        .HasForeignKey("LeaderUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Leader");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.TeamMember", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Team", "Team")
+                        .WithMany("Members")
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StockLedgerRetail.Domain.Entities.AppUser", "User")
+                        .WithMany("TeamMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Team");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.TransferPolicy", b =>
                 {
                     b.HasOne("StockLedgerRetail.Domain.Entities.Brand", "DestinationBrand")
@@ -1221,6 +1457,25 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("SourceBrand");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.UserGroupAssignment", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.PermissionGroup", "Group")
+                        .WithMany("UserAssignments")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StockLedgerRetail.Domain.Entities.AppUser", "User")
+                        .WithMany("GroupAssignments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Warehouse", b =>
                 {
                     b.HasOne("StockLedgerRetail.Domain.Entities.Brand", "Brand")
@@ -1236,6 +1491,15 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("Brand");
 
                     b.Navigation("ParentWarehouse");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.AppUser", b =>
+                {
+                    b.Navigation("GroupAssignments");
+
+                    b.Navigation("LedTeams");
+
+                    b.Navigation("TeamMemberships");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Brand", b =>
@@ -1260,6 +1524,18 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDocumentLine", b =>
                 {
                     b.Navigation("StockTransactions");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Permission", b =>
+                {
+                    b.Navigation("Groups");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.PermissionGroup", b =>
+                {
+                    b.Navigation("Permissions");
+
+                    b.Navigation("UserAssignments");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Product", b =>
@@ -1298,6 +1574,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Supplier", b =>
                 {
                     b.Navigation("PurchaseOrders");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Team", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Warehouse", b =>

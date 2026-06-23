@@ -71,7 +71,9 @@
     "transactions": "Transactions",
     "stockByWarehouse": "Stock by warehouse",
     "lowStock": "Low stock",
-    "threshold": "Threshold"
+    "threshold": "Threshold",
+    "warehousePreviewHint": "Showing {shown} of {total} warehouses",
+    "viewAllStock": "View full stock"
   },
   "products": {
     "title": "Products",
@@ -359,5 +361,14 @@
     "SubWarehouse": "Sub-warehouse",
     "Defect": "Defect",
     "Return": "Return"
+  },
+  "auth": {
+    "subtitle": "Sign in to continue",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "stubHint": "Temporary: admin / 1234 (SSO/API later)",
+    "loginTagline": "Smart inventory management — track movements and optimize stock flow."
   }
 }
