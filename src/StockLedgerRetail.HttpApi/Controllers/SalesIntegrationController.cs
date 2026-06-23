@@ -63,12 +63,30 @@ public class SalesIntegrationController : ControllerBase
         _salesIntegrationService.ConfirmSaleAsync(input, cancellationToken);
 
     /// <summary>
-    /// Xác nhận trả hàng — tạo phiếu nhập, duyệt và cộng tồn trong một lần gọi.
-    /// Idempotent: gọi lại cùng sourceSystem + returnReference không cộng tồn lần 2.
+    /// Xác nhận trả hàng — tạo phiếu nhập, duyệt và cộng tồn.
+    /// Idempotent theo sourceSystem + returnReference.
     /// </summary>
     [HttpPost("confirm-return")]
     public Task<ConfirmReturnResponseDto> ConfirmReturnAsync(
         [FromBody] ConfirmReturnRequestDto input,
         CancellationToken cancellationToken) =>
         _salesIntegrationService.ConfirmReturnAsync(input, cancellationToken);
+
+    /// <summary>
+    /// ATP đa kho — xem tồn khả dụng theo từng kho (Store/DC) cho omni-channel.
+    /// </summary>
+    [HttpPost("check-availability-multi-warehouse")]
+    public Task<CheckMultiWarehouseAvailabilityResponseDto> CheckMultiWarehouseAvailabilityAsync(
+        [FromBody] CheckMultiWarehouseAvailabilityRequestDto input,
+        CancellationToken cancellationToken) =>
+        _salesIntegrationService.CheckMultiWarehouseAvailabilityAsync(input, cancellationToken);
+
+    /// <summary>
+    /// Chọn kho xuất tự động (ship-from-store / DC) khi client không truyền warehouseId.
+    /// </summary>
+    [HttpPost("allocate-warehouse")]
+    public Task<AllocateWarehouseResponseDto> AllocateWarehouseAsync(
+        [FromBody] AllocateWarehouseRequestDto input,
+        CancellationToken cancellationToken) =>
+        _salesIntegrationService.AllocateWarehouseAsync(input, cancellationToken);
 }

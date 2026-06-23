@@ -19,6 +19,7 @@ public class StockReservationService : IStockReservationService
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDocumentNumberGenerator _documentNumberGenerator;
+    private readonly IWarehouseFulfillmentService _warehouseFulfillmentService;
     private readonly SalesIntegrationOptions _options;
 
     public StockReservationService(
@@ -28,6 +29,7 @@ public class StockReservationService : IStockReservationService
         IWarehouseRepository warehouseRepository,
         IUnitOfWork unitOfWork,
         IDocumentNumberGenerator documentNumberGenerator,
+        IWarehouseFulfillmentService warehouseFulfillmentService,
         IOptions<SalesIntegrationOptions> options)
     {
         _stockReservationRepository = stockReservationRepository;
@@ -36,6 +38,7 @@ public class StockReservationService : IStockReservationService
         _warehouseRepository = warehouseRepository;
         _unitOfWork = unitOfWork;
         _documentNumberGenerator = documentNumberGenerator;
+        _warehouseFulfillmentService = warehouseFulfillmentService;
         _options = options.Value;
     }
 
@@ -46,13 +49,27 @@ public class StockReservationService : IStockReservationService
         ReserveStockRequestDto input,
         CancellationToken cancellationToken = default)
     {
+        await RefreshExpiredReservationsAsync(cancellationToken);
+        ValidateSalesLines(input.Lines);
+
+        var warehouseId = input.WarehouseId.HasValue
+            ? input.WarehouseId.Value
+            : (await _warehouseFulfillmentService.AllocateWarehouseAsync(
+                new AllocateWarehouseRequestDto
+                {
+                    CandidateWarehouseIds = input.CandidateWarehouseIds,
+                    SelectionMode = input.SelectionMode,
+                    PreferredWarehouseId = input.PreferredWarehouseId,
+                    Lines = input.Lines
+                },
+                cancellationToken)).SelectedWarehouseId;
+
         return await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
             var sourceSystem = NormalizeSourceSystem(input.SourceSystem);
             var (referenceType, referenceKey) = ResolveReference(input.CartSessionId, input.OrderReference);
 
-            await EnsureWarehouseExistsAsync(input.WarehouseId, ct);
-            ValidateSalesLines(input.Lines);
+            await EnsureWarehouseExistsAsync(warehouseId, ct);
             await ExpireStaleReservationsAsync(ct);
 
             var mappedLines = await MapToReservationLinesAsync(input.Lines, ct);
@@ -61,11 +78,11 @@ public class StockReservationService : IStockReservationService
                 sourceSystem,
                 referenceType,
                 referenceKey,
-                input.WarehouseId,
+                warehouseId,
                 ct);
 
             await EnsureSufficientAvailabilityAsync(
-                input.WarehouseId,
+                warehouseId,
                 mappedLines,
                 existing,
                 ct);
@@ -103,7 +120,7 @@ public class StockReservationService : IStockReservationService
                     SourceSystem = sourceSystem,
                     ReferenceType = referenceType,
                     ReferenceKey = referenceKey,
-                    WarehouseId = input.WarehouseId,
+                    WarehouseId = warehouseId,
                     Status = StockReservationStatus.Active,
                     ExpiresAt = expiresAt,
                     CreatedAt = now,
@@ -115,7 +132,7 @@ public class StockReservationService : IStockReservationService
             }
 
             await RecalculateReservedForVariantsAsync(
-                input.WarehouseId,
+                warehouseId,
                 mappedLines.Select(x => x.ProductVariantId),
                 now,
                 ct);
@@ -352,20 +369,8 @@ public class StockReservationService : IStockReservationService
         return variant?.Sku ?? productVariantId.ToString();
     }
 
-    private string NormalizeSourceSystem(string? sourceSystem)
-    {
-        var normalized = string.IsNullOrWhiteSpace(sourceSystem)
-            ? _options.DefaultSourceSystem
-            : sourceSystem.Trim().ToUpperInvariant();
-
-        if (_options.AllowedSourceSystems.Count > 0
-            && !_options.AllowedSourceSystems.Any(x => x.Equals(normalized, StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new InvalidOperationException($"Source system '{normalized}' is not allowed.");
-        }
-
-        return normalized;
-    }
+    private string NormalizeSourceSystem(string? sourceSystem) =>
+        IntegrationSourceNormalizer.Normalize(sourceSystem, _options);
 
     private static (StockReservationReferenceType ReferenceType, string ReferenceKey) ResolveReference(
         string? cartSessionId,

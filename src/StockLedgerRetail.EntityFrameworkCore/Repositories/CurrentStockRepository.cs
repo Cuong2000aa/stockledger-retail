@@ -160,6 +160,23 @@ public class CurrentStockRepository : ICurrentStockRepository
         _dbContext.CurrentStocks.Update(stock);
     }
 
+    public Task<List<CurrentStock>> GetByVariantsAndWarehousesAsync(
+        IReadOnlyCollection<Guid> productVariantIds,
+        IReadOnlyCollection<Guid> warehouseIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (productVariantIds.Count == 0 || warehouseIds.Count == 0)
+        {
+            return Task.FromResult(new List<CurrentStock>());
+        }
+
+        return _dbContext.CurrentStocks
+            .Where(x =>
+                productVariantIds.Contains(x.ProductVariantId)
+                && warehouseIds.Contains(x.WarehouseId))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<List<CurrentStock>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,

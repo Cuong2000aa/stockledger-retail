@@ -15,4 +15,12 @@ public interface ISalesIntegrationService
     Task<ConfirmReturnResponseDto> ConfirmReturnAsync(
         ConfirmReturnRequestDto input,
         CancellationToken cancellationToken = default);
+
+    Task<CheckMultiWarehouseAvailabilityResponseDto> CheckMultiWarehouseAvailabilityAsync(
+        CheckMultiWarehouseAvailabilityRequestDto input,
+        CancellationToken cancellationToken = default);
+
+    Task<AllocateWarehouseResponseDto> AllocateWarehouseAsync(
+        AllocateWarehouseRequestDto input,
+        CancellationToken cancellationToken = default);
 }

@@ -52,6 +52,38 @@ public class StockReservationRepository : IStockReservationRepository
             .SumAsync(x => x.Quantity, cancellationToken);
     }
 
+    public async Task<Dictionary<(Guid ProductVariantId, Guid WarehouseId), decimal>> GetActiveReservedQuantitiesAsync(
+        IReadOnlyCollection<Guid> productVariantIds,
+        IReadOnlyCollection<Guid> warehouseIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (productVariantIds.Count == 0 || warehouseIds.Count == 0)
+        {
+            return new Dictionary<(Guid, Guid), decimal>();
+        }
+
+        var now = DateTime.UtcNow;
+
+        var rows = await _dbContext.StockReservationLines
+            .Where(x =>
+                productVariantIds.Contains(x.ProductVariantId)
+                && warehouseIds.Contains(x.StockReservation!.WarehouseId)
+                && x.StockReservation.Status == StockReservationStatus.Active
+                && x.StockReservation.ExpiresAt > now)
+            .GroupBy(x => new { x.ProductVariantId, x.StockReservation!.WarehouseId })
+            .Select(g => new
+            {
+                g.Key.ProductVariantId,
+                WarehouseId = g.Key.WarehouseId,
+                Quantity = g.Sum(x => x.Quantity)
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(
+            x => (x.ProductVariantId, x.WarehouseId),
+            x => x.Quantity);
+    }
+
     public Task<List<StockReservation>> GetExpiredActiveReservationsAsync(
         DateTime asOfUtc,
         CancellationToken cancellationToken = default) =>

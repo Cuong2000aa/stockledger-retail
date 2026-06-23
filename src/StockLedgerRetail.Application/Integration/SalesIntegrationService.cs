@@ -19,6 +19,7 @@ public class SalesIntegrationService : ISalesIntegrationService
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryDocumentAppService _inventoryDocumentAppService;
     private readonly IStockReservationService _stockReservationService;
+    private readonly IWarehouseFulfillmentService _warehouseFulfillmentService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly SalesIntegrationOptions _options;
 
@@ -29,6 +30,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         IWarehouseRepository warehouseRepository,
         IInventoryDocumentAppService inventoryDocumentAppService,
         IStockReservationService stockReservationService,
+        IWarehouseFulfillmentService warehouseFulfillmentService,
         IUnitOfWork unitOfWork,
         IOptions<SalesIntegrationOptions> options)
     {
@@ -38,6 +40,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         _warehouseRepository = warehouseRepository;
         _inventoryDocumentAppService = inventoryDocumentAppService;
         _stockReservationService = stockReservationService;
+        _warehouseFulfillmentService = warehouseFulfillmentService;
         _unitOfWork = unitOfWork;
         _options = options.Value;
     }
@@ -65,6 +68,22 @@ public class SalesIntegrationService : ISalesIntegrationService
         };
     }
 
+    public async Task<CheckMultiWarehouseAvailabilityResponseDto> CheckMultiWarehouseAvailabilityAsync(
+        CheckMultiWarehouseAvailabilityRequestDto input,
+        CancellationToken cancellationToken = default)
+    {
+        await _stockReservationService.RefreshExpiredReservationsAsync(cancellationToken);
+        return await _warehouseFulfillmentService.CheckAvailabilityAsync(input, cancellationToken);
+    }
+
+    public async Task<AllocateWarehouseResponseDto> AllocateWarehouseAsync(
+        AllocateWarehouseRequestDto input,
+        CancellationToken cancellationToken = default)
+    {
+        await _stockReservationService.RefreshExpiredReservationsAsync(cancellationToken);
+        return await _warehouseFulfillmentService.AllocateWarehouseAsync(input, cancellationToken);
+    }
+
     /// <summary>
     /// Xác nhận bán — tạo phiếu xuất, duyệt và trừ tồn.
     /// Nếu đã xử lý cùng sourceSystem + orderReference thì trả lại kết quả cũ (isReplay=true).
@@ -90,18 +109,34 @@ public class SalesIntegrationService : ISalesIntegrationService
                 var approvedDoc = await _unitOfWork.ExecuteInTransactionAsync(
                     ct => _inventoryDocumentAppService.ApproveAsync(existing.Id, ct),
                     cancellationToken);
-                return MapSaleResponse(approvedDoc, sourceSystem, orderReference, isReplay: false);
+                return MapSaleResponse(
+                    approvedDoc,
+                    sourceSystem,
+                    orderReference,
+                    existing.SourceWarehouseId ?? Guid.Empty,
+                    isReplay: false);
             }
 
+            var existingDoc = await _inventoryDocumentAppService.GetAsync(existing.Id, cancellationToken);
             return MapSaleResponse(
-                await _inventoryDocumentAppService.GetAsync(existing.Id, cancellationToken),
+                existingDoc,
                 sourceSystem,
                 orderReference,
+                existing.SourceWarehouseId ?? existingDoc.SourceWarehouseId ?? Guid.Empty,
                 isReplay: true);
         }
 
         ValidateSalesLines(input.Lines);
-        await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
+        var warehouseId = await ResolveWarehouseIdForFulfillmentAsync(
+            new AllocateWarehouseRequestDto
+            {
+                WarehouseId = input.WarehouseId,
+                CandidateWarehouseIds = input.CandidateWarehouseIds,
+                SelectionMode = input.SelectionMode,
+                PreferredWarehouseId = input.PreferredWarehouseId,
+                Lines = input.Lines
+            },
+            cancellationToken);
 
         var documentLines = await MapToDocumentLinesAsync(input.Lines, cancellationToken);
 
@@ -109,14 +144,14 @@ public class SalesIntegrationService : ISalesIntegrationService
         {
             await _stockReservationService.CommitByReferencesAsync(
                 sourceSystem,
-                input.WarehouseId,
+                warehouseId,
                 input.CartSessionId,
                 orderReference,
                 ct);
 
             var created = await _inventoryDocumentAppService.CreateStockOutAsync(new CreateStockOutDto
             {
-                SourceWarehouseId = input.WarehouseId,
+                SourceWarehouseId = warehouseId,
                 DocumentDate = input.SaleDate,
                 ReferenceNo = orderReference,
                 SourceSystem = sourceSystem,
@@ -127,7 +162,7 @@ public class SalesIntegrationService : ISalesIntegrationService
             return await _inventoryDocumentAppService.ApproveAsync(created.Id, ct);
         }, cancellationToken);
 
-        return MapSaleResponse(approved, sourceSystem, orderReference, isReplay: false);
+        return MapSaleResponse(approved, sourceSystem, orderReference, warehouseId, isReplay: false);
     }
 
     /// <summary>
@@ -249,21 +284,23 @@ public class SalesIntegrationService : ISalesIntegrationService
         return result;
     }
 
-    /// <summary>Chuẩn hóa và kiểm tra sourceSystem có trong danh sách cho phép.</summary>
-    private string NormalizeSourceSystem(string? sourceSystem)
+    private async Task<Guid> ResolveWarehouseIdForFulfillmentAsync(
+        AllocateWarehouseRequestDto request,
+        CancellationToken cancellationToken)
     {
-        var normalized = string.IsNullOrWhiteSpace(sourceSystem)
-            ? _options.DefaultSourceSystem
-            : sourceSystem.Trim().ToUpperInvariant();
-
-        if (_options.AllowedSourceSystems.Count > 0
-            && !_options.AllowedSourceSystems.Any(x => x.Equals(normalized, StringComparison.OrdinalIgnoreCase)))
+        if (request.WarehouseId.HasValue)
         {
-            throw new InvalidOperationException($"Source system '{normalized}' is not allowed.");
+            await EnsureWarehouseExistsAsync(request.WarehouseId.Value, cancellationToken);
+            return request.WarehouseId.Value;
         }
 
-        return normalized;
+        var allocation = await _warehouseFulfillmentService.AllocateWarehouseAsync(request, cancellationToken);
+        return allocation.SelectedWarehouseId;
     }
+
+    /// <summary>Chuẩn hóa và kiểm tra sourceSystem có trong danh sách cho phép.</summary>
+    private string NormalizeSourceSystem(string? sourceSystem) =>
+        IntegrationSourceNormalizer.Normalize(sourceSystem, _options);
 
     /// <summary>Chuẩn hóa mã tham chiếu đơn/trả hàng (bắt buộc, không rỗng).</summary>
     private static string NormalizeReference(string reference, string fieldName)
@@ -327,13 +364,15 @@ public class SalesIntegrationService : ISalesIntegrationService
         InventoryDocumentDto document,
         string sourceSystem,
         string orderReference,
+        Guid selectedWarehouseId,
         bool isReplay) => new()
     {
         IsReplay = isReplay,
         InventoryDocumentId = document.Id,
         DocumentNo = document.DocumentNo,
         SourceSystem = sourceSystem,
-        OrderReference = orderReference
+        OrderReference = orderReference,
+        SelectedWarehouseId = selectedWarehouseId
     };
 
     /// <summary>Map phiếu đã xử lý sang response xác nhận trả hàng.</summary>

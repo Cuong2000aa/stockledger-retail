@@ -45,6 +45,11 @@ public interface ICurrentStockRepository
         string? search = null,
         CancellationToken cancellationToken = default);
 
+    Task<List<CurrentStock>> GetByVariantsAndWarehousesAsync(
+        IReadOnlyCollection<Guid> productVariantIds,
+        IReadOnlyCollection<Guid> warehouseIds,
+        CancellationToken cancellationToken = default);
+
     Task InsertAsync(CurrentStock currentStock, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(CurrentStock currentStock, CancellationToken cancellationToken = default);

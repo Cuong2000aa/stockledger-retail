@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
+using StockLedgerRetail.Enums;
 
 namespace StockLedgerRetail.EntityFrameworkCore.Repositories;
 
@@ -49,6 +50,22 @@ public class WarehouseRepository : IWarehouseRepository
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
         return (items, totalCount);
+    }
+
+    public Task<List<Warehouse>> GetActiveFulfillmentWarehousesAsync(
+        IReadOnlyCollection<WarehouseType> types,
+        IReadOnlyCollection<Guid>? warehouseIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Warehouses
+            .Where(x => x.Status == WarehouseStatus.Active && types.Contains(x.Type));
+
+        if (warehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => warehouseIds.Contains(x.Id));
+        }
+
+        return query.OrderBy(x => x.Type).ThenBy(x => x.Code).ToListAsync(cancellationToken);
     }
 
     public async Task InsertAsync(Warehouse warehouse, CancellationToken cancellationToken = default) =>
