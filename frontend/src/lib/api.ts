@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearAuthSession, getAuthSession } from "./auth-session";
 import type {
   AdjustmentLineInput,
   CreateProductInput,
@@ -38,11 +39,30 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+api.interceptors.request.use((config) => {
+  const session = getAuthSession();
+  if (session?.email) {
+    config.headers["X-User-Email"] = session.email;
+  }
+  return config;
+});
+
 export const apiClient = api;
 
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (err.response?.status === 401 && typeof window !== "undefined") {
+      const isLoginRequest = err.config?.url?.includes("/api/auth/login");
+      if (!isLoginRequest) {
+        clearAuthSession();
+        const locale = window.location.pathname.split("/")[1] || "vi";
+        if (!window.location.pathname.includes("/login")) {
+          window.location.href = `/${locale}/login`;
+        }
+      }
+    }
+
     const message =
       err.response?.data?.error ?? err.message ?? "Request failed";
     return Promise.reject(new Error(message));

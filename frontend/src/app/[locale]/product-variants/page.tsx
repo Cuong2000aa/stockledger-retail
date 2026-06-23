@@ -1,6 +1,7 @@
 "use client";
 
 import { ListFilterBar } from "@/components/ListFilterBar";
+import { TableSkeleton } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { ActiveBadge, costSourceKey, isProductActive } from "@/components/StatusBadge";
@@ -188,7 +189,7 @@ export default function ProductVariantsPage() {
 
       <div className="card">
         {isLoading ? (
-          <p className="p-6 text-slate-500">{tCommon("loading")}</p>
+          <TableSkeleton rows={8} cols={6} />
         ) : (
           <>
             <div className="table-wrap">

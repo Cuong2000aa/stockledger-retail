@@ -32,6 +32,7 @@ CurrentStock      ← fast lookup
 | **Sprint 2** | Concurrency (xmin), WAC valuation, stock reconciliation | ✅ Done |
 | **Omni-channel** | Multi-warehouse ATP, allocate warehouse, stock reservation | ✅ Done |
 | **Multi-brand (MB-1→4)** | Brand entity, transfer policy, in-transit transfer, brand-scoped insights & fulfillment, scope headers | ✅ Done |
+| **RBAC** | Email users, permission groups in DB, teams, document authorization | ✅ Done |
 | **Valuation** | CostPrice, SellingPrice, CostSource on SKU; ProductCostHistory entity | ✅ Domain + DB |
 | **Insights** | Dead stock, sales velocity, transfer suggestions (rule-based) | ✅ Done |
 | **AI Copilot** | Natural-language Q&A on insight APIs | 🔜 Planned |
@@ -86,6 +87,15 @@ Supplier → Purchase Order (Draft → Submitted)
 `POST /api/integration/fulfillment/allocate-warehouse` — auto-select ship-from warehouse  
 
 Optional scope headers (RBAC-lite): `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
+
+### Authorization (email + DB permissions)
+
+- Identify users via header `X-User-Email` (registered in `app_users`)
+- Permission groups: `SYSTEM_ADMIN`, `TEAM_LEADER`, `WAREHOUSE_CLERK`, `VIEWER`
+- Team leaders can update/cancel/approve documents created by team members
+- Admin APIs: `/api/admin/users`, `/api/admin/permissions`, `/api/admin/teams`, `GET /api/auth/me`
+
+See [docs/RBAC.md](docs/RBAC.md).
 
 ### Brands
 
@@ -304,6 +314,7 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 
 | File | Content |
 |------|---------|
+| [docs/RBAC.md](docs/RBAC.md) | Email-based RBAC, permission groups, teams |
 | [docs/MultiBrand.md](docs/MultiBrand.md) | Multi-brand phases, in-transit transfer, scope headers (EN) |
 | [docs/MultiBrand.vi.md](docs/MultiBrand.vi.md) | Đa thương hiệu (VI) |
 | [docs/UseCases.md](docs/UseCases.md) | Use cases UC001–UC016 |
@@ -318,8 +329,8 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 
 ## Planned
 
+- **JWT / OAuth** login (replace or complement `X-User-Email` header)
 - **AI Copilot** — natural-language Q&A on top of insight APIs (optional LLM layer)
-- Auth / JWT (scope headers are RBAC-lite today)
 - TransferPolicy admin API, frontend multi-brand screens
 - Docker deployment
 

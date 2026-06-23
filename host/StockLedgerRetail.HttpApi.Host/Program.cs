@@ -1,6 +1,8 @@
 using Serilog;
 using StockLedgerRetail;
+using StockLedgerRetail.Audit;
 using StockLedgerRetail.EntityFrameworkCore;
+using StockLedgerRetail.HttpApi.Host.Audit;
 using StockLedgerRetail.HttpApi.Host.HostedServices;
 using StockLedgerRetail.HttpApi.Host.Middleware;
 using StockLedgerRetail.Inventory;
@@ -20,6 +22,9 @@ builder.Host.UseSerilog();
 
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(StockLedgerRetail.Controllers.ProductsController).Assembly);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuditContext, HttpAuditContext>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -55,10 +60,14 @@ builder.Services.AddStockLedgerRetailApplication(builder.Configuration);
 builder.Services.Configure<StockReconciliationOptions>(
     builder.Configuration.GetSection(StockReconciliationOptions.SectionName));
 builder.Services.AddHostedService<StockReconciliationHostedService>();
+builder.Services.AddHostedService<AuthorizationBootstrapHostedService>();
 
 var app = builder.Build();
 
+app.UseCors();
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<UserEmailAuthMiddleware>();
 app.UseMiddleware<BrandScopeMiddleware>();
 app.UseMiddleware<IntegrationApiKeyMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
@@ -73,7 +82,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors();
 app.MapControllers();
 
 try

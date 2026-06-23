@@ -23,6 +23,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     private readonly ITransactionAuditService _transactionAuditService;
     private readonly IAuditContext _auditContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPermissionAuthorizationService _permissionAuthorizationService;
 
     public InventoryDocumentAppService(
         IInventoryDocumentRepository inventoryDocumentRepository,
@@ -33,7 +34,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         IInTransitWarehouseService inTransitWarehouseService,
         ITransactionAuditService transactionAuditService,
         IAuditContext auditContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IPermissionAuthorizationService permissionAuthorizationService)
     {
         _inventoryDocumentRepository = inventoryDocumentRepository;
         _productVariantRepository = productVariantRepository;
@@ -44,11 +46,13 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         _transactionAuditService = transactionAuditService;
         _auditContext = auditContext;
         _unitOfWork = unitOfWork;
+        _permissionAuthorizationService = permissionAuthorizationService;
     }
 
     /// <summary>Lấy chi tiết phiếu kèm danh sách dòng hàng.</summary>
     public async Task<InventoryDocumentDto> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        await _permissionAuthorizationService.EnsureCanViewInventoryDocumentsAsync(cancellationToken);
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
 
@@ -64,6 +68,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         string? search = null,
         CancellationToken cancellationToken = default)
     {
+        await _permissionAuthorizationService.EnsureCanViewInventoryDocumentsAsync(cancellationToken);
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (documents, totalCount) = await _inventoryDocumentRepository.GetPagedListAsync(
             documentType, status, skip, take, search, cancellationToken);
@@ -77,6 +82,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreateStockInDto input,
         CancellationToken cancellationToken = default)
     {
+        await _permissionAuthorizationService.EnsureCanCreateInventoryDocumentAsync(cancellationToken);
         await EnsureWarehouseExistsAsync(input.DestinationWarehouseId, cancellationToken);
         await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
         ValidateLines(input.Lines);
@@ -109,6 +115,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreateStockOutDto input,
         CancellationToken cancellationToken = default)
     {
+        await _permissionAuthorizationService.EnsureCanCreateInventoryDocumentAsync(cancellationToken);
         await EnsureWarehouseExistsAsync(input.SourceWarehouseId, cancellationToken);
         await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
         ValidateLines(input.Lines);
@@ -141,6 +148,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreateAdjustmentDto input,
         CancellationToken cancellationToken = default)
     {
+        await _permissionAuthorizationService.EnsureCanCreateInventoryDocumentAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(input.Reason))
         {
             throw new InvalidOperationException("Adjustment reason is required.");
@@ -185,6 +193,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreateTransferDto input,
         CancellationToken cancellationToken = default)
     {
+        await _permissionAuthorizationService.EnsureCanCreateInventoryDocumentAsync(cancellationToken);
         if (input.SourceWarehouseId == input.DestinationWarehouseId)
         {
             throw new InvalidOperationException("Source and destination warehouse cannot be the same.");
@@ -230,6 +239,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreateStockCountDto input,
         CancellationToken cancellationToken = default)
     {
+        await _permissionAuthorizationService.EnsureCanCreateInventoryDocumentAsync(cancellationToken);
         await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
         ValidateStockCountLines(input.Lines);
         await EnsureStockCountVariantsExistAsync(input.Lines, cancellationToken);
@@ -272,6 +282,10 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        await _permissionAuthorizationService.EnsureCanUpdateInventoryDocumentAsync(
+            document.CreatedBy,
+            cancellationToken);
 
         if (document.Status is not InventoryDocumentStatus.Draft)
         {
@@ -338,6 +352,10 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         {
             throw new InvalidOperationException("Cancelled documents cannot be approved.");
         }
+
+        await _permissionAuthorizationService.EnsureCanApproveInventoryDocumentAsync(
+            document.CreatedBy,
+            cancellationToken);
 
         var oldDto = MapToDto(document);
 
@@ -415,6 +433,10 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             throw new InvalidOperationException("Transfer is not in shipped state.");
         }
 
+        await _permissionAuthorizationService.EnsureCanReceiveTransferAsync(
+            document.CreatedBy,
+            cancellationToken);
+
         var oldDto = MapToDto(document);
 
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
@@ -441,6 +463,10 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        await _permissionAuthorizationService.EnsureCanCancelInventoryDocumentAsync(
+            document.CreatedBy,
+            cancellationToken);
 
         if (document.Status is not InventoryDocumentStatus.Draft)
         {

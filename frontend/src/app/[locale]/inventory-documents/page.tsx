@@ -2,6 +2,7 @@
 
 import { Link } from "@/i18n/routing";
 import { ListFilterBar } from "@/components/ListFilterBar";
+import { TableSkeleton } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { DocStatusBadge, docTypeKey } from "@/components/StatusBadge";
@@ -166,7 +167,7 @@ export default function InventoryDocumentsPage() {
 
       <div className="card">
         {isLoading ? (
-          <p className="p-6 text-slate-500">{tCommon("loading")}</p>
+          <TableSkeleton rows={8} cols={7} />
         ) : (
           <>
             <div className="table-wrap">
