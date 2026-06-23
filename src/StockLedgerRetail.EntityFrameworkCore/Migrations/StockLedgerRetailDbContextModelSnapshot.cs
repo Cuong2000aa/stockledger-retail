@@ -49,6 +49,12 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
 
@@ -207,6 +213,12 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<string>("ReferenceNo")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("SourceSystem")
                         .HasMaxLength(50)
@@ -641,6 +653,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<int>("TransactionType")
                         .HasColumnType("integer");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");

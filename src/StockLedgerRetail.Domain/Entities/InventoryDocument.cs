@@ -35,6 +35,8 @@ public class InventoryDocument
 
     public DateTime? ApprovedAt { get; set; }
 
+    public uint RowVersion { get; set; }
+
     public Warehouse? SourceWarehouse { get; set; }
 
     public Warehouse? DestinationWarehouse { get; set; }

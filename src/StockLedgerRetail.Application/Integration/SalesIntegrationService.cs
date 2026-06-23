@@ -19,6 +19,7 @@ public class SalesIntegrationService : ISalesIntegrationService
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IInventoryDocumentAppService _inventoryDocumentAppService;
     private readonly IStockReservationService _stockReservationService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly SalesIntegrationOptions _options;
 
     public SalesIntegrationService(
@@ -28,6 +29,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         IWarehouseRepository warehouseRepository,
         IInventoryDocumentAppService inventoryDocumentAppService,
         IStockReservationService stockReservationService,
+        IUnitOfWork unitOfWork,
         IOptions<SalesIntegrationOptions> options)
     {
         _inventoryDocumentRepository = inventoryDocumentRepository;
@@ -36,6 +38,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         _warehouseRepository = warehouseRepository;
         _inventoryDocumentAppService = inventoryDocumentAppService;
         _stockReservationService = stockReservationService;
+        _unitOfWork = unitOfWork;
         _options = options.Value;
     }
 
@@ -84,7 +87,9 @@ public class SalesIntegrationService : ISalesIntegrationService
             if (existing.Status is not InventoryDocumentStatus.Approved
                 and not InventoryDocumentStatus.Completed)
             {
-                var approvedDoc = await _inventoryDocumentAppService.ApproveAsync(existing.Id, cancellationToken);
+                var approvedDoc = await _unitOfWork.ExecuteInTransactionAsync(
+                    ct => _inventoryDocumentAppService.ApproveAsync(existing.Id, ct),
+                    cancellationToken);
                 return MapSaleResponse(approvedDoc, sourceSystem, orderReference, isReplay: false);
             }
 
@@ -98,26 +103,29 @@ public class SalesIntegrationService : ISalesIntegrationService
         ValidateSalesLines(input.Lines);
         await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
 
-        await _stockReservationService.CommitByReferencesAsync(
-            sourceSystem,
-            input.WarehouseId,
-            input.CartSessionId,
-            orderReference,
-            cancellationToken);
-
         var documentLines = await MapToDocumentLinesAsync(input.Lines, cancellationToken);
 
-        var created = await _inventoryDocumentAppService.CreateStockOutAsync(new CreateStockOutDto
+        var approved = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            SourceWarehouseId = input.WarehouseId,
-            DocumentDate = input.SaleDate,
-            ReferenceNo = orderReference,
-            SourceSystem = sourceSystem,
-            Note = BuildSalesNote("SALE", input.Note),
-            Lines = documentLines
-        }, cancellationToken);
+            await _stockReservationService.CommitByReferencesAsync(
+                sourceSystem,
+                input.WarehouseId,
+                input.CartSessionId,
+                orderReference,
+                ct);
 
-        var approved = await _inventoryDocumentAppService.ApproveAsync(created.Id, cancellationToken);
+            var created = await _inventoryDocumentAppService.CreateStockOutAsync(new CreateStockOutDto
+            {
+                SourceWarehouseId = input.WarehouseId,
+                DocumentDate = input.SaleDate,
+                ReferenceNo = orderReference,
+                SourceSystem = sourceSystem,
+                Note = BuildSalesNote("SALE", input.Note),
+                Lines = documentLines
+            }, ct);
+
+            return await _inventoryDocumentAppService.ApproveAsync(created.Id, ct);
+        }, cancellationToken);
 
         return MapSaleResponse(approved, sourceSystem, orderReference, isReplay: false);
     }
@@ -144,7 +152,9 @@ public class SalesIntegrationService : ISalesIntegrationService
             if (existing.Status is not InventoryDocumentStatus.Approved
                 and not InventoryDocumentStatus.Completed)
             {
-                var approvedDoc = await _inventoryDocumentAppService.ApproveAsync(existing.Id, cancellationToken);
+                var approvedDoc = await _unitOfWork.ExecuteInTransactionAsync(
+                    ct => _inventoryDocumentAppService.ApproveAsync(existing.Id, ct),
+                    cancellationToken);
                 return MapReturnResponse(approvedDoc, sourceSystem, returnReference, isReplay: false);
             }
 
@@ -160,17 +170,20 @@ public class SalesIntegrationService : ISalesIntegrationService
 
         var documentLines = await MapToDocumentLinesAsync(input.Lines, cancellationToken);
 
-        var created = await _inventoryDocumentAppService.CreateStockInAsync(new CreateStockInDto
+        var approved = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            DestinationWarehouseId = input.WarehouseId,
-            DocumentDate = input.ReturnDate,
-            ReferenceNo = returnReference,
-            SourceSystem = sourceSystem,
-            Note = BuildSalesNote("RETURN", input.Note),
-            Lines = documentLines
-        }, cancellationToken);
+            var created = await _inventoryDocumentAppService.CreateStockInAsync(new CreateStockInDto
+            {
+                DestinationWarehouseId = input.WarehouseId,
+                DocumentDate = input.ReturnDate,
+                ReferenceNo = returnReference,
+                SourceSystem = sourceSystem,
+                Note = BuildSalesNote("RETURN", input.Note),
+                Lines = documentLines
+            }, ct);
 
-        var approved = await _inventoryDocumentAppService.ApproveAsync(created.Id, cancellationToken);
+            return await _inventoryDocumentAppService.ApproveAsync(created.Id, ct);
+        }, cancellationToken);
 
         return MapReturnResponse(approved, sourceSystem, returnReference, isReplay: false);
     }

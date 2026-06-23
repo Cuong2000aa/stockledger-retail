@@ -17,6 +17,8 @@ public class CurrentStockConfiguration : IEntityTypeConfiguration<CurrentStock>
         builder.Property(x => x.QuantityAvailable).HasPrecision(18, 4);
         builder.Property(x => x.LastUpdatedAt).IsRequired();
 
+        builder.Property(x => x.RowVersion).IsRowVersion();
+
         builder.HasIndex(x => new { x.ProductVariantId, x.WarehouseId }).IsUnique();
 
         builder.HasOne(x => x.ProductVariant)

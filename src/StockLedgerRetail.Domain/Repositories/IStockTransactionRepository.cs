@@ -1,4 +1,5 @@
 using StockLedgerRetail.Domain.Entities;
+using StockLedgerRetail.Domain.Inventory;
 
 namespace StockLedgerRetail.Domain.Repositories;
 
@@ -24,6 +25,9 @@ public interface IStockTransactionRepository
     Task<List<StockTransaction>> GetByDateRangeAsync(
         DateTime fromDate,
         DateTime toDate,
+        CancellationToken cancellationToken = default);
+
+    Task<List<StockLedgerAggregate>> GetAggregatedQuantitiesAsync(
         CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);

@@ -23,6 +23,8 @@ public class InventoryDocumentConfiguration : IEntityTypeConfiguration<Inventory
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.ApprovedBy).HasMaxLength(100);
 
+        builder.Property(x => x.RowVersion).IsRowVersion();
+
         builder.HasIndex(x => x.DocumentNo).IsUnique();
         builder.HasIndex(x => new { x.SourceSystem, x.ReferenceNo, x.DocumentType })
             .IsUnique()

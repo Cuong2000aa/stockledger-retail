@@ -26,6 +26,11 @@ public class StockTransactionDto
 
     public decimal AfterQuantity { get; set; }
 
+    public decimal? UnitCost { get; set; }
+
+    public decimal? ExtendedCost =>
+        UnitCost.HasValue ? UnitCost.Value * Math.Abs(QuantityDelta) : null;
+
     public DateTime TransactionDate { get; set; }
 
     public string CreatedBy { get; set; } = string.Empty;

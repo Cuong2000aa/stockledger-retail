@@ -24,6 +24,9 @@ public class StockTransaction
 
     public decimal AfterQuantity { get; set; }
 
+    /// <summary>Giá vốn đơn vị tại thời điểm giao dịch (COGS cho xuất, giá nhập cho nhập có cost).</summary>
+    public decimal? UnitCost { get; set; }
+
     public DateTime TransactionDate { get; set; }
 
     public string CreatedBy { get; set; } = string.Empty;

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using StockLedgerRetail.Domain.Repositories;
+using StockLedgerRetail.EntityFrameworkCore.Infrastructure;
 using StockLedgerRetail.EntityFrameworkCore.Repositories;
 
 namespace StockLedgerRetail.EntityFrameworkCore;
@@ -26,6 +27,9 @@ public static class StockLedgerRetailEntityFrameworkCoreModule
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
         services.AddScoped<IGoodsReceiptRepository, GoodsReceiptRepository>();
         services.AddScoped<IStockReservationRepository, StockReservationRepository>();
+        services.AddScoped<IProductCostHistoryRepository, ProductCostHistoryRepository>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IDocumentNumberGenerator, DocumentNumberGenerator>();
 
         return services;
     }

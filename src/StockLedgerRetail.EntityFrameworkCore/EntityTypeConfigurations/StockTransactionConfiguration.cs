@@ -17,6 +17,7 @@ public class StockTransactionConfiguration : IEntityTypeConfiguration<StockTrans
         builder.Property(x => x.QuantityDelta).HasPrecision(18, 4);
         builder.Property(x => x.BeforeQuantity).HasPrecision(18, 4);
         builder.Property(x => x.AfterQuantity).HasPrecision(18, 4);
+        builder.Property(x => x.UnitCost).HasPrecision(18, 4);
         builder.Property(x => x.TransactionDate).IsRequired();
         builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
         builder.Property(x => x.CreatedAt).IsRequired();

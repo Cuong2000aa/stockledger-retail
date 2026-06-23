@@ -17,6 +17,8 @@ public class StockReservationService : IStockReservationService
     private readonly ICurrentStockRepository _currentStockRepository;
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IWarehouseRepository _warehouseRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IDocumentNumberGenerator _documentNumberGenerator;
     private readonly SalesIntegrationOptions _options;
 
     public StockReservationService(
@@ -24,171 +26,184 @@ public class StockReservationService : IStockReservationService
         ICurrentStockRepository currentStockRepository,
         IProductVariantRepository productVariantRepository,
         IWarehouseRepository warehouseRepository,
+        IUnitOfWork unitOfWork,
+        IDocumentNumberGenerator documentNumberGenerator,
         IOptions<SalesIntegrationOptions> options)
     {
         _stockReservationRepository = stockReservationRepository;
         _currentStockRepository = currentStockRepository;
         _productVariantRepository = productVariantRepository;
         _warehouseRepository = warehouseRepository;
+        _unitOfWork = unitOfWork;
+        _documentNumberGenerator = documentNumberGenerator;
         _options = options.Value;
     }
 
     public Task RefreshExpiredReservationsAsync(CancellationToken cancellationToken = default) =>
-        ExpireStaleReservationsAsync(cancellationToken);
+        _unitOfWork.ExecuteInTransactionAsync(ExpireStaleReservationsAsync, cancellationToken);
 
     public async Task<ReserveStockResponseDto> ReserveAsync(
         ReserveStockRequestDto input,
         CancellationToken cancellationToken = default)
     {
-        var sourceSystem = NormalizeSourceSystem(input.SourceSystem);
-        var (referenceType, referenceKey) = ResolveReference(input.CartSessionId, input.OrderReference);
-
-        await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
-        ValidateSalesLines(input.Lines);
-        await ExpireStaleReservationsAsync(cancellationToken);
-
-        var mappedLines = await MapToReservationLinesAsync(input.Lines, cancellationToken);
-
-        var existing = await _stockReservationRepository.GetActiveByReferenceAsync(
-            sourceSystem,
-            referenceType,
-            referenceKey,
-            input.WarehouseId,
-            cancellationToken);
-
-        await EnsureSufficientAvailabilityAsync(
-            input.WarehouseId,
-            mappedLines,
-            existing,
-            cancellationToken);
-
-        var now = DateTime.UtcNow;
-        var expiresAt = now.AddMinutes(ResolveExpiryMinutes(input.ExpiresInMinutes));
-
-        var isUpdated = existing is not null;
-        StockReservation reservation;
-
-        if (existing is not null)
+        return await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            existing.Lines.Clear();
-            foreach (var line in mappedLines)
+            var sourceSystem = NormalizeSourceSystem(input.SourceSystem);
+            var (referenceType, referenceKey) = ResolveReference(input.CartSessionId, input.OrderReference);
+
+            await EnsureWarehouseExistsAsync(input.WarehouseId, ct);
+            ValidateSalesLines(input.Lines);
+            await ExpireStaleReservationsAsync(ct);
+
+            var mappedLines = await MapToReservationLinesAsync(input.Lines, ct);
+
+            var existing = await _stockReservationRepository.GetActiveByReferenceAsync(
+                sourceSystem,
+                referenceType,
+                referenceKey,
+                input.WarehouseId,
+                ct);
+
+            await EnsureSufficientAvailabilityAsync(
+                input.WarehouseId,
+                mappedLines,
+                existing,
+                ct);
+
+            var now = DateTime.UtcNow;
+            var expiresAt = now.AddMinutes(ResolveExpiryMinutes(input.ExpiresInMinutes));
+
+            var isUpdated = existing is not null;
+            StockReservation reservation;
+
+            if (existing is not null)
             {
-                line.StockReservationId = existing.Id;
-                existing.Lines.Add(line);
+                existing.Lines.Clear();
+                foreach (var line in mappedLines)
+                {
+                    line.StockReservationId = existing.Id;
+                    existing.Lines.Add(line);
+                }
+
+                existing.ExpiresAt = expiresAt;
+                existing.UpdatedAt = now;
+                reservation = existing;
+                await _stockReservationRepository.UpdateAsync(reservation, ct);
+            }
+            else
+            {
+                reservation = new StockReservation
+                {
+                    Id = Guid.NewGuid(),
+                    ReservationNo = await _documentNumberGenerator.NextAsync(
+                        $"RV-{now:yyyyMMdd}-",
+                        _stockReservationRepository.CountByDatePrefixAsync,
+                        4,
+                        ct),
+                    SourceSystem = sourceSystem,
+                    ReferenceType = referenceType,
+                    ReferenceKey = referenceKey,
+                    WarehouseId = input.WarehouseId,
+                    Status = StockReservationStatus.Active,
+                    ExpiresAt = expiresAt,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    Lines = mappedLines
+                };
+
+                await _stockReservationRepository.InsertAsync(reservation, ct);
             }
 
-            existing.ExpiresAt = expiresAt;
-            existing.UpdatedAt = now;
-            reservation = existing;
-            await _stockReservationRepository.UpdateAsync(reservation, cancellationToken);
-        }
-        else
-        {
-            reservation = new StockReservation
-            {
-                Id = Guid.NewGuid(),
-                ReservationNo = await GenerateReservationNoAsync(now, cancellationToken),
-                SourceSystem = sourceSystem,
-                ReferenceType = referenceType,
-                ReferenceKey = referenceKey,
-                WarehouseId = input.WarehouseId,
-                Status = StockReservationStatus.Active,
-                ExpiresAt = expiresAt,
-                CreatedAt = now,
-                UpdatedAt = now,
-                Lines = mappedLines
-            };
+            await RecalculateReservedForVariantsAsync(
+                input.WarehouseId,
+                mappedLines.Select(x => x.ProductVariantId),
+                now,
+                ct);
 
-            await _stockReservationRepository.InsertAsync(reservation, cancellationToken);
-        }
-
-        await RecalculateReservedForVariantsAsync(
-            input.WarehouseId,
-            mappedLines.Select(x => x.ProductVariantId),
-            cancellationToken);
-
-        await _stockReservationRepository.SaveChangesAsync(cancellationToken);
-
-        return MapReserveResponse(reservation, input.Lines, isUpdated);
+            return MapReserveResponse(reservation, input.Lines, isUpdated);
+        }, cancellationToken);
     }
 
     public async Task<ReleaseStockReservationResponseDto> ReleaseAsync(
         ReleaseStockReservationRequestDto input,
         CancellationToken cancellationToken = default)
     {
-        var sourceSystem = NormalizeSourceSystem(input.SourceSystem);
-        var (referenceType, referenceKey) = ResolveReference(input.CartSessionId, input.OrderReference);
-
-        await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
-        await ExpireStaleReservationsAsync(cancellationToken);
-
-        var reservation = await _stockReservationRepository.GetActiveByReferenceAsync(
-            sourceSystem,
-            referenceType,
-            referenceKey,
-            input.WarehouseId,
-            cancellationToken);
-
-        if (reservation is null)
+        return await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            return new ReleaseStockReservationResponseDto { Released = false };
-        }
+            var sourceSystem = NormalizeSourceSystem(input.SourceSystem);
+            var (referenceType, referenceKey) = ResolveReference(input.CartSessionId, input.OrderReference);
 
-        var variantIds = reservation.Lines.Select(x => x.ProductVariantId).ToList();
-        var now = DateTime.UtcNow;
+            await EnsureWarehouseExistsAsync(input.WarehouseId, ct);
+            await ExpireStaleReservationsAsync(ct);
 
-        reservation.Status = StockReservationStatus.Released;
-        reservation.ReleasedAt = now;
-        reservation.UpdatedAt = now;
+            var reservation = await _stockReservationRepository.GetActiveByReferenceAsync(
+                sourceSystem,
+                referenceType,
+                referenceKey,
+                input.WarehouseId,
+                ct);
 
-        await _stockReservationRepository.UpdateAsync(reservation, cancellationToken);
-        await RecalculateReservedForVariantsAsync(input.WarehouseId, variantIds, cancellationToken);
-        await _stockReservationRepository.SaveChangesAsync(cancellationToken);
+            if (reservation is null)
+            {
+                return new ReleaseStockReservationResponseDto { Released = false };
+            }
 
-        return new ReleaseStockReservationResponseDto
-        {
-            Released = true,
-            StockReservationId = reservation.Id,
-            ReservationNo = reservation.ReservationNo
-        };
+            var variantIds = reservation.Lines.Select(x => x.ProductVariantId).ToList();
+            var now = DateTime.UtcNow;
+
+            reservation.Status = StockReservationStatus.Released;
+            reservation.ReleasedAt = now;
+            reservation.UpdatedAt = now;
+
+            await _stockReservationRepository.UpdateAsync(reservation, ct);
+            await RecalculateReservedForVariantsAsync(input.WarehouseId, variantIds, now, ct);
+
+            return new ReleaseStockReservationResponseDto
+            {
+                Released = true,
+                StockReservationId = reservation.Id,
+                ReservationNo = reservation.ReservationNo
+            };
+        }, cancellationToken);
     }
 
-    public async Task CommitByReferencesAsync(
+    public Task CommitByReferencesAsync(
         string sourceSystem,
         Guid warehouseId,
         string? cartSessionId,
         string? orderReference,
-        CancellationToken cancellationToken = default)
-    {
-        await ExpireStaleReservationsAsync(cancellationToken);
-
-        if (!string.IsNullOrWhiteSpace(cartSessionId))
+        CancellationToken cancellationToken = default) =>
+        _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            await CommitSingleReferenceAsync(
-                sourceSystem,
-                StockReservationReferenceType.CartSession,
-                cartSessionId.Trim(),
-                warehouseId,
-                cancellationToken);
-        }
+            await ExpireStaleReservationsAsync(ct);
 
-        if (!string.IsNullOrWhiteSpace(orderReference))
-        {
-            var orderKey = orderReference.Trim();
-            var skipOrder = !string.IsNullOrWhiteSpace(cartSessionId)
-                && cartSessionId.Trim().Equals(orderKey, StringComparison.Ordinal);
-
-            if (!skipOrder)
+            if (!string.IsNullOrWhiteSpace(cartSessionId))
             {
                 await CommitSingleReferenceAsync(
                     sourceSystem,
-                    StockReservationReferenceType.OrderReference,
-                    orderKey,
+                    StockReservationReferenceType.CartSession,
+                    cartSessionId.Trim(),
                     warehouseId,
-                    cancellationToken);
+                    ct);
             }
-        }
-    }
+
+            if (!string.IsNullOrWhiteSpace(orderReference))
+            {
+                var orderKey = orderReference.Trim();
+                var skipOrder = !string.IsNullOrWhiteSpace(cartSessionId)
+                    && cartSessionId.Trim().Equals(orderKey, StringComparison.Ordinal);
+
+                if (!skipOrder)
+                {
+                    await CommitSingleReferenceAsync(
+                        sourceSystem,
+                        StockReservationReferenceType.OrderReference,
+                        orderKey,
+                        warehouseId,
+                        ct);
+                }
+            }
+        }, cancellationToken);
 
     private async Task CommitSingleReferenceAsync(
         string sourceSystem,
@@ -217,8 +232,7 @@ public class StockReservationService : IStockReservationService
         reservation.UpdatedAt = now;
 
         await _stockReservationRepository.UpdateAsync(reservation, cancellationToken);
-        await RecalculateReservedForVariantsAsync(warehouseId, variantIds, cancellationToken);
-        await _stockReservationRepository.SaveChangesAsync(cancellationToken);
+        await RecalculateReservedForVariantsAsync(warehouseId, variantIds, now, cancellationToken);
     }
 
     private async Task ExpireStaleReservationsAsync(CancellationToken cancellationToken)
@@ -240,10 +254,9 @@ public class StockReservationService : IStockReservationService
             await RecalculateReservedForVariantsAsync(
                 reservation.WarehouseId,
                 reservation.Lines.Select(x => x.ProductVariantId),
+                now,
                 cancellationToken);
         }
-
-        await _stockReservationRepository.SaveChangesAsync(cancellationToken);
     }
 
     private async Task EnsureSufficientAvailabilityAsync(
@@ -254,6 +267,11 @@ public class StockReservationService : IStockReservationService
     {
         foreach (var line in newLines)
         {
+            await _currentStockRepository.LockVariantWarehouseAsync(
+                line.ProductVariantId,
+                warehouseId,
+                cancellationToken);
+
             var stock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
                 line.ProductVariantId,
                 warehouseId,
@@ -286,33 +304,23 @@ public class StockReservationService : IStockReservationService
     private async Task RecalculateReservedForVariantsAsync(
         Guid warehouseId,
         IEnumerable<Guid> productVariantIds,
+        DateTime updatedAt,
         CancellationToken cancellationToken)
     {
         foreach (var productVariantId in productVariantIds.Distinct())
         {
-            var stock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
-                productVariantId,
-                warehouseId,
-                cancellationToken);
-
-            if (stock is null)
-            {
-                continue;
-            }
-
             var reserved = await _stockReservationRepository.GetActiveReservedQuantityAsync(
                 productVariantId,
                 warehouseId,
                 cancellationToken);
 
-            stock.QuantityReserved = reserved;
-            stock.QuantityAvailable = stock.QuantityOnHand - reserved;
-            stock.LastUpdatedAt = DateTime.UtcNow;
-
-            await _currentStockRepository.UpdateAsync(stock, cancellationToken);
+            await _currentStockRepository.SyncReservedQuantityAsync(
+                productVariantId,
+                warehouseId,
+                reserved,
+                updatedAt,
+                cancellationToken);
         }
-
-        await _currentStockRepository.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<List<StockReservationLine>> MapToReservationLinesAsync(
@@ -336,13 +344,6 @@ public class StockReservationService : IStockReservationService
         }
 
         return result;
-    }
-
-    private async Task<string> GenerateReservationNoAsync(DateTime now, CancellationToken cancellationToken)
-    {
-        var prefix = $"RV-{now:yyyyMMdd}-";
-        var count = await _stockReservationRepository.CountByDatePrefixAsync(prefix, cancellationToken);
-        return $"{prefix}{(count + 1):D4}";
     }
 
     private async Task<string> ResolveSkuAsync(Guid productVariantId, CancellationToken cancellationToken)
