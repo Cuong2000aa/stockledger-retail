@@ -33,6 +33,7 @@ CurrentStock      ← fast lookup
 | **Omni-channel** | Multi-warehouse ATP, allocate warehouse, stock reservation | ✅ Done |
 | **Multi-brand (MB-1→4)** | Brand entity, transfer policy, in-transit transfer, brand-scoped insights & fulfillment, scope headers | ✅ Done |
 | **RBAC** | Email users, permission groups in DB, teams, document authorization | ✅ Done |
+| **Login (stub)** | `POST /api/auth/login`, frontend `/login`, session → `X-User-Email` header | ✅ Done |
 | **Valuation** | CostPrice, SellingPrice, CostSource on SKU; ProductCostHistory entity | ✅ Domain + DB |
 | **Insights** | Dead stock, sales velocity, transfer suggestions (rule-based) | ✅ Done |
 | **AI Copilot** | Natural-language Q&A on insight APIs | 🔜 Planned |
@@ -90,6 +91,7 @@ Optional scope headers (RBAC-lite): `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-C
 
 ### Authorization (email + DB permissions)
 
+- **Login:** `POST /api/auth/login` (stub: `admin` / `1234`) → frontend session; API calls send `X-User-Email`
 - Identify users via header `X-User-Email` (registered in `app_users`)
 - Permission groups: `SYSTEM_ADMIN`, `TEAM_LEADER`, `WAREHOUSE_CLERK`, `VIEWER`
 - Team leaders can update/cancel/approve documents created by team members
@@ -116,9 +118,11 @@ See [docs/RBAC.md](docs/RBAC.md).
 
 ### Frontend (Next.js)
 
-Bilingual UI (VI / EN): dashboard, products, SKUs, warehouses, suppliers, purchase orders, goods receipts, inventory documents, current stock, stock history.
+Bilingual UI (VI / EN): login, dashboard, products, SKUs, warehouses, suppliers, purchase orders, goods receipts, inventory documents, current stock, stock history, insights.
 
 Default locale: `vi` — `http://localhost:3000/vi`
+
+**Dev tip:** if Next.js shows Internal Server Error after `npm run build` while dev is running, run `npm run dev:fresh` in `frontend/` (clears `.next` cache).
 
 ---
 
@@ -329,13 +333,18 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 
 ## Planned
 
-- **JWT / OAuth** login (replace or complement `X-User-Email` header)
-- **AI Copilot** — natural-language Q&A on top of insight APIs (optional LLM layer)
-- TransferPolicy admin API, frontend multi-brand screens
-- Docker deployment
+Items below are **not done yet** (or only partially done). See the [Implementation Status](#implementation-status) table for what is already shipped.
+
+| Item | Notes |
+|------|--------|
+| **JWT / OAuth** | Replace stub login (`admin`/`1234`); keep permissions loaded from DB |
+| **AI Copilot** | Natural-language Q&A on top of insight APIs (optional LLM layer) |
+| **TransferPolicy admin API** | CRUD UI/API for cross-brand transfer rules (policy is enforced on transfer today; seeded in DB) |
+| **Frontend multi-brand admin** | Brand master screens, `BrandId` pickers on product/SKU/warehouse (backend `GET/POST /api/brands` exists) |
+| **Docker deployment** | `docker-compose` for API + PostgreSQL + frontend |
 
 ---
 
 ## Project Status
 
-🚧 **Active development** — Phases 1–3, Sprint 2, omni-channel, and multi-brand (MB-1→4) complete; AI copilot planned.
+🚧 **Active development** — Core inventory, omni-channel, multi-brand (MB-1→4), RBAC, stub login, and rule-based insights are **done**. Next: JWT/OAuth, brand/transfer-policy admin UI, AI copilot, Docker.
