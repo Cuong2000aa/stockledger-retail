@@ -528,7 +528,9 @@
     "Store": "Store",
     "SubWarehouse": "Sub-warehouse",
     "Defect": "Defect",
-    "Return": "Return"
+    "Return": "Return",
+    "InTransit": "In transit",
+    "Unknown": "Unknown"
   },
   "auth": {
     "subtitle": "Sign in to continue",

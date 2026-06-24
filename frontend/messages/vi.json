@@ -554,7 +554,9 @@
     "Store": "Cửa hàng",
     "SubWarehouse": "Kho con",
     "Defect": "Hàng lỗi",
-    "Return": "Hàng trả"
+    "Return": "Hàng trả",
+    "InTransit": "Đang luân chuyển",
+    "Unknown": "Không xác định"
   },
   "auth": {
     "subtitle": "Đăng nhập để tiếp tục",

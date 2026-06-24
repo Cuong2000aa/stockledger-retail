@@ -44,6 +44,7 @@ const warehouseTypeStyles: Partial<Record<WarehouseType, string>> = {
   [WarehouseType.SubWarehouse]: "bg-violet-50 text-violet-800 ring-violet-200",
   [WarehouseType.Defect]: "bg-red-50 text-red-800 ring-red-200",
   [WarehouseType.Return]: "bg-amber-50 text-amber-800 ring-amber-200",
+  [WarehouseType.InTransit]: "bg-cyan-50 text-cyan-800 ring-cyan-200",
 };
 
 export function DocStatusBadge({
@@ -128,7 +129,7 @@ export function docTypeKey(type: InventoryDocumentType): string {
 }
 
 export function warehouseTypeKey(type: WarehouseType): string {
-  return WarehouseType[type];
+  return WarehouseType[type] ?? "Unknown";
 }
 
 export function costSourceKey(source: CostSource): string {
