@@ -412,7 +412,43 @@
       "warehouse": "Kho",
       "allWarehouses": "Tất cả kho",
       "deadStockDays": "Số ngày tồn chết",
-      "lookbackDays": "Số ngày nhìn lại"
+      "lookbackDays": "Số ngày nhìn lại",
+      "searching": "Đang tìm kho…",
+      "deadStockDaysHint": "SKU không có outbound trong số ngày này được coi là tồn chết.",
+      "lookbackDaysHint": "Dùng cho tốc độ bán và gợi ý chuyển kho."
+    },
+    "tabHints": {
+      "deadStock": "SKU còn tồn nhưng không bán — chiếm vốn và rủi ro lỗi thời",
+      "velocity": "Cover thấp hoặc không có nhu cầu — cần bổ sung hoặc rà soát",
+      "transfer": "Cân bằng tồn giữa kho dư và kho thiếu hàng"
+    },
+    "copilot": {
+      "bannerTitle": "Tóm tắt Insights",
+      "explain": "Giải thích",
+      "explainTitle": "Giải thích gợi ý",
+      "explainSubtitle": "Phân tích rule-based từ snapshot — sẵn sàng nối AI sau",
+      "evidenceTitle": "Bằng chứng",
+      "futureAiNote": "Copilot AI sẽ bổ sung giải thích chi tiết và hội thoại theo ngữ cảnh.",
+      "summaryDeadStock": "Phát hiện {count} SKU tồn chết, chiếm ~{capital} vốn; {critical} mục khẩn cần xử lý.",
+      "summaryDeadStockEmpty": "Không có SKU tồn chết với bộ lọc hiện tại — tồn đang luân chuyển tốt.",
+      "summaryVelocity": "Có {alerts} SKU cần chú ý về cover hoặc nhu cầu trong kỳ nhìn lại.",
+      "summaryVelocityEmpty": "Tốc độ bán ổn định — chưa có cảnh báo cover thấp.",
+      "summaryTransfer": "{count} gợi ý chuyển kho có thể cân bằng tồn giữa các kho.",
+      "summaryTransferEmpty": "Chưa có gợi ý chuyển kho phù hợp với bộ lọc hiện tại.",
+      "explainIntro": "Hệ thống đánh giá {location} với mức ưu tiên P{priority}.",
+      "locationSkuWarehouse": "{sku} tại kho {warehouse}",
+      "locationTransfer": "{sku}: {from} → {to}",
+      "locationItem": "mục này",
+      "rationale": {
+        "deadCritical": "Tồn đứng yên lâu và chiếm vốn — ưu tiên xả tồn hoặc chuyển clearance để giải phóng dòng tiền.",
+        "deadMarkdown": "SKU chậm luân chuyển — cân nhắc giảm giá hoặc điều chuyển sang kênh outlet.",
+        "deadReview": "Theo dõi thêm hoặc cân nhắc ngừng nhập cho SKU chậm bán.",
+        "velocityUrgent": "Cover thấp so với tốc độ bán — rủi ro hết hàng nếu không bổ sung kịp.",
+        "velocityPlan": "Nên lên kế hoạch nhập hoặc chuyển kho trong vài ngày tới.",
+        "velocityNoDemand": "Không có outbound trong kỳ — rà soát tồn chết hoặc ngừng kinh doanh.",
+        "velocityMonitor": "Nhu cầu ổn định — tiếp tục theo dõi, chưa cần hành động khẩn.",
+        "transfer": "Cân bằng tồn giữa kho dư và kho thiếu cover — giảm tồn chết tại nguồn."
+      }
     },
     "deadStock": {
       "title": "Tồn chết",
@@ -433,6 +469,7 @@
       "subtitle": "Đề xuất điều chuyển từ kho dư sang kho có nhu cầu cao",
       "from": "Từ kho",
       "to": "Đến kho",
+      "route": "Tuyến chuyển",
       "qty": "SL gợi ý",
       "coverDays": "Cover đích",
       "createTransfer": "Tạo chuyển kho",

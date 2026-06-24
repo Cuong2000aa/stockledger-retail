@@ -13,6 +13,7 @@ import {
   Eye,
   FileOutput,
   Loader2,
+  MessageCircle,
   PackageSearch,
   ShoppingCart,
   Sparkles,
@@ -60,12 +61,14 @@ export function RecommendationCard({
   locale,
   executingActionId,
   onApiAction,
+  onExplain,
 }: {
   recommendation?: InsightRecommendation;
   severity: string;
   locale: string;
   executingActionId?: string | null;
   onApiAction?: (actionId: string) => void;
+  onExplain?: () => void;
 }) {
   const t = useTranslations("insights");
   const tActions = useTranslations("insights.actions");
@@ -141,8 +144,18 @@ export function RecommendationCard({
         </div>
       )}
 
-      {sortedActions.length > 0 && (
+      {(onExplain || sortedActions.length > 0) && (
         <div className="flex flex-wrap gap-1.5 border-t border-white/80 pt-2.5">
+          {onExplain ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-violet-500"
+              onClick={onExplain}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {t("copilot.explain")}
+            </button>
+          ) : null}
           {sortedActions.map((action) => {
             const label = ctaLabel(tCtas, action.labelKey);
             const isExecuting = executingActionId === action.id;

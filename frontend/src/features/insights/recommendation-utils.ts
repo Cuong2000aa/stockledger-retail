@@ -61,3 +61,32 @@ export function findCtaById(
 ) {
   return actions?.find((action) => action.id === actionId);
 }
+
+export function getRecommendationTitle(
+  recommendation: InsightRecommendation | undefined,
+  translateTitle: (key: string) => string
+): string {
+  if (!recommendation?.titleKey) {
+    return "";
+  }
+  try {
+    return translateTitle(`recommendation.titles.${recommendation.titleKey}`);
+  } catch {
+    return recommendation.titleKey;
+  }
+}
+
+export function getRecommendationDetail(
+  recommendation: InsightRecommendation | undefined,
+  translateAction: (code: string, params?: Record<string, string>) => string
+): string {
+  if (!recommendation?.actionCode) {
+    return "";
+  }
+  try {
+    return translateAction(recommendation.actionCode, recommendation.params ?? {});
+  } catch {
+    return recommendation.actionCode;
+  }
+}
+
