@@ -43,6 +43,10 @@ public class PurchaseOrdersController : ControllerBase
     public Task<PurchaseOrderDto> SubmitAsync(Guid id, CancellationToken cancellationToken) =>
         _purchaseOrderAppService.SubmitAsync(id, cancellationToken);
 
+    [HttpPost("{id:guid}/approve")]
+    public Task<PurchaseOrderDto> ApproveAsync(Guid id, CancellationToken cancellationToken) =>
+        _purchaseOrderAppService.ApproveAsync(id, cancellationToken);
+
     /// <summary>Hủy PO — chỉ khi chưa nhận hàng.</summary>
     [HttpPost("{id:guid}/cancel")]
     public Task<PurchaseOrderDto> CancelAsync(Guid id, CancellationToken cancellationToken) =>

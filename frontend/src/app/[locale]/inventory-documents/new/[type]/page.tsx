@@ -16,7 +16,8 @@ import { validateInventoryDocumentForm } from "@/lib/validation";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { use, useState } from "react";
+import { use, useState, useCallback } from "react";
+import { useInsightPrefill } from "@/features/insights/useInsightPrefill";
 
 type DocKind =
   | "stock-in"
@@ -58,6 +59,47 @@ export default function NewDocumentPage({
   const [referenceNo, setReferenceNo] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<LineState[]>([emptyLine()]);
+
+  const applyPrefill = useCallback(
+    (values: Partial<{
+      warehouseId: string;
+      sourceWarehouseId: string;
+      destinationWarehouseId: string;
+      productVariantId: string;
+      quantity: number;
+      note: string;
+      referenceNo: string;
+    }>) => {
+      if (values.warehouseId) {
+        setWarehouseId(values.warehouseId);
+      }
+      if (values.sourceWarehouseId) {
+        setSourceWarehouseId(values.sourceWarehouseId);
+      }
+      if (values.destinationWarehouseId) {
+        setDestinationWarehouseId(values.destinationWarehouseId);
+      }
+      if (values.note) {
+        setNote(values.note);
+      }
+      if (values.referenceNo) {
+        setReferenceNo(values.referenceNo);
+      }
+      if (values.productVariantId || values.quantity) {
+        setLines([
+          {
+            productVariantId: values.productVariantId ?? "",
+            quantity: values.quantity ?? 1,
+            adjustmentQuantity: values.quantity ?? 1,
+            countedQuantity: values.quantity ?? 0,
+          },
+        ]);
+      }
+    },
+    []
+  );
+
+  useInsightPrefill(applyPrefill);
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses-all"],

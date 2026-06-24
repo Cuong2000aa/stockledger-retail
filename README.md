@@ -34,8 +34,15 @@ CurrentStock      ← fast lookup
 | **Multi-brand (MB-1→4)** | Brand entity, transfer policy, in-transit transfer, brand-scoped insights & fulfillment, scope headers | ✅ Done |
 | **RBAC** | Email users, permission groups in DB, teams, document authorization | ✅ Done |
 | **Login (stub)** | `POST /api/auth/login`, frontend `/login`, session → `X-User-Email` header | ✅ Done |
-| **Valuation** | CostPrice, SellingPrice, CostSource on SKU; ProductCostHistory entity | ✅ Domain + DB |
-| **Insights** | Dead stock, sales velocity, transfer suggestions (rule-based) | ✅ Done |
+| **Valuation** | CostPrice on SKU; ProductCostHistory; cost history report API | ✅ Done |
+| **Insights** | Dead stock, sales velocity, transfer suggestions, snapshot cache, action cards | ✅ Done |
+| **Reports** | Inventory value, NXT, near-expiry lots, lot stocks, cost history | ✅ Done |
+| **Stock reservations** | POS/OMS holds — list & manual release API + UI | ✅ Done |
+| **Approval workflow** | 2-step approval for high-value inventory documents & POs | ✅ Done |
+| **Lot / expiry** | StockLot, LotStock, FEFO (`TrackLotExpiry` on SKU) | ✅ Done |
+| **Transfer policy admin** | CRUD API + admin UI | ✅ Done |
+| **Admin UI** | Brands, users, teams, permissions, transfer policies, operations | ✅ Done |
+| **Demo seed** | Optional sample multi-brand data (`Seed:Fb:Enabled`) | ✅ Done |
 | **AI Copilot** | Natural-language Q&A on insight APIs | 🔜 Planned |
 
 ---
@@ -46,7 +53,8 @@ CurrentStock      ← fast lookup
 
 - **Brand** — multi-brand master (`Code`, `Name`, `Status`); scopes products, SKUs, and warehouses
 - **Product** — parent product (code, name, brand text, optional `BrandId`, category)
-- **ProductVariant (SKU)** — actual inventory unit; optional `BrandId`; SKU unique per `(BrandId, Sku)`
+- **ProductVariant (SKU)** — actual inventory unit; optional `BrandId`; SKU unique per `(BrandId, Sku)`; optional `TrackLotExpiry` for batch/FEFO
+- **StockLot / LotStock** — lot code, expiry date, quantity per warehouse (when lot tracking enabled)
 - **Warehouse** — DC, Store, Sub-warehouse, Defect, Return, **InTransit**; hierarchy via `ParentWarehouseId`; optional `BrandId`, `RegionCode`, `FulfillmentPriority`
 - **Supplier** — procurement partner master data
 - **TransferPolicy** — rules for cross-brand transfers
@@ -65,7 +73,9 @@ All documents start as **Draft**; stock changes only after **Approve**.
 
 **Transfer (in-transit):** `POST .../approve` ships to in-transit warehouse; `POST .../{id}/receive-transfer` completes receipt at destination.
 
-Additional: `PUT /api/inventory-documents/{id}` (update draft), `POST .../approve`, `POST .../receive-transfer`, `POST .../cancel`.
+Additional: `PUT /api/inventory-documents/{id}` (update draft), `POST .../submit-for-approval`, `POST .../approve`, `POST .../receive-transfer`, `POST .../cancel`.
+
+**Approval workflow:** documents above `ApprovalWorkflow:DocumentValueThreshold` (default 10M VND) require `submit-for-approval` then two approval steps before stock is posted.
 
 ### Procurement
 
@@ -99,9 +109,24 @@ Optional scope headers (RBAC-lite): `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-C
 
 See [docs/RBAC.md](docs/RBAC.md).
 
-### Brands
+### Brands & admin
 
 - `GET/POST /api/brands`, `GET/PUT /api/brands/{id}`
+- `GET/POST/PUT /api/admin/transfer-policies` — cross-brand transfer rules
+- `GET/PUT/POST /api/admin/operations` — background jobs (reconciliation, insight refresh)
+
+### Inventory reports (read-only)
+
+- `GET /api/reports/inventory-value` — on-hand value by SKU/warehouse
+- `GET /api/reports/nxt` — opening / in / out / closing for a date range
+- `GET /api/reports/near-expiry-lots` — lots expiring within N days
+- `GET /api/reports/lot-stocks` — lot balances by warehouse
+- `GET /api/reports/cost-history` — SKU cost history
+
+### Stock reservations (admin)
+
+- `GET /api/stock-reservations` — list POS/OMS holds
+- `POST /api/stock-reservations/{id}/release` — manual release
 
 ### Inventory Insights (read-only)
 
@@ -118,7 +143,7 @@ See [docs/RBAC.md](docs/RBAC.md).
 
 ### Frontend (Next.js)
 
-Bilingual UI (VI / EN): login, dashboard, products, SKUs, warehouses, suppliers, purchase orders, goods receipts, inventory documents, current stock, stock history, insights.
+Bilingual UI (VI / EN): login, dashboard, products, SKUs, warehouses, suppliers, purchase orders, goods receipts, inventory documents (incl. receive-transfer & multi-step approval), current stock, stock history, insights, **reports**, **stock reservations**, **admin** (brands, users, teams, permissions, transfer policies, operations).
 
 Default locale: `vi` — `http://localhost:3000/vi`
 
@@ -284,6 +309,16 @@ npm run dev
 
 UI: [http://localhost:3000/vi](http://localhost:3000/vi) (default locale is Vietnamese; use `/en` for English)
 
+**6. Optional demo data** — on first API start, `Seed:Fb:Enabled: true` seeds sample brands, warehouses, SKUs, stock, and near-expiry lots. To load manually after migrations:
+
+```powershell
+.\scripts\seed-fnb-data.ps1
+```
+
+Set `Seed:Fb:Enabled: false` in production.
+
+> After pulling new API code, **restart** the API host so new endpoints (e.g. `/api/reports/*`) are available.
+
 ---
 
 ### Backend (quick reference)
@@ -339,12 +374,13 @@ Items below are **not done yet** (or only partially done). See the [Implementati
 |------|--------|
 | **JWT / OAuth** | Replace stub login (`admin`/`1234`); keep permissions loaded from DB |
 | **AI Copilot** | Natural-language Q&A on top of insight APIs (optional LLM layer) |
-| **TransferPolicy admin API** | CRUD UI/API for cross-brand transfer rules (policy is enforced on transfer today; seeded in DB) |
-| **Frontend multi-brand admin** | Brand master screens, `BrandId` pickers on product/SKU/warehouse (backend `GET/POST /api/brands` exists) |
+| **BrandId on master forms** | `BrandId` pickers on product/SKU/warehouse create/edit screens |
+| **PO approval UI** | Approve button for POs in `PendingApproval` status |
+| **GR / NXT demo seed** | Sample goods receipts and stock transactions for movement reports |
 | **Docker deployment** | `docker-compose` for API + PostgreSQL + frontend |
 
 ---
 
 ## Project Status
 
-🚧 **Active development** — Core inventory, omni-channel, multi-brand (MB-1→4), RBAC, stub login, and rule-based insights are **done**. Next: JWT/OAuth, brand/transfer-policy admin UI, AI copilot, Docker.
+🚧 **Active development** — Core inventory, omni-channel, multi-brand, RBAC, reports, lot/expiry, approval workflow, and admin UI are **done**. Next: JWT/OAuth, AI copilot, Docker.

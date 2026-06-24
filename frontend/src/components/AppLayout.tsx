@@ -14,10 +14,19 @@ import {
   LogOut,
   Loader2,
   Package,
+  PackageCheck,
+  BarChart3,
+  Clock3,
   ShoppingCart,
   Tags,
+  ServerCog,
   Truck,
   Warehouse,
+  Store,
+  Users,
+  UsersRound,
+  Shield,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,10 +41,22 @@ const navItems = [
   { href: "/warehouses", icon: Warehouse, key: "warehouses" },
   { href: "/suppliers", icon: Truck, key: "suppliers" },
   { href: "/purchase-orders", icon: ShoppingCart, key: "purchaseOrders" },
+  { href: "/goods-receipts", icon: PackageCheck, key: "goodsReceipts" },
   { href: "/insights", icon: Lightbulb, key: "insights" },
+  { href: "/reports", icon: BarChart3, key: "reports" },
   { href: "/inventory-documents", icon: FileText, key: "inventoryDocuments" },
   { href: "/current-stocks", icon: Boxes, key: "currentStocks" },
   { href: "/stock-transactions", icon: History, key: "stockTransactions" },
+  { href: "/stock-reservations", icon: Clock3, key: "stockReservations" },
+] as const;
+
+const adminNavItems = [
+  { href: "/admin/operations", icon: ServerCog, key: "operations" },
+  { href: "/admin/brands", icon: Store, key: "brands" },
+  { href: "/admin/users", icon: Users, key: "users" },
+  { href: "/admin/teams", icon: UsersRound, key: "teams" },
+  { href: "/admin/permissions", icon: Shield, key: "permissions" },
+  { href: "/admin/transfer-policies", icon: ArrowLeftRight, key: "transferPolicies" },
 ] as const;
 
 function NavItemLabel({
@@ -76,7 +97,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { session, logout } = useAuth();
+  const { session, logout, isSystemAdmin, isLoading } = useAuth();
   const prefetchedRef = useRef(new Set<string>());
 
   const warmRoute = useCallback(
@@ -94,6 +115,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const run = () => {
       navItems.forEach(({ href }) => warmRoute(href));
+      if (!isLoading && isSystemAdmin) {
+        adminNavItems.forEach(({ href }) => warmRoute(href));
+      }
     };
 
     if (typeof window !== "undefined" && "requestIdleCallback" in window) {
@@ -103,7 +127,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
     const id = globalThis.setTimeout(run, 800);
     return () => globalThis.clearTimeout(id);
-  }, [warmRoute]);
+  }, [warmRoute, isSystemAdmin, isLoading]);
 
   return (
     <div className="flex min-h-screen bg-slate-100">
@@ -156,31 +180,63 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {!isLoading && isSystemAdmin && (
+            <>
+              <p className="mb-2 mt-4 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                {t("adminSection")}
+              </p>
+              {adminNavItems.map(({ href, icon: Icon, key }) => {
+                const active = pathname.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    prefetch
+                    onMouseEnter={() => warmRoute(href)}
+                    onFocus={() => warmRoute(href)}
+                    className={clsx(
+                      "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                      active
+                        ? "bg-brand-600/20 text-white shadow-sm ring-1 ring-brand-500/30"
+                        : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                    )}
+                  >
+                    <NavItemLabel icon={Icon} label={t(key)} active={active} />
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
 
-        <div className="space-y-3 border-t border-white/10 p-4">
+        <div className="shrink-0 border-t border-white/10 px-2.5 py-2">
           {session && (
-            <div className="rounded-xl bg-white/5 px-3 py-3 ring-1 ring-white/10">
-              <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">
+            <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1.5 ring-1 ring-white/10">
+              <div
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-[10px] font-bold text-white"
+                title={session.email}
+              >
                 {(session.displayName || session.email).charAt(0).toUpperCase()}
               </div>
-              <p className="truncate text-sm font-medium text-white">
-                {session.displayName || session.email}
+              <p
+                className="min-w-0 flex-1 truncate text-xs font-medium text-slate-200"
+                title={session.email}
+              >
+                {session.email}
               </p>
-              <p className="truncate text-xs text-slate-400">{session.email}</p>
+              <button
+                type="button"
+                onClick={logout}
+                title={tAuth("signOut")}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
-          <button
-            type="button"
-            onClick={logout}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white"
-          >
-            <LogOut className="h-4 w-4" />
-            {tAuth("signOut")}
-          </button>
-          <div className="flex items-center justify-between gap-2 px-1">
-            <span className="text-xs text-slate-500">{tCommon("language")}</span>
-            <LanguageSwitcher variant="dark" />
+          <div className="mt-1.5 flex items-center justify-between gap-2 px-0.5">
+            <span className="text-[10px] text-slate-500">{tCommon("language")}</span>
+            <LanguageSwitcher variant="dark" compact />
           </div>
         </div>
       </aside>

@@ -36,3 +36,11 @@ export function clearAuthSession(): void {
 export function hasAuthSession(): boolean {
   return getAuthSession() !== null;
 }
+
+export function isSystemAdminSession(session: AuthSession | null | undefined): boolean {
+  return Boolean(
+    session?.permissionCodes?.some(
+      (code) => code.toLowerCase() === "system.admin"
+    )
+  );
+}

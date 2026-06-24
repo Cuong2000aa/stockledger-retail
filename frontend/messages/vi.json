@@ -38,9 +38,76 @@
     "stockTransactions": "Lịch sử tồn kho",
     "suppliers": "Nhà cung cấp",
     "purchaseOrders": "Đơn mua hàng",
-    "insights": "Insights"
+    "insights": "Insights",
+    "goodsReceipts": "Nhận hàng",
+    "reports": "Báo cáo",
+    "stockReservations": "Giữ hàng POS",
+    "adminSection": "Quản trị",
+    "operations": "Vận hành hệ thống",
+    "brands": "Thương hiệu",
+    "users": "Người dùng",
+    "teams": "Nhóm",
+    "permissions": "Quyền",
+    "transferPolicies": "Chính sách chuyển kho"
+  },
+  "stockReservations": {
+    "title": "Giữ hàng POS",
+    "subtitle": "Reservation từ POS/OMS — theo dõi và giải phóng thủ công",
+    "reservationNo": "Mã giữ",
+    "warehouse": "Kho",
+    "reference": "Tham chiếu",
+    "qty": "SL",
+    "expires": "Hết hạn",
+    "release": "Giải phóng",
+    "releaseConfirm": "Giải phóng reservation này?"
+  },
+  "operations": {
+    "title": "Theo dõi vận hành",
+    "subtitle": "Giám sát job nền, chỉnh lịch chạy và kích hoạt chạy thủ công.",
+    "adminOnly": "Trang này chỉ dành cho quản trị viên hệ thống (system.admin).",
+    "refresh": "Làm mới",
+    "historyTitle": "Lịch sử chạy",
+    "historySubtitle": "Chọn job để xem các lần thực thi gần đây.",
+    "enabled": "Bật job",
+    "intervalMinutes": "Chu kỳ (phút)",
+    "save": "Lưu",
+    "runNow": "Chạy ngay",
+    "running": "Đang chạy…",
+    "saved": "Đã lưu cấu hình job.",
+    "nextRun": "Lần chạy tiếp",
+    "lastRun": "Hoàn thành gần nhất",
+    "columns": {
+      "started": "Bắt đầu",
+      "status": "Trạng thái",
+      "trigger": "Kích hoạt",
+      "duration": "Thời gian",
+      "message": "Thông báo"
+    },
+    "status": {
+      "running": "Đang chạy",
+      "succeeded": "Thành công",
+      "failed": "Thất bại",
+      "idle": "Chờ",
+      "warning": "Cảnh báo"
+    },
+    "jobs": {
+      "insight_snapshots": {
+        "name": "Snapshot Insights",
+        "description": "Tính trước insights tồn kho để dashboard đọc nhanh hơn."
+      },
+      "stock_reconciliation": {
+        "name": "Đối soát tồn kho",
+        "description": "So sánh số dư sổ cái với snapshot tồn hiện tại."
+      }
+    },
+    "triggers": {
+      "scheduled": "Lịch tự động",
+      "manual": "Thủ công",
+      "manualBy": "Thủ công ({email})"
+    }
   },
   "filters": {
+    "title": "Bộ lọc",
     "searchPlaceholder": "Nhập từ khóa...",
     "clear": "Xóa bộ lọc",
     "allStatuses": "Tất cả trạng thái",
@@ -83,7 +150,13 @@
     "name": "Tên",
     "brand": "Thương hiệu",
     "category": "Danh mục",
-    "deleteConfirm": "Xóa sản phẩm này?"
+    "deleteConfirm": "Xóa sản phẩm này?",
+    "stats": {
+      "total": "Tổng sản phẩm",
+      "active": "Đang hoạt động",
+      "inactive": "Ngưng",
+      "brands": "Thương hiệu (trang)"
+    }
   },
   "variants": {
     "title": "SKU",
@@ -100,6 +173,11 @@
     "sellingPrice": "Giá bán",
     "costSource": "Nguồn giá vốn",
     "deleteConfirm": "Xóa SKU này?",
+    "stats": {
+      "total": "Tổng SKU",
+      "active": "Đang hoạt động",
+      "withCost": "Có giá vốn (trang)"
+    },
     "costSources": {
       "Manual": "Nhập thủ công",
       "Erp": "ERP",
@@ -126,7 +204,12 @@
     "postalCode": "Mã bưu điện",
     "phone": "Điện thoại",
     "contactName": "Người liên hệ",
-    "deleteConfirm": "Xóa kho này?"
+    "deleteConfirm": "Xóa kho này?",
+    "stats": {
+      "total": "Tổng kho",
+      "active": "Đang hoạt động",
+      "stores": "Cửa hàng (trang)"
+    }
   },
   "documents": {
     "title": "Phiếu nghiệp vụ",
@@ -161,9 +244,25 @@
     "approve": "Duyệt phiếu",
     "cancelDoc": "Hủy phiếu",
     "approveConfirm": "Duyệt phiếu này? Tồn kho sẽ được cập nhật.",
+    "submitForApproval": "Gửi duyệt",
+    "submitConfirm": "Gửi phiếu vào hàng chờ duyệt?",
+    "approveStep": "Duyệt cấp 1",
+    "approveStepConfirm": "Duyệt cấp 1? Phiếu vẫn cần duyệt cấp 2 trước khi tác động tồn.",
+    "approvalProgress": "Tiến độ duyệt",
+    "receiveTransfer": "Nhận chuyển kho",
+    "receiveTransferConfirm": "Xác nhận nhận hàng tại kho đích?",
+    "transferStatus": "Trạng thái chuyển",
+    "shippedAt": "Ngày xuất",
+    "receivedAt": "Ngày nhận",
+    "transferLifecycle": {
+      "None": "—",
+      "Shipped": "Đang vận chuyển",
+      "Received": "Đã nhận"
+    },
     "cancelConfirm": "Hủy phiếu nháp này?",
     "detail": "Chi tiết phiếu",
     "statusDraft": "Nháp",
+    "statusPending": "Chờ duyệt",
     "statusApproved": "Đã duyệt",
     "statusCancelled": "Đã hủy",
     "statusCompleted": "Hoàn thành",
@@ -173,6 +272,11 @@
       "Adjustment": "Điều chỉnh",
       "Transfer": "Chuyển kho",
       "StockCount": "Kiểm kê"
+    },
+    "stats": {
+      "total": "Tổng phiếu",
+      "draft": "Nháp (trang)",
+      "approved": "Đã duyệt (trang)"
     }
   },
   "stocks": {
@@ -183,7 +287,10 @@
     "onHand": "Tồn thực",
     "reserved": "Giữ chỗ",
     "available": "Khả dụng",
-    "lastUpdated": "Cập nhật lúc"
+    "lastUpdated": "Cập nhật lúc",
+    "stats": {
+      "total": "Tổng dòng tồn"
+    }
   },
   "transactions": {
     "title": "Lịch sử tồn kho",
@@ -195,7 +302,23 @@
     "before": "Trước",
     "after": "Sau",
     "date": "Ngày",
-    "createdBy": "Người tạo"
+    "createdBy": "Người tạo",
+    "types": {
+      "In": "Nhập kho",
+      "Out": "Xuất kho",
+      "TransferIn": "Nhập chuyển kho",
+      "TransferOut": "Xuất chuyển kho",
+      "AdjustmentIn": "Điều chỉnh tăng",
+      "AdjustmentOut": "Điều chỉnh giảm",
+      "CountAdjustmentIn": "Kiểm kê tăng",
+      "CountAdjustmentOut": "Kiểm kê giảm"
+    },
+    "stats": {
+      "total": "Tổng giao dịch",
+      "inbound": "Nhập (trang)",
+      "outbound": "Xuất (trang)",
+      "netChange": "Biến động ròng"
+    }
   },
   "suppliers": {
     "title": "Nhà cung cấp",
@@ -207,7 +330,12 @@
     "phone": "Điện thoại",
     "email": "Email",
     "address": "Địa chỉ",
-    "deleteConfirm": "Xóa nhà cung cấp này?"
+    "deleteConfirm": "Xóa nhà cung cấp này?",
+    "stats": {
+      "total": "Tổng NCC",
+      "active": "Đang hoạt động",
+      "withContact": "Có liên hệ (trang)"
+    }
   },
   "purchaseOrders": {
     "title": "Đơn mua hàng",
@@ -231,7 +359,12 @@
     "statusSubmitted": "Đã gửi",
     "statusPartiallyReceived": "Nhận một phần",
     "statusReceived": "Đã nhận đủ",
-    "statusCancelled": "Đã hủy"
+    "statusCancelled": "Đã hủy",
+    "stats": {
+      "total": "Tổng PO",
+      "open": "Đang mở (trang)",
+      "received": "Hoàn tất (trang)"
+    }
   },
   "goodsReceipts": {
     "title": "Phiếu nhận hàng",
@@ -304,7 +437,44 @@
       "createTransfer": "Tạo chuyển kho",
       "creating": "Đang tạo..."
     },
-    "recommendation": "Hướng xử lý",
+    "recommendation": {
+      "label": "Hướng xử lý",
+      "titles": {
+        "dead_stock_critical_markdown": "Xả tồn gấp",
+        "dead_stock_markdown_or_transfer": "Giảm giá hoặc điều chuyển",
+        "dead_stock_review": "Theo dõi tồn chậm",
+        "velocity_replenish_urgent": "Bổ sung gấp",
+        "velocity_replenish_plan": "Lên kế hoạch nhập",
+        "velocity_monitor": "Nhu cầu ổn định",
+        "velocity_no_demand_review": "Rà soát không bán",
+        "transfer_execute": "Cân bằng tồn kho"
+      },
+      "evidence": {
+        "daysIdle": "Đứng yên",
+        "onHand": "Tồn thực",
+        "costValue": "Giá trị vốn",
+        "outboundQty": "Outbound",
+        "avgDaily": "TB/ngày",
+        "coverDays": "Cover",
+        "destCoverDays": "Cover đích",
+        "quantity": "SL",
+        "transferBlocked": "Không chuyển được",
+        "warehouseType": "Loại kho"
+      },
+      "ctas": {
+        "view_stock": "Xem tồn",
+        "draft_transfer": "Soạn chuyển kho",
+        "draft_stock_out": "Soạn xuất kho",
+        "draft_po": "Tạo PO",
+        "review_dead_stock": "Xem tồn chết",
+        "preview_transfer": "Xem trước",
+        "create_transfer": "Tạo chuyển kho"
+      },
+      "blocked": {
+        "no_clearance_destination": "Không có kho clearance cùng brand/vùng",
+        "no_internal_source": "Không có kho dư cùng brand"
+      }
+    },
     "actions": {
       "dead_stock_critical_markdown": "Ưu tiên giảm giá xả tồn tại {warehouseCode} — SKU {sku} đứng yên {days} ngày.",
       "dead_stock_markdown_or_transfer": "Cân nhắc giảm giá hoặc chuyển sang kho outlet — {sku} tại {warehouseCode} ({days} ngày không bán).",
@@ -394,5 +564,60 @@
     "signOut": "Đăng xuất",
     "stubHint": "Tạm thời: admin / 1234 (sẽ thay bằng SSO/API sau)",
     "loginTagline": "Quản lý tồn kho thông minh — theo dõi biến động, tối ưu luân chuyển hàng hóa."
+  },
+  "goodsReceipts": {
+    "listTitle": "Danh sách nhận hàng",
+    "listSubtitle": "Phiếu nhận hàng từ đơn mua",
+    "grNo": "Số GR",
+    "poNo": "Số PO",
+    "receiptDate": "Ngày nhận",
+    "statusDraft": "Nháp",
+    "statusApproved": "Đã duyệt",
+    "statusCancelled": "Đã hủy"
+  },
+  "reports": {
+    "title": "Báo cáo tồn kho",
+    "subtitle": "Giá trị tồn, báo cáo NXT và theo dõi lô hàng cận hạn",
+    "inventoryValue": "Giá trị tồn",
+    "nxtClosing": "Tồn cuối kỳ (giá trị)",
+    "nearExpiry": "Lô cận HSD",
+    "expiryCritical": "HSD ≤ 7 ngày",
+    "nxtTitle": "Báo cáo Nhập - Xuất - Tồn",
+    "nearExpiryTitle": "Lô sắp hết hạn",
+    "noNearExpiry": "Không có lô cận hạn",
+    "opening": "Tồn đầu",
+    "in": "Nhập",
+    "out": "Xuất",
+    "closing": "Tồn cuối",
+    "lot": "Lô",
+    "qty": "SL",
+    "daysLeft": "Còn (ngày)",
+    "allWarehouses": "Tất cả kho",
+    "runReconciliation": "Đối soát tồn",
+    "reconciliationDone": "Đã chạy đối soát"
+  },
+  "admin": {
+    "brands": {
+      "title": "Thương hiệu",
+      "subtitle": "Cấu hình thương hiệu đa brand",
+      "code": "Mã",
+      "name": "Tên"
+    },
+    "users": {
+      "title": "Người dùng",
+      "subtitle": "Tài khoản và nhóm quyền"
+    },
+    "teams": {
+      "title": "Nhóm nghiệp vụ",
+      "subtitle": "Trưởng nhóm duyệt phiếu của thành viên"
+    },
+    "permissions": {
+      "title": "Nhóm quyền",
+      "subtitle": "Xem quyền theo nhóm (read-only)"
+    },
+    "transferPolicies": {
+      "title": "Chính sách chuyển kho",
+      "subtitle": "Cho phép chuyển cross-brand (DC chung)"
+    }
   }
 }

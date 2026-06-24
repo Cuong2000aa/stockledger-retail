@@ -16,6 +16,10 @@ public class GoodsReceiptLineDto
 
     public decimal? UnitCost { get; set; }
 
+    public string? LotCode { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
+
     public string? Note { get; set; }
 }
 
@@ -61,6 +65,10 @@ public class CreateGoodsReceiptLineDto
     public Guid PurchaseOrderLineId { get; set; }
 
     public decimal ReceivedQuantity { get; set; }
+
+    public string? LotCode { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
 
     public string? Note { get; set; }
 }

@@ -88,6 +88,11 @@ public class InventoryDocumentsController : ControllerBase
         CancellationToken cancellationToken) =>
         _inventoryDocumentAppService.UpdateDraftAsync(id, input, cancellationToken);
 
+    /// <summary>Gửi phiếu chờ duyệt — bắt buộc với phiếu giá trị cao.</summary>
+    [HttpPost("{id:guid}/submit-for-approval")]
+    public Task<InventoryDocumentDto> SubmitForApprovalAsync(Guid id, CancellationToken cancellationToken) =>
+        _inventoryDocumentAppService.SubmitForApprovalAsync(id, cancellationToken);
+
     /// <summary>
     /// Duyệt phiếu — sinh StockTransaction và cập nhật CurrentStock.
     /// Đây là bước thực sự làm thay đổi tồn kho.

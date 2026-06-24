@@ -21,6 +21,31 @@ public class ProductCostHistoryRepository : IProductCostHistoryRepository
             .OrderByDescending(x => x.EffectiveFrom)
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<(List<ProductCostHistory> Items, int TotalCount)> GetPagedListAsync(
+        Guid? productVariantId,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.ProductCostHistories
+            .Include(x => x.ProductVariant)
+            .AsNoTracking();
+
+        if (productVariantId.HasValue)
+        {
+            query = query.Where(x => x.ProductVariantId == productVariantId.Value);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(x => x.EffectiveFrom)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public async Task InsertAsync(ProductCostHistory history, CancellationToken cancellationToken = default) =>
         await _dbContext.ProductCostHistories.AddAsync(history, cancellationToken);
 

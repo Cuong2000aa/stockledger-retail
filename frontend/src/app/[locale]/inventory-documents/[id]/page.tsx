@@ -10,12 +10,15 @@ import {
   fetchCurrentStocks,
   fetchInventoryDocument,
   fetchWarehouses,
+  receiveTransfer,
+  submitDocumentForApproval,
 } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import {
   InventoryDocumentStatus,
   InventoryDocumentType,
+  TransferLifecycleStatus,
   type Warehouse,
 } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +32,8 @@ function statusLabel(
   switch (status) {
     case InventoryDocumentStatus.Draft:
       return t("statusDraft");
+    case InventoryDocumentStatus.Pending:
+      return t("statusPending");
     case InventoryDocumentStatus.Approved:
       return t("statusApproved");
     case InventoryDocumentStatus.Cancelled:
@@ -114,12 +119,40 @@ export default function DocumentDetailPage({
     onError: notifyError,
   });
 
+  const submitMutation = useMutation({
+    mutationFn: () => submitDocumentForApproval(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory-document", id] });
+      qc.invalidateQueries({ queryKey: ["inventory-documents"] });
+    },
+    onError: notifyError,
+  });
+
+  const receiveMutation = useMutation({
+    mutationFn: () => receiveTransfer(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory-document", id] });
+      qc.invalidateQueries({ queryKey: ["inventory-documents"] });
+      qc.invalidateQueries({ queryKey: ["current-stocks"] });
+    },
+    onError: notifyError,
+  });
+
   if (isLoading || !doc) {
     return <p className="text-slate-500">{tCommon("loading")}</p>;
   }
 
   const isDraft = doc.status === InventoryDocumentStatus.Draft;
+  const isPending = doc.status === InventoryDocumentStatus.Pending;
   const isTransfer = doc.documentType === InventoryDocumentType.Transfer;
+  const canReceiveTransfer =
+    isTransfer &&
+    doc.status === InventoryDocumentStatus.Approved &&
+    doc.transferLifecycleStatus === TransferLifecycleStatus.Shipped;
+  const needsSecondApproval =
+    isPending &&
+    (doc.requiredApprovalSteps ?? 1) > 1 &&
+    (doc.completedApprovalSteps ?? 0) < (doc.requiredApprovalSteps ?? 1);
   const isAdjustment = doc.documentType === InventoryDocumentType.Adjustment;
 
   const quantityHeader = isStockCount
@@ -202,32 +235,93 @@ export default function DocumentDetailPage({
             <dt className="text-xs text-slate-500">{t("note")}</dt>
             <dd>{doc.note ?? "—"}</dd>
           </div>
+          {isTransfer && doc.transferLifecycleStatus !== undefined && (
+            <>
+              <div>
+                <dt className="text-xs text-slate-500">{t("transferStatus")}</dt>
+                <dd>{t(`transferLifecycle.${TransferLifecycleStatus[doc.transferLifecycleStatus ?? 0]}` as "transferLifecycle.None")}</dd>
+              </div>
+              {doc.shippedAt && (
+                <div>
+                  <dt className="text-xs text-slate-500">{t("shippedAt")}</dt>
+                  <dd>{formatDate(doc.shippedAt, locale)}</dd>
+                </div>
+              )}
+              {doc.receivedAt && (
+                <div>
+                  <dt className="text-xs text-slate-500">{t("receivedAt")}</dt>
+                  <dd>{formatDate(doc.receivedAt, locale)}</dd>
+                </div>
+              )}
+            </>
+          )}
+          {isPending && (
+            <div>
+              <dt className="text-xs text-slate-500">{t("approvalProgress")}</dt>
+              <dd>
+                {doc.completedApprovalSteps ?? 0} / {doc.requiredApprovalSteps ?? 1}
+              </dd>
+            </div>
+          )}
         </dl>
 
-        {isDraft && (
-          <div className="mt-6 flex gap-3 border-t border-slate-100 pt-4">
-            <button
-              className="btn-primary"
-              disabled={approveMutation.isPending}
-              onClick={async () => {
-                if (await confirm(t("approveConfirm"))) {
-                  approveMutation.mutate();
-                }
-              }}
-            >
-              {t("approve")}
-            </button>
-            <button
-              className="btn-danger"
-              disabled={cancelMutation.isPending}
-              onClick={async () => {
-                if (await confirm(t("cancelConfirm"))) {
-                  cancelMutation.mutate();
-                }
-              }}
-            >
-              {t("cancelDoc")}
-            </button>
+        {(isDraft || isPending || canReceiveTransfer) && (
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+            {isDraft && (
+              <>
+                <button
+                  className="btn-secondary"
+                  disabled={submitMutation.isPending}
+                  onClick={async () => {
+                    if (await confirm(t("submitConfirm"))) submitMutation.mutate();
+                  }}
+                >
+                  {t("submitForApproval")}
+                </button>
+                <button
+                  className="btn-primary"
+                  disabled={approveMutation.isPending}
+                  onClick={async () => {
+                    if (await confirm(t("approveConfirm"))) approveMutation.mutate();
+                  }}
+                >
+                  {t("approve")}
+                </button>
+                <button
+                  className="btn-danger"
+                  disabled={cancelMutation.isPending}
+                  onClick={async () => {
+                    if (await confirm(t("cancelConfirm"))) cancelMutation.mutate();
+                  }}
+                >
+                  {t("cancelDoc")}
+                </button>
+              </>
+            )}
+            {isPending && (
+              <button
+                className="btn-primary"
+                disabled={approveMutation.isPending}
+                onClick={async () => {
+                  if (await confirm(needsSecondApproval ? t("approveStepConfirm") : t("approveConfirm"))) {
+                    approveMutation.mutate();
+                  }
+                }}
+              >
+                {needsSecondApproval ? t("approveStep") : t("approve")}
+              </button>
+            )}
+            {canReceiveTransfer && (
+              <button
+                className="btn-primary"
+                disabled={receiveMutation.isPending}
+                onClick={async () => {
+                  if (await confirm(t("receiveTransferConfirm"))) receiveMutation.mutate();
+                }}
+              >
+                {t("receiveTransfer")}
+              </button>
+            )}
           </div>
         )}
       </div>

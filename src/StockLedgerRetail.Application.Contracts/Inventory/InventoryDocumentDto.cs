@@ -14,6 +14,12 @@ public class InventoryDocumentLineDto
 
     public decimal? UnitCost { get; set; }
 
+    public Guid? StockLotId { get; set; }
+
+    public string? LotCode { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
+
     public string? Note { get; set; }
 }
 
@@ -46,6 +52,18 @@ public class InventoryDocumentDto
     public string? ApprovedBy { get; set; }
 
     public DateTime? ApprovedAt { get; set; }
+
+    public DateTime? SubmittedAt { get; set; }
+
+    public string? SubmittedBy { get; set; }
+
+    public int RequiredApprovalSteps { get; set; }
+
+    public int CompletedApprovalSteps { get; set; }
+
+    public string? FirstApprovedBy { get; set; }
+
+    public DateTime? FirstApprovedAt { get; set; }
 
     public TransferLifecycleStatus TransferLifecycleStatus { get; set; }
 

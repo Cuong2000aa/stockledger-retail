@@ -28,6 +28,13 @@ public interface IStockReservationRepository
         DateTime asOfUtc,
         CancellationToken cancellationToken = default);
 
+    Task<(List<StockReservation> Items, int TotalCount)> GetPagedListAsync(
+        Guid? warehouseId,
+        StockReservationStatus? status,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
     Task<int> CountByDatePrefixAsync(string datePrefix, CancellationToken cancellationToken = default);
 
     Task InsertAsync(StockReservation reservation, CancellationToken cancellationToken = default);

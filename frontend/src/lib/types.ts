@@ -46,6 +46,12 @@ export enum InventoryDocumentStatus {
   Cancelled = 5,
 }
 
+export enum TransferLifecycleStatus {
+  None = 0,
+  Shipped = 1,
+  Received = 2,
+}
+
 export enum StockTransactionType {
   In = 1,
   Out = 2,
@@ -96,6 +102,7 @@ export interface ProductVariant {
   costPrice?: number;
   sellingPrice?: number;
   costSource?: CostSource;
+  trackLotExpiry?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -124,6 +131,7 @@ export interface UpdateProductVariantInput {
   costPrice?: number;
   sellingPrice?: number;
   costSource?: CostSource;
+  trackLotExpiry?: boolean;
 }
 
 export interface Warehouse {
@@ -180,6 +188,9 @@ export interface InventoryDocumentLine {
   sku: string;
   quantity: number;
   unitCost?: number;
+  stockLotId?: string;
+  lotCode?: string;
+  expiryDate?: string;
   note?: string;
 }
 
@@ -198,6 +209,16 @@ export interface InventoryDocument {
   createdAt: string;
   approvedBy?: string;
   approvedAt?: string;
+  submittedAt?: string;
+  submittedBy?: string;
+  requiredApprovalSteps?: number;
+  completedApprovalSteps?: number;
+  firstApprovedBy?: string;
+  firstApprovedAt?: string;
+  transferLifecycleStatus?: TransferLifecycleStatus;
+  inTransitWarehouseId?: string;
+  shippedAt?: string;
+  receivedAt?: string;
   lines: InventoryDocumentLine[];
 }
 
@@ -205,6 +226,8 @@ export interface DocumentLineInput {
   productVariantId: string;
   quantity: number;
   unitCost?: number;
+  lotCode?: string;
+  expiryDate?: string;
   note?: string;
 }
 
@@ -273,6 +296,7 @@ export enum PurchaseOrderStatus {
   PartiallyReceived = 3,
   Received = 4,
   Cancelled = 5,
+  PendingApproval = 6,
 }
 
 export enum GoodsReceiptStatus {
@@ -341,6 +365,12 @@ export interface PurchaseOrder {
   createdBy: string;
   createdAt: string;
   submittedAt?: string;
+  requiredApprovalSteps?: number;
+  completedApprovalSteps?: number;
+  firstApprovedBy?: string;
+  firstApprovedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
   lines: PurchaseOrderLine[];
 }
 
@@ -358,6 +388,8 @@ export interface GoodsReceiptLine {
   sku: string;
   receivedQuantity: number;
   unitCost?: number;
+  lotCode?: string;
+  expiryDate?: string;
   note?: string;
 }
 
@@ -416,6 +448,26 @@ export interface LowStockItem {
   quantityAvailable: number;
 }
 
+export interface InsightRecommendationCta {
+  id: string;
+  labelKey: string;
+  kind: "navigate" | "api";
+  route?: string;
+  apiOperation?: string;
+  isPrimary: boolean;
+  payload: Record<string, string>;
+}
+
+export interface InsightRecommendation {
+  actionCode: string;
+  actionType: "monitor" | "review" | "markdown" | "replenish" | "transfer";
+  titleKey: string;
+  priority: number;
+  params: Record<string, string>;
+  evidence: Record<string, string>;
+  actions: InsightRecommendationCta[];
+}
+
 export interface DeadStockInsight {
   productVariantId: string;
   sku: string;
@@ -432,6 +484,7 @@ export interface DeadStockInsight {
   ruleCode: string;
   recommendedActionCode: string;
   recommendationParams: Record<string, string>;
+  recommendation?: InsightRecommendation;
 }
 
 export interface SalesVelocityInsight {
@@ -451,6 +504,7 @@ export interface SalesVelocityInsight {
   ruleCode: string;
   recommendedActionCode: string;
   recommendationParams: Record<string, string>;
+  recommendation?: InsightRecommendation;
 }
 
 export interface TransferSuggestion {
@@ -471,4 +525,136 @@ export interface TransferSuggestion {
   ruleCode: string;
   recommendedActionCode: string;
   recommendationParams: Record<string, string>;
+  recommendation?: InsightRecommendation;
+}
+
+export enum BrandStatus {
+  Active = 1,
+  Inactive = 2,
+}
+
+export interface Brand {
+  id: string;
+  code: string;
+  name: string;
+  status: BrandStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppUser {
+  id: string;
+  email: string;
+  displayName: string;
+  isActive: boolean;
+  groupCodes: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PermissionGroup {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  permissionCodes: string[];
+}
+
+export interface TeamMember {
+  userId: string;
+  email: string;
+  displayName: string;
+}
+
+export interface Team {
+  id: string;
+  code: string;
+  name: string;
+  leaderUserId: string;
+  leaderEmail: string;
+  isActive: boolean;
+  members: TeamMember[];
+}
+
+export interface TransferPolicy {
+  id: string;
+  sourceBrandId?: string;
+  sourceBrandName?: string;
+  destinationBrandId?: string;
+  destinationBrandName?: string;
+  allowCrossBrand: boolean;
+  isActive: boolean;
+  note?: string;
+}
+
+export enum StockReservationStatus {
+  Active = 1,
+  Committed = 2,
+  Released = 3,
+  Expired = 4,
+}
+
+export interface StockReservationListItem {
+  id: string;
+  reservationNo: string;
+  sourceSystem: string;
+  referenceType: number;
+  referenceKey: string;
+  warehouseId: string;
+  warehouseCode: string;
+  status: StockReservationStatus;
+  expiresAt: string;
+  createdAt: string;
+  totalQuantity: number;
+  lines: { productVariantId: string; sku: string; quantity: number }[];
+}
+
+export interface InventoryValueReport {
+  totalValue: number;
+  lines: {
+    productVariantId: string;
+    sku: string;
+    warehouseId: string;
+    warehouseCode: string;
+    quantityOnHand: number;
+    unitCost?: number;
+    inventoryValue: number;
+  }[];
+}
+
+export interface NxtReport {
+  fromDate: string;
+  toDate: string;
+  totalOpeningValue: number;
+  totalInValue: number;
+  totalOutValue: number;
+  totalClosingValue: number;
+  lines: {
+    productVariantId: string;
+    sku: string;
+    warehouseId: string;
+    warehouseCode: string;
+    openingQuantity: number;
+    inQuantity: number;
+    outQuantity: number;
+    closingQuantity: number;
+    unitCost?: number;
+    openingValue: number;
+    inValue: number;
+    outValue: number;
+    closingValue: number;
+  }[];
+}
+
+export interface NearExpiryLot {
+  stockLotId: string;
+  lotCode: string;
+  productVariantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode: string;
+  quantityOnHand: number;
+  expiryDate?: string;
+  daysUntilExpiry: number;
 }

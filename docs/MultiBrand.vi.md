@@ -115,7 +115,16 @@ Middleware `BrandScopeMiddleware` áp dụng cho fulfillment và insights khi re
 
 ---
 
-## Chính sách chuyển khác brand (SQL mẫu)
+## Chính sách chuyển khác brand
+
+Quản lý qua API admin:
+
+```http
+GET/POST /api/admin/transfer-policies
+PUT    /api/admin/transfer-policies/{id}
+```
+
+Hoặc chèn SQL mẫu:
 
 ```sql
 INSERT INTO transfer_policies (id, "SourceBrandId", "DestinationBrandId", "AllowCrossBrand", "IsActive", "Note")

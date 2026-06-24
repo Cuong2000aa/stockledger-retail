@@ -116,6 +116,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
                     ProductVariantId = poLine.ProductVariantId,
                     ReceivedQuantity = line.ReceivedQuantity,
                     UnitCost = poLine.UnitCost,
+                    LotCode = line.LotCode?.Trim(),
+                    ExpiryDate = line.ExpiryDate,
                     Note = line.Note?.Trim()
                 };
             }).ToList()
@@ -178,6 +180,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
                         ProductVariantId = l.ProductVariantId,
                         Quantity = l.ReceivedQuantity,
                         UnitCost = l.UnitCost,
+                        LotCode = l.LotCode,
+                        ExpiryDate = l.ExpiryDate,
                         Note = l.Note
                     }).ToList()
                 }, ct);
@@ -314,6 +318,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
             Sku = l.ProductVariant?.Sku ?? string.Empty,
             ReceivedQuantity = l.ReceivedQuantity,
             UnitCost = l.UnitCost,
+            LotCode = l.LotCode,
+            ExpiryDate = l.ExpiryDate,
             Note = l.Note
         }).ToList()
     };

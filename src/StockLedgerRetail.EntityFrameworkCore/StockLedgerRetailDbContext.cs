@@ -60,6 +60,16 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<StockReservationLine> StockReservationLines => Set<StockReservationLine>();
 
+    public DbSet<InsightSnapshot> InsightSnapshots => Set<InsightSnapshot>();
+
+    public DbSet<BackgroundJobSetting> BackgroundJobSettings => Set<BackgroundJobSetting>();
+
+    public DbSet<BackgroundJobRun> BackgroundJobRuns => Set<BackgroundJobRun>();
+
+    public DbSet<StockLot> StockLots => Set<StockLot>();
+
+    public DbSet<LotStock> LotStocks => Set<LotStock>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(StockLedgerRetailDbContext).Assembly);

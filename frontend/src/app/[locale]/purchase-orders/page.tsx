@@ -1,17 +1,21 @@
 "use client";
 
 import { Link } from "@/i18n/routing";
+import { DataTableCard, CodePill, EmptyTableState } from "@/components/DataTableCard";
 import { ListFilterBar } from "@/components/ListFilterBar";
-import { TableSkeleton } from "@/components/LoadingState";
+import { TableSkeleton, StatCardsSkeleton } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
+import { StatCard } from "@/components/StatCard";
+import { PoStatusBadge } from "@/components/StatusBadge";
 import { useListSearch } from "@/hooks/useListSearch";
 import { fetchPurchaseOrders, fetchSuppliers } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { PurchaseOrderStatus } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { ChevronRight, ClipboardList, PackageCheck, Plus, ShoppingCart } from "lucide-react";
+import { useMemo, useState } from "react";
 
 function poStatusLabel(
   status: PurchaseOrderStatus,
@@ -52,13 +56,7 @@ export default function PurchaseOrdersPage() {
   const hasFilters = hasSearch || statusFilter !== "" || supplierId !== "";
 
   const { data, isLoading } = useQuery({
-    queryKey: [
-      "purchase-orders",
-      page,
-      statusFilter,
-      supplierId,
-      debouncedSearch,
-    ],
+    queryKey: ["purchase-orders", page, statusFilter, supplierId, debouncedSearch],
     queryFn: () =>
       fetchPurchaseOrders(
         statusFilter === "" ? undefined : statusFilter,
@@ -68,6 +66,20 @@ export default function PurchaseOrdersPage() {
         debouncedSearch || undefined
       ),
   });
+
+  const stats = useMemo(() => {
+    const items = data?.items ?? [];
+    return {
+      total: data?.totalCount ?? 0,
+      open: items.filter(
+        (po) =>
+          po.status === PurchaseOrderStatus.Draft ||
+          po.status === PurchaseOrderStatus.Submitted ||
+          po.status === PurchaseOrderStatus.PartiallyReceived
+      ).length,
+      received: items.filter((po) => po.status === PurchaseOrderStatus.Received).length,
+    };
+  }, [data?.items, data?.totalCount]);
 
   const clearFilters = () => {
     resetSearch();
@@ -83,12 +95,24 @@ export default function PurchaseOrdersPage() {
         subtitle={t("subtitle")}
         action={
           <Link href="/purchase-orders/new" className="btn-primary">
-            + {t("create")}
+            <Plus className="h-4 w-4" />
+            {t("create")}
           </Link>
         }
       />
 
+      {isLoading && !data ? (
+        <StatCardsSkeleton />
+      ) : (
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <StatCard label={t("stats.total")} value={String(stats.total)} icon={ShoppingCart} accent="indigo" />
+          <StatCard label={t("stats.open")} value={String(stats.open)} icon={ClipboardList} accent="amber" />
+          <StatCard label={t("stats.received")} value={String(stats.received)} icon={PackageCheck} accent="emerald" />
+        </div>
+      )}
+
       <ListFilterBar
+        variant="enhanced"
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder={tFilters("searchPo")}
@@ -96,14 +120,14 @@ export default function PurchaseOrdersPage() {
         showReset={hasFilters}
       >
         <label className="text-sm text-slate-600">
-          <span className="mb-1 block">{tCommon("status")}</span>
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+            {tCommon("status")}
+          </span>
           <select
             className="input min-w-[160px]"
             value={statusFilter}
             onChange={(e) => {
-              setStatusFilter(
-                e.target.value === "" ? "" : Number(e.target.value)
-              );
+              setStatusFilter(e.target.value === "" ? "" : Number(e.target.value));
               setPage(1);
             }}
           >
@@ -118,9 +142,11 @@ export default function PurchaseOrdersPage() {
           </select>
         </label>
         <label className="text-sm text-slate-600">
-          <span className="mb-1 block">{t("supplier")}</span>
+          <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+            {t("supplier")}
+          </span>
           <select
-            className="input min-w-[200px]"
+            className="input min-w-[220px]"
             value={supplierId}
             onChange={(e) => {
               setSupplierId(e.target.value);
@@ -137,14 +163,21 @@ export default function PurchaseOrdersPage() {
         </label>
       </ListFilterBar>
 
-      <div className="card">
+      <DataTableCard
+        title={t("title")}
+        icon={ShoppingCart}
+        count={data?.totalCount}
+        countLabel={tCommon("total")}
+      >
         {isLoading ? (
-          <TableSkeleton rows={8} cols={6} />
+          <TableSkeleton rows={8} cols={5} />
+        ) : !data?.items.length ? (
+          <EmptyTableState message={tCommon("noData")} />
         ) : (
           <>
-            <div className="table-wrap">
+            <div className="table-wrap max-h-[32rem] overflow-y-auto scrollbar-thin">
               <table className="data-table">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-white">
                   <tr>
                     <th>{t("poNo")}</th>
                     <th>{t("supplier")}</th>
@@ -154,20 +187,24 @@ export default function PurchaseOrdersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.items.map((po) => (
-                    <tr key={po.id}>
-                      <td className="font-mono text-xs">{po.poNo}</td>
+                  {data.items.map((po) => (
+                    <tr key={po.id} className="hover:bg-slate-50/80">
+                      <td><CodePill>{po.poNo}</CodePill></td>
                       <td>
-                        {po.supplierCode} — {po.supplierName}
+                        <div className="font-medium text-slate-900">{po.supplierName}</div>
+                        <div className="text-xs text-slate-500">{po.supplierCode}</div>
                       </td>
-                      <td>{formatDate(po.orderDate, locale)}</td>
-                      <td>{poStatusLabel(po.status, t)}</td>
+                      <td className="text-sm">{formatDate(po.orderDate, locale)}</td>
+                      <td>
+                        <PoStatusBadge status={po.status} label={poStatusLabel(po.status, t)} />
+                      </td>
                       <td>
                         <Link
                           href={`/purchase-orders/${po.id}`}
-                          className="text-brand-600 hover:underline"
+                          className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700"
                         >
                           {t("detail")}
+                          <ChevronRight className="h-3.5 w-3.5" />
                         </Link>
                       </td>
                     </tr>
@@ -175,17 +212,15 @@ export default function PurchaseOrdersPage() {
                 </tbody>
               </table>
             </div>
-            {data && (
-              <Pagination
-                page={data.page}
-                pageSize={data.pageSize}
-                totalCount={data.totalCount}
-                onChange={setPage}
-              />
-            )}
+            <Pagination
+              page={data.page}
+              pageSize={data.pageSize}
+              totalCount={data.totalCount}
+              onChange={setPage}
+            />
           </>
         )}
-      </div>
+      </DataTableCard>
     </div>
   );
 }

@@ -266,7 +266,7 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1202 | CostSource: Manual, Erp, Pos, PurchaseSystem. | Nguồn giá vốn theo enum CostSource. |
 | BR1203 | Valuation does not affect stock ledger. | Định giá không ảnh hưởng sổ tồn kho. |
 | BR1204 | ProductCostHistory has EffectiveFrom/To. | Lịch sử giá có khoảng hiệu lực. |
-| BR1205 | Cost history API not implemented yet. | Chưa có API ghi lịch sử giá. |
+| BR1205 | ProductCostHistory readable via reports API. | Đọc lịch sử giá qua `GET /api/reports/cost-history`. |
 | BR1206 | Negative prices not allowed. | Không cho giá âm. |
 
 ---
@@ -281,3 +281,24 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1304 | Fulfillment/insights filter by brandId, regionCode. | Allocate/insights lọc brand/vùng. |
 | BR1305 | Scope headers apply when params omitted. | Header phạm vi khi không truyền param. |
 | BR1306 | Transfer suggestions same brand + region. | Gợi ý chuyển cùng brand và vùng. |
+
+---
+
+# Quy tắc duyệt nhiều bước (Approval Workflow)
+
+| Mã | Rule | Mô tả |
+|----|------|-------|
+| BR1401 | High-value docs need submit-for-approval. | Phiếu vượt ngưỡng phải gửi duyệt trước. |
+| BR1402 | Multiple approval steps allowed. | Có thể yêu cầu nhiều bước duyệt. |
+| BR1403 | Stock posts after all steps. | Chỉ ghi sổ khi đủ bước duyệt. |
+| BR1404 | PO PendingApproval on submit. | PO lớn chuyển `PendingApproval` khi submit. |
+
+---
+
+# Quy tắc lô / HSD
+
+| Mã | Rule | Mô tả |
+|----|------|-------|
+| BR1501 | TrackLotExpiry enables lots. | SKU bật theo dõi lô/HSD. |
+| BR1502 | FEFO on outbound. | Xuất kho ưu tiên lô sắp hết hạn. |
+| BR1503 | Near-expiry report. | Báo cáo lô cận hạn theo số ngày. |

@@ -55,6 +55,18 @@ public class PurchaseOrderDto
 
     public DateTime? SubmittedAt { get; set; }
 
+    public int RequiredApprovalSteps { get; set; }
+
+    public int CompletedApprovalSteps { get; set; }
+
+    public string? FirstApprovedBy { get; set; }
+
+    public DateTime? FirstApprovedAt { get; set; }
+
+    public string? ApprovedBy { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
+
     public List<PurchaseOrderLineDto> Lines { get; set; } = new();
 }
 

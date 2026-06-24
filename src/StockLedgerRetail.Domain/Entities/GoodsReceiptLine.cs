@@ -14,6 +14,10 @@ public class GoodsReceiptLine
 
     public decimal? UnitCost { get; set; }
 
+    public string? LotCode { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
+
     public string? Note { get; set; }
 
     public GoodsReceipt? GoodsReceipt { get; set; }

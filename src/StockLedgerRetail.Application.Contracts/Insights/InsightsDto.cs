@@ -28,9 +28,13 @@ public class DeadStockInsightDto
 
     public string RuleCode { get; set; } = "dead_stock";
 
+    public Guid? BrandId { get; set; }
+
     public string RecommendedActionCode { get; set; } = string.Empty;
 
     public Dictionary<string, string> RecommendationParams { get; set; } = new();
+
+    public InsightRecommendationDto Recommendation { get; set; } = new();
 }
 
 public class SalesVelocityInsightDto
@@ -63,9 +67,13 @@ public class SalesVelocityInsightDto
 
     public string RuleCode { get; set; } = "sales_velocity";
 
+    public Guid? BrandId { get; set; }
+
     public string RecommendedActionCode { get; set; } = string.Empty;
 
     public Dictionary<string, string> RecommendationParams { get; set; } = new();
+
+    public InsightRecommendationDto Recommendation { get; set; } = new();
 }
 
 public class TransferSuggestionDto
@@ -103,4 +111,6 @@ public class TransferSuggestionDto
     public string RecommendedActionCode { get; set; } = string.Empty;
 
     public Dictionary<string, string> RecommendationParams { get; set; } = new();
+
+    public InsightRecommendationDto Recommendation { get; set; } = new();
 }

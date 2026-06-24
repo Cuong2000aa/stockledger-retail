@@ -124,6 +124,7 @@ public class ProductVariantAppService : IProductVariantAppService
         variant.CostPrice = costPrice;
         variant.SellingPrice = input.SellingPrice;
         variant.CostSource = costSource;
+        variant.TrackLotExpiry = input.TrackLotExpiry;
         variant.UpdatedAt = DateTime.UtcNow;
 
         await _productVariantRepository.UpdateAsync(variant, cancellationToken);
@@ -165,6 +166,7 @@ public class ProductVariantAppService : IProductVariantAppService
         CostPrice = variant.CostPrice,
         SellingPrice = variant.SellingPrice,
         CostSource = variant.CostSource,
+        TrackLotExpiry = variant.TrackLotExpiry,
         CreatedAt = variant.CreatedAt,
         UpdatedAt = variant.UpdatedAt
     };
