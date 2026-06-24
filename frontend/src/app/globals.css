@@ -62,7 +62,14 @@ body {
   }
 
   .data-table th {
-    @apply border-b border-slate-100 bg-slate-50/80 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  /* Sticky column headers when the table body scrolls */
+  .table-wrap.overflow-y-auto .data-table thead th,
+  .table-wrap.overflow-auto .data-table thead th {
+    @apply sticky top-0 z-10 bg-slate-50;
+    box-shadow: 0 1px 0 0 rgb(226 232 240);
   }
 
   .data-table td {
