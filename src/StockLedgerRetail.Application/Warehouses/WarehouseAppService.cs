@@ -1,4 +1,5 @@
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Caching;
 using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
@@ -15,13 +16,19 @@ public class WarehouseAppService : IWarehouseAppService
 {
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly ITransactionAuditService _transactionAuditService;
+    private readonly ICacheService _cacheService;
+    private readonly CacheOptions _cacheOptions;
 
     public WarehouseAppService(
         IWarehouseRepository warehouseRepository,
-        ITransactionAuditService transactionAuditService)
+        ITransactionAuditService transactionAuditService,
+        ICacheService cacheService,
+        Microsoft.Extensions.Options.IOptions<CacheOptions> cacheOptions)
     {
         _warehouseRepository = warehouseRepository;
         _transactionAuditService = transactionAuditService;
+        _cacheService = cacheService;
+        _cacheOptions = cacheOptions.Value;
     }
 
     /// <summary>Lấy danh sách tất cả kho.</summary>
@@ -32,9 +39,22 @@ public class WarehouseAppService : IWarehouseAppService
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
+        var cacheKey = CacheKeys.Warehouses(normalizedPage, normalizedPageSize, search);
+        var cached = await _cacheService.GetAsync<PagedResultDto<WarehouseDto>>(cacheKey, cancellationToken);
+        if (cached is not null)
+        {
+            return cached;
+        }
+
         var (warehouses, totalCount) = await _warehouseRepository.GetPagedListAsync(skip, take, search, cancellationToken);
         var items = warehouses.Select(MapToDto).ToList();
-        return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
+        var result = PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
+        await _cacheService.SetAsync(
+            cacheKey,
+            result,
+            TimeSpan.FromMinutes(_cacheOptions.MasterDataTtlMinutes),
+            cancellationToken);
+        return result;
     }
 
     /// <summary>Lấy chi tiết kho theo Id.</summary>
@@ -108,6 +128,7 @@ public class WarehouseAppService : IWarehouseAppService
 
         var dto = MapToDto(warehouse);
         await _transactionAuditService.LogAsync(nameof(Warehouse), warehouse.Id, AuditActionType.Create, null, dto, cancellationToken);
+        await _cacheService.RemoveByPrefixAsync(CacheKeys.MasterWarehousesPrefix, cancellationToken);
 
         return dto;
     }
@@ -165,6 +186,7 @@ public class WarehouseAppService : IWarehouseAppService
 
         var newDto = MapToDto(warehouse);
         await _transactionAuditService.LogAsync(nameof(Warehouse), warehouse.Id, AuditActionType.Update, oldDto, newDto, cancellationToken);
+        await _cacheService.RemoveByPrefixAsync(CacheKeys.MasterWarehousesPrefix, cancellationToken);
 
         return newDto;
     }
@@ -181,6 +203,7 @@ public class WarehouseAppService : IWarehouseAppService
         await _warehouseRepository.SaveChangesAsync(cancellationToken);
 
         await _transactionAuditService.LogAsync(nameof(Warehouse), warehouse.Id, AuditActionType.Delete, oldDto, null, cancellationToken);
+        await _cacheService.RemoveByPrefixAsync(CacheKeys.MasterWarehousesPrefix, cancellationToken);
     }
 
     /// <summary>Chuyển entity Warehouse sang DTO.</summary>

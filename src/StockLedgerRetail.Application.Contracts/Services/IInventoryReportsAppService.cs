@@ -8,12 +8,16 @@ public interface IInventoryReportsAppService
     Task<InventoryValueReportDto> GetInventoryValueAsync(
         Guid? warehouseId = null,
         Guid? brandId = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default);
 
     Task<NxtReportDto> GetNxtReportAsync(
         DateTime fromDate,
         DateTime toDate,
         Guid? warehouseId = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default);
 
     Task<PagedResultDto<ProductCostHistoryDto>> GetCostHistoryAsync(

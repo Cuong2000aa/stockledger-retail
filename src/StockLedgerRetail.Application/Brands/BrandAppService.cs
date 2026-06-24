@@ -1,5 +1,6 @@
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Brands;
+using StockLedgerRetail.Caching;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
@@ -11,19 +12,37 @@ public class BrandAppService : IBrandAppService
 {
     private readonly IBrandRepository _brandRepository;
     private readonly ITransactionAuditService _transactionAuditService;
+    private readonly ICacheService _cacheService;
+    private readonly CacheOptions _cacheOptions;
 
     public BrandAppService(
         IBrandRepository brandRepository,
-        ITransactionAuditService transactionAuditService)
+        ITransactionAuditService transactionAuditService,
+        ICacheService cacheService,
+        Microsoft.Extensions.Options.IOptions<CacheOptions> cacheOptions)
     {
         _brandRepository = brandRepository;
         _transactionAuditService = transactionAuditService;
+        _cacheService = cacheService;
+        _cacheOptions = cacheOptions.Value;
     }
 
     public async Task<List<BrandDto>> GetListAsync(CancellationToken cancellationToken = default)
     {
+        var cached = await _cacheService.GetAsync<List<BrandDto>>(CacheKeys.MasterBrands, cancellationToken);
+        if (cached is not null)
+        {
+            return cached;
+        }
+
         var brands = await _brandRepository.GetListAsync(cancellationToken);
-        return brands.Select(MapToDto).ToList();
+        var items = brands.Select(MapToDto).ToList();
+        await _cacheService.SetAsync(
+            CacheKeys.MasterBrands,
+            items,
+            TimeSpan.FromMinutes(_cacheOptions.MasterDataTtlMinutes),
+            cancellationToken);
+        return items;
     }
 
     public async Task<BrandDto> GetAsync(Guid id, CancellationToken cancellationToken = default)
@@ -59,6 +78,7 @@ public class BrandAppService : IBrandAppService
 
         var dto = MapToDto(brand);
         await _transactionAuditService.LogAsync(nameof(Brand), brand.Id, AuditActionType.Create, null, dto, cancellationToken);
+        await _cacheService.RemoveAsync(CacheKeys.MasterBrands, cancellationToken);
         return dto;
     }
 
@@ -77,6 +97,7 @@ public class BrandAppService : IBrandAppService
 
         var newDto = MapToDto(brand);
         await _transactionAuditService.LogAsync(nameof(Brand), brand.Id, AuditActionType.Update, oldDto, newDto, cancellationToken);
+        await _cacheService.RemoveAsync(CacheKeys.MasterBrands, cancellationToken);
         return newDto;
     }
 

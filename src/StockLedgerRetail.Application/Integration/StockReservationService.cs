@@ -49,7 +49,6 @@ public class StockReservationService : IStockReservationService
         ReserveStockRequestDto input,
         CancellationToken cancellationToken = default)
     {
-        await RefreshExpiredReservationsAsync(cancellationToken);
         ValidateSalesLines(input.Lines);
 
         var warehouseId = input.WarehouseId.HasValue

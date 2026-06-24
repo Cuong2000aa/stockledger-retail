@@ -23,6 +23,12 @@ public class InventoryValueReportDto
 {
     public decimal TotalValue { get; set; }
 
+    public int TotalLineCount { get; set; }
+
+    public int Page { get; set; }
+
+    public int PageSize { get; set; }
+
     public List<InventoryValueLineDto> Lines { get; set; } = new();
 }
 
@@ -68,6 +74,12 @@ public class NxtReportDto
     public decimal TotalOutValue { get; set; }
 
     public decimal TotalClosingValue { get; set; }
+
+    public int TotalLineCount { get; set; }
+
+    public int Page { get; set; }
+
+    public int PageSize { get; set; }
 
     public List<NxtMovementLineDto> Lines { get; set; } = new();
 }

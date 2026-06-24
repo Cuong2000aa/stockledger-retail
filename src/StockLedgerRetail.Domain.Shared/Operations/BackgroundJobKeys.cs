@@ -4,6 +4,7 @@ public static class BackgroundJobKeys
 {
     public const string InsightSnapshots = "insight_snapshots";
     public const string StockReconciliation = "stock_reconciliation";
+    public const string ReservationExpiry = "reservation_expiry";
 }
 
 public static class BackgroundJobStatuses

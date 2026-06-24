@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Authorization;
+using StockLedgerRetail.Caching;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Identity;
@@ -103,15 +104,18 @@ public class AppUserAppService : IAppUserAppService
     private readonly IAppUserRepository _appUserRepository;
     private readonly IPermissionGroupRepository _permissionGroupRepository;
     private readonly IPermissionAuthorizationService _authorizationService;
+    private readonly IUserAuthCacheService _userAuthCacheService;
 
     public AppUserAppService(
         IAppUserRepository appUserRepository,
         IPermissionGroupRepository permissionGroupRepository,
-        IPermissionAuthorizationService authorizationService)
+        IPermissionAuthorizationService authorizationService,
+        IUserAuthCacheService userAuthCacheService)
     {
         _appUserRepository = appUserRepository;
         _permissionGroupRepository = permissionGroupRepository;
         _authorizationService = authorizationService;
+        _userAuthCacheService = userAuthCacheService;
     }
 
     public async Task<List<AppUserDto>> GetListAsync(CancellationToken cancellationToken = default)
@@ -154,6 +158,7 @@ public class AppUserAppService : IAppUserAppService
         await _appUserRepository.InsertAsync(user, cancellationToken);
         await SyncGroupsAsync(user.Id, input.GroupCodes, cancellationToken);
         await _appUserRepository.SaveChangesAsync(cancellationToken);
+        await _userAuthCacheService.InvalidateUserAsync(email, cancellationToken);
 
         return MapToDto((await _appUserRepository.GetByIdAsync(user.Id, cancellationToken))!);
     }
@@ -172,6 +177,7 @@ public class AppUserAppService : IAppUserAppService
         await _appUserRepository.UpdateAsync(user, cancellationToken);
         await SyncGroupsAsync(user.Id, input.GroupCodes, cancellationToken);
         await _appUserRepository.SaveChangesAsync(cancellationToken);
+        await _userAuthCacheService.InvalidateUserAsync(user.Email, cancellationToken);
 
         return MapToDto((await _appUserRepository.GetByIdAsync(user.Id, cancellationToken))!);
     }

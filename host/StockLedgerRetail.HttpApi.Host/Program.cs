@@ -64,6 +64,7 @@ builder.Services.Configure<InsightSnapshotOptions>(
     builder.Configuration.GetSection(InsightSnapshotOptions.SectionName));
 builder.Services.AddHostedService<BackgroundJobBootstrapHostedService>();
 builder.Services.AddHostedService<StockReconciliationHostedService>();
+builder.Services.AddHostedService<StockReservationExpiryHostedService>();
 builder.Services.AddHostedService<InventoryInsightsHostedService>();
 builder.Services.AddHostedService<AuthorizationBootstrapHostedService>();
 builder.Services.AddHostedService<FbDataSeedHostedService>();

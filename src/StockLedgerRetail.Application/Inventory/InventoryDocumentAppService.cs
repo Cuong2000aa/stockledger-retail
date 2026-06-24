@@ -355,6 +355,10 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             throw new InvalidOperationException("Only draft documents can be submitted for approval.");
         }
 
+        await _permissionAuthorizationService.EnsureCanUpdateInventoryDocumentAsync(
+            document.CreatedBy,
+            cancellationToken);
+
         var oldDto = MapToDto(document);
         var value = ApprovalWorkflowHelper.CalculateInventoryDocumentValue(document);
         var now = DateTime.UtcNow;
