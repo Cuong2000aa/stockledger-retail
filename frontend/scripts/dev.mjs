@@ -82,10 +82,11 @@ function startDevServer() {
 
   log(`Starting ${args.join(" ")}`);
 
-  const child = spawn(process.platform === "win32" ? "npx.cmd" : "npx", args, {
+  const child = spawn("npx", args, {
     cwd: ROOT,
     stdio: "inherit",
     env: process.env,
+    shell: true,
   });
 
   child.on("exit", (code, signal) => {
