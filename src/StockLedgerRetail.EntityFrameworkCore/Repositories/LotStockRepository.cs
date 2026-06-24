@@ -16,9 +16,18 @@ public class LotStockRepository : ILotStockRepository
     public Task<LotStock?> GetByLotAndWarehouseAsync(
         Guid stockLotId,
         Guid warehouseId,
-        CancellationToken cancellationToken = default) =>
-        _dbContext.LotStocks
+        CancellationToken cancellationToken = default)
+    {
+        var tracked = _dbContext.LotStocks.Local.FirstOrDefault(
+            x => x.StockLotId == stockLotId && x.WarehouseId == warehouseId);
+        if (tracked is not null)
+        {
+            return Task.FromResult<LotStock?>(tracked);
+        }
+
+        return _dbContext.LotStocks
             .FirstOrDefaultAsync(x => x.StockLotId == stockLotId && x.WarehouseId == warehouseId, cancellationToken);
+    }
 
     public Task<List<LotStock>> GetFefoLotsAsync(
         Guid productVariantId,
@@ -73,7 +82,11 @@ public class LotStockRepository : ILotStockRepository
 
     public Task UpdateAsync(LotStock lotStock, CancellationToken cancellationToken = default)
     {
-        _dbContext.LotStocks.Update(lotStock);
+        if (_dbContext.Entry(lotStock).State == EntityState.Detached)
+        {
+            _dbContext.LotStocks.Update(lotStock);
+        }
+
         return Task.CompletedTask;
     }
 

@@ -16,11 +16,20 @@ public class StockLotRepository : IStockLotRepository
     public Task<StockLot?> GetByVariantAndLotCodeAsync(
         Guid productVariantId,
         string lotCode,
-        CancellationToken cancellationToken = default) =>
-        _dbContext.StockLots
+        CancellationToken cancellationToken = default)
+    {
+        var tracked = _dbContext.StockLots.Local.FirstOrDefault(
+            x => x.ProductVariantId == productVariantId && x.LotCode == lotCode);
+        if (tracked is not null)
+        {
+            return Task.FromResult<StockLot?>(tracked);
+        }
+
+        return _dbContext.StockLots
             .FirstOrDefaultAsync(
                 x => x.ProductVariantId == productVariantId && x.LotCode == lotCode,
                 cancellationToken);
+    }
 
     public Task<List<StockLot>> GetNearExpiryAsync(
         DateTime expiryBefore,

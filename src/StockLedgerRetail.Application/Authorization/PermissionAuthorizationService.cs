@@ -1,6 +1,7 @@
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Authorization;
 using StockLedgerRetail.Domain.Repositories;
+using StockLedgerRetail.Enums;
 using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Authorization;
@@ -58,9 +59,31 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
 
     public async Task EnsureCanCancelInventoryDocumentAsync(
         string documentCreatedBy,
+        InventoryDocumentStatus documentStatus,
         CancellationToken cancellationToken = default)
     {
         EnsureAuthenticated();
+
+        // Pending: người duyệt (hoặc trưởng nhóm) có thể hủy phiếu chờ duyệt dù không phải người tạo.
+        if (documentStatus == InventoryDocumentStatus.Pending)
+        {
+            if (_currentUser.HasPermission(PermissionCodes.InventoryDocumentsApprove))
+            {
+                return;
+            }
+
+            if (_currentUser.HasPermission(PermissionCodes.InventoryDocumentsApproveTeam)
+                && _currentUser.UserId.HasValue
+                && !string.Equals(documentCreatedBy, _currentUser.Email, StringComparison.OrdinalIgnoreCase)
+                && await _teamRepository.IsLeaderOfMemberAsync(
+                    _currentUser.UserId.Value,
+                    documentCreatedBy,
+                    cancellationToken))
+            {
+                return;
+            }
+        }
+
         await EnsureOwnOrTeamManagedAsync(documentCreatedBy, PermissionCodes.InventoryDocumentsCancel, cancellationToken);
     }
 

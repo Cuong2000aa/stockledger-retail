@@ -6,6 +6,7 @@ namespace StockLedgerRetail.EntityFrameworkCore.Infrastructure;
 public class DocumentNumberGenerator : IDocumentNumberGenerator
 {
     private readonly StockLedgerRetailDbContext _dbContext;
+    private readonly Dictionary<string, int> _nextSequenceByPrefix = new(StringComparer.Ordinal);
 
     public DocumentNumberGenerator(StockLedgerRetailDbContext dbContext)
     {
@@ -22,7 +23,13 @@ public class DocumentNumberGenerator : IDocumentNumberGenerator
             $"SELECT pg_advisory_xact_lock(hashtext({prefix}))",
             cancellationToken);
 
-        var count = await countByPrefixAsync(prefix, cancellationToken);
-        return $"{prefix}{(count + 1).ToString().PadLeft(sequencePadLength, '0')}";
+        if (!_nextSequenceByPrefix.TryGetValue(prefix, out var sequence))
+        {
+            var count = await countByPrefixAsync(prefix, cancellationToken);
+            sequence = count + 1;
+        }
+
+        _nextSequenceByPrefix[prefix] = sequence + 1;
+        return $"{prefix}{sequence.ToString().PadLeft(sequencePadLength, '0')}";
     }
 }

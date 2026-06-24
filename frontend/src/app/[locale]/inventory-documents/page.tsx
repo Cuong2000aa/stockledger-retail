@@ -36,6 +36,8 @@ function statusLabel(
   switch (status) {
     case InventoryDocumentStatus.Draft:
       return t("statusDraft");
+    case InventoryDocumentStatus.Pending:
+      return t("statusPending");
     case InventoryDocumentStatus.Approved:
       return t("statusApproved");
     case InventoryDocumentStatus.Cancelled:

@@ -1,5 +1,7 @@
 namespace StockLedgerRetail.Services;
 
+using StockLedgerRetail.Enums;
+
 public interface IPermissionAuthorizationService
 {
     void EnsureAuthenticated();
@@ -12,7 +14,10 @@ public interface IPermissionAuthorizationService
 
     Task EnsureCanUpdateInventoryDocumentAsync(string documentCreatedBy, CancellationToken cancellationToken = default);
 
-    Task EnsureCanCancelInventoryDocumentAsync(string documentCreatedBy, CancellationToken cancellationToken = default);
+    Task EnsureCanCancelInventoryDocumentAsync(
+        string documentCreatedBy,
+        InventoryDocumentStatus documentStatus,
+        CancellationToken cancellationToken = default);
 
     Task EnsureCanApproveInventoryDocumentAsync(string documentCreatedBy, CancellationToken cancellationToken = default);
 

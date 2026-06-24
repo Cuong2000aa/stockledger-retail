@@ -36,7 +36,7 @@ public class LotStockService : ILotStockService
         var lotCode = line.LotCode?.Trim();
         if (string.IsNullOrEmpty(lotCode))
         {
-            throw new InvalidOperationException($"Lot code is required for SKU '{variant.Sku}'.");
+            lotCode = OpeningLotCode;
         }
 
         var lot = await _stockLotRepository.GetByVariantAndLotCodeAsync(
@@ -137,8 +137,73 @@ public class LotStockService : ILotStockService
 
         if (remaining > 0)
         {
-            throw new InvalidOperationException(
-                $"Insufficient lot-tracked stock for SKU '{variant.Sku}'.");
+            await MaterializeOpeningLotAndDeductAsync(
+                line.ProductVariantId,
+                warehouseId,
+                remaining,
+                now,
+                cancellationToken);
         }
+    }
+
+    private const string OpeningLotCode = "OPENING";
+
+    /// <summary>
+    /// Assigns unallocated on-hand stock to an OPENING lot, then deducts (legacy seed / imports without lots).
+    /// </summary>
+    private async Task MaterializeOpeningLotAndDeductAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        decimal quantity,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var lot = await _stockLotRepository.GetByVariantAndLotCodeAsync(
+            productVariantId,
+            OpeningLotCode,
+            cancellationToken);
+
+        if (lot is null)
+        {
+            lot = new StockLot
+            {
+                Id = Guid.NewGuid(),
+                ProductVariantId = productVariantId,
+                LotCode = OpeningLotCode,
+                ReceivedAt = now
+            };
+            await _stockLotRepository.InsertAsync(lot, cancellationToken);
+        }
+
+        var lotStock = await _lotStockRepository.GetByLotAndWarehouseAsync(lot.Id, warehouseId, cancellationToken);
+        if (lotStock is null)
+        {
+            lotStock = new LotStock
+            {
+                Id = Guid.NewGuid(),
+                StockLotId = lot.Id,
+                WarehouseId = warehouseId,
+                QuantityOnHand = quantity,
+                LastUpdatedAt = now
+            };
+            await _lotStockRepository.InsertAsync(lotStock, cancellationToken);
+        }
+        else
+        {
+            lotStock.QuantityOnHand += quantity;
+            lotStock.LastUpdatedAt = now;
+            await _lotStockRepository.UpdateAsync(lotStock, cancellationToken);
+        }
+
+        if (lotStock.QuantityOnHand < quantity)
+        {
+            var variant = await _productVariantRepository.GetByIdAsync(productVariantId, cancellationToken);
+            throw new InvalidOperationException(
+                $"Insufficient lot-tracked stock for SKU '{variant?.Sku ?? productVariantId.ToString()}'.");
+        }
+
+        lotStock.QuantityOnHand -= quantity;
+        lotStock.LastUpdatedAt = now;
+        await _lotStockRepository.UpdateAsync(lotStock, cancellationToken);
     }
 }

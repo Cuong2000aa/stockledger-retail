@@ -17,7 +17,8 @@ public class CurrentStockConfiguration : IEntityTypeConfiguration<CurrentStock>
         builder.Property(x => x.QuantityAvailable).HasPrecision(18, 4);
         builder.Property(x => x.LastUpdatedAt).IsRequired();
 
-        builder.Property(x => x.RowVersion).IsRowVersion();
+        // Pessimistic locking via FOR UPDATE; do not map PostgreSQL xmin (xid) on this table.
+        builder.Ignore(x => x.RowVersion);
 
         builder.HasIndex(x => new { x.ProductVariantId, x.WarehouseId }).IsUnique();
 
