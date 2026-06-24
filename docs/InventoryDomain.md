@@ -21,11 +21,20 @@ Overview of the retail inventory domain as implemented in StockLedger Retail.
 
 - **Product** — parent master data (code, name, brand text, optional `BrandId`, category).
 - **ProductVariant** — the actual inventory unit. All stock is tracked at SKU level. Optional `BrandId`.
-- **Valuation fields** on SKU (optional, for future analytics):
+- **TrackLotExpiry** — when `true`, SKU uses `StockLot` / `LotStock` and FEFO for outbound allocation.
+- **Valuation fields** on SKU (optional, for analytics):
   - `CostPrice` — cost price (may come from ERP, POS, Purchase System, or Manual entry)
   - `SellingPrice` — retail selling price
   - `CostSource` — `Manual`, `Erp`, `Pos`, `PurchaseSystem`
-- **ProductCostHistory** — time-series cost records (`EffectiveFrom` / `EffectiveTo`); entity mapped, no API yet.
+- **ProductCostHistory** — time-series cost records (`EffectiveFrom` / `EffectiveTo`); read via `GET /api/reports/cost-history`.
+
+### StockLot & LotStock
+
+Batch/lot tracking for expiry-sensitive SKUs.
+
+- **StockLot** — `LotCode`, `ExpiryDate`, `ProductVariantId`
+- **LotStock** — on-hand quantity per lot per warehouse
+- **LotStockService** — FEFO pick when deducting lot-tracked stock
 
 ### Warehouse
 
@@ -39,7 +48,7 @@ Fast lookup of on-hand quantity per SKU per warehouse.
 QuantityAvailable = QuantityOnHand - QuantityReserved
 ```
 
-`QuantityReserved` is stored but not yet used by business logic (planned).
+`QuantityReserved` is updated by POS/OMS reservation APIs; admin can list and release holds via `/api/stock-reservations`.
 
 ### InventoryDocument
 
@@ -50,6 +59,8 @@ Statuses: `Draft` → `Approved` (or `Cancelled` while Draft). Transfer document
 Transfer lifecycle (type `Transfer`): **Approve** = ship (source → in-transit); **Receive** = in-transit → destination.
 
 Fields: `TransferLifecycleStatus`, `InTransitWarehouseId`, `ShippedAt`, `ReceivedAt`.
+
+**Approval workflow:** `RequiredApprovalSteps`, `CompletedApprovalSteps`, `SubmittedForApprovalAt`. High-value documents use `submit-for-approval` before approve.
 
 Only **approved** documents generate `StockTransaction` records (transfer receive generates additional transactions).
 
@@ -104,13 +115,22 @@ Optional API scope headers: `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
 
 ## Inventory Insights (Read-Only)
 
-Rule-based APIs: dead stock, sales velocity, transfer suggestions. Filterable by `brandId` and `regionCode`. See [MultiBrand.md](MultiBrand.md).
+Rule-based APIs: dead stock, sales velocity, transfer suggestions. Filterable by `brandId` and `regionCode`. Results may be served from `InsightSnapshot` cache. See [MultiBrand.md](MultiBrand.md).
+
+---
+
+## Inventory Reports (Read-Only)
+
+- Inventory value — `CurrentStock` × SKU `CostPrice`
+- NXT — movements from `StockTransaction` in date range
+- Near-expiry lots — `StockLot` / `LotStock` where `ExpiryDate` within threshold
+- Cost history — `ProductCostHistory` rows
+
+API prefix: `/api/reports/*`
 
 ---
 
 ## Analytics (Read-Only)
-
----
 
 ## Processing Flow
 

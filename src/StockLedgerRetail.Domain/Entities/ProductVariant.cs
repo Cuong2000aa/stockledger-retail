@@ -31,6 +31,9 @@ public class ProductVariant : AuditedEntity
     /// <summary>Nguồn giá vốn đang áp dụng cho <see cref="CostPrice"/>.</summary>
     public CostSource? CostSource { get; set; }
 
+    /// <summary>Bật theo dõi lô/HSD — bắt buộc cho F&amp;B (Dominos, Popeyes).</summary>
+    public bool TrackLotExpiry { get; set; }
+
     public Product Product { get; set; } = null!;
 
     public ICollection<CurrentStock> CurrentStocks { get; set; } = new List<CurrentStock>();

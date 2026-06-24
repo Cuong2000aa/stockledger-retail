@@ -6,6 +6,7 @@ using StockLedgerRetail.HttpApi.Host.Audit;
 using StockLedgerRetail.HttpApi.Host.HostedServices;
 using StockLedgerRetail.HttpApi.Host.Middleware;
 using StockLedgerRetail.Inventory;
+using StockLedgerRetail.Insights;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,8 +60,13 @@ builder.Services.AddStockLedgerRetailEntityFrameworkCore(connectionString);
 builder.Services.AddStockLedgerRetailApplication(builder.Configuration);
 builder.Services.Configure<StockReconciliationOptions>(
     builder.Configuration.GetSection(StockReconciliationOptions.SectionName));
+builder.Services.Configure<InsightSnapshotOptions>(
+    builder.Configuration.GetSection(InsightSnapshotOptions.SectionName));
+builder.Services.AddHostedService<BackgroundJobBootstrapHostedService>();
 builder.Services.AddHostedService<StockReconciliationHostedService>();
+builder.Services.AddHostedService<InventoryInsightsHostedService>();
 builder.Services.AddHostedService<AuthorizationBootstrapHostedService>();
+builder.Services.AddHostedService<FbDataSeedHostedService>();
 
 var app = builder.Build();
 

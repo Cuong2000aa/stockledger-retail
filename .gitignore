@@ -21,4 +21,4 @@ Thumbs.db
 
 ## Secrets
 appsettings.*.local.json
-*.env
+.cursor-temp/

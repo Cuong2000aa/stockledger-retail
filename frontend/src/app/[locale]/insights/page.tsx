@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
 import { StatCardsSkeleton } from "@/components/LoadingState";
 import { MiniBarChart } from "@/features/insights/components/MiniBarChart";
-import { SeverityBadge } from "@/features/insights/components/SeverityBadge";
+import { RecommendationCard } from "@/features/insights/components/RecommendationCard";
+import { findCtaById, resolveRecommendation } from "@/features/insights/recommendation-utils";
 import { useNotify } from "@/hooks/useNotify";
 import { fetchWarehouses } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
@@ -23,8 +24,10 @@ import {
   TrendingUp,
   Warehouse,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
+  createTransferFromCtaPayload,
   createTransferFromSuggestion,
   fetchDeadStockInsights,
   fetchSalesVelocityInsights,
@@ -33,16 +36,15 @@ import {
 import { insightQueryKeys } from "@/features/insights/queries";
 import type { TransferSuggestion } from "@/features/insights/types";
 
-type RecommendationParams = Record<string, string>;
 type InsightTab = "deadStock" | "velocity" | "transfer";
 
 const TOP_CHART_COUNT = 8;
 
 export default function InsightsPage() {
   const t = useTranslations("insights");
-  const tActions = useTranslations("insights.actions");
   const tCommon = useTranslations("common");
   const tStocks = useTranslations("stocks");
+  const searchParams = useSearchParams();
   const locale = useLocale();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -51,7 +53,14 @@ export default function InsightsPage() {
   const [daysWithoutOutbound, setDaysWithoutOutbound] = useState(60);
   const [lookbackDays, setLookbackDays] = useState(30);
   const [activeTab, setActiveTab] = useState<InsightTab>("deadStock");
-  const [creatingTransferKey, setCreatingTransferKey] = useState<string | null>(null);
+  const [executingActionKey, setExecutingActionKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "deadStock" || tab === "velocity" || tab === "transfer") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses", "all-for-insights"],
@@ -78,12 +87,25 @@ export default function InsightsPage() {
   const createTransferMutation = useMutation({
     mutationFn: createTransferFromSuggestion,
     onSuccess: (doc) => {
-      setCreatingTransferKey(null);
+      setExecutingActionKey(null);
       void queryClient.invalidateQueries({ queryKey: ["inventory-documents"] });
       router.push(`/inventory-documents/${doc.id}`);
     },
     onError: (error) => {
-      setCreatingTransferKey(null);
+      setExecutingActionKey(null);
+      notifyError(error);
+    },
+  });
+
+  const createTransferFromCtaMutation = useMutation({
+    mutationFn: createTransferFromCtaPayload,
+    onSuccess: (doc) => {
+      setExecutingActionKey(null);
+      void queryClient.invalidateQueries({ queryKey: ["inventory-documents"] });
+      router.push(`/inventory-documents/${doc.id}`);
+    },
+    onError: (error) => {
+      setExecutingActionKey(null);
       notifyError(error);
     },
   });
@@ -177,8 +199,20 @@ export default function InsightsPage() {
     { id: "transfer", label: t("tabs.transfer"), icon: ArrowRightLeft, count: stats.transferCount },
   ];
 
-  const handleCreateTransfer = (item: TransferSuggestion, rowKey: string) => {
-    setCreatingTransferKey(rowKey);
+  const handleTransferApiAction = (
+    rowKey: string,
+    actionId: string,
+    item: TransferSuggestion
+  ) => {
+    const actionKey = `${rowKey}:${actionId}`;
+    const cta = findCtaById(resolveRecommendation(item)?.actions, actionId);
+    setExecutingActionKey(actionKey);
+
+    if (cta?.payload && Object.keys(cta.payload).length > 0) {
+      createTransferFromCtaMutation.mutate(cta.payload);
+      return;
+    }
+
     createTransferMutation.mutate(item);
   };
 
@@ -337,13 +371,12 @@ export default function InsightsPage() {
                   <th>{t("deadStock.days")}</th>
                   <th>{tStocks("onHand")}</th>
                   <th>{t("deadStock.costValue")}</th>
-                  <th>{t("severity.label")}</th>
-                  <th>{t("recommendation")}</th>
+                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
                 {deadStockLoading ? (
-                  <LoadingRow colSpan={7} label={tCommon("loading")} />
+                  <LoadingRow colSpan={6} label={tCommon("loading")} />
                 ) : deadStock?.length ? (
                   deadStock.map((item) => (
                     <tr key={`${item.productVariantId}-${item.warehouseId}`}>
@@ -366,23 +399,16 @@ export default function InsightsPage() {
                         {formatNumber(item.estimatedCostValue ?? 0, locale)}
                       </td>
                       <td>
-                        <SeverityBadge
+                        <RecommendationCard
+                          recommendation={resolveRecommendation(item)}
                           severity={item.severity}
-                          label={severityLabel(t, item.severity)}
-                        />
-                      </td>
-                      <td className="max-w-xs">
-                        <RecommendationBox
-                          actionCode={item.recommendedActionCode}
-                          params={item.recommendationParams}
-                          severity={item.severity}
-                          translate={tActions}
+                          locale={locale}
                         />
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <EmptyRow colSpan={7} label={tCommon("noData")} />
+                  <EmptyRow colSpan={6} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -414,13 +440,12 @@ export default function InsightsPage() {
                   <th>{t("salesVelocity.outbound")}</th>
                   <th>{t("salesVelocity.avgDaily")}</th>
                   <th>{t("salesVelocity.coverDays")}</th>
-                  <th>{t("severity.label")}</th>
-                  <th>{t("recommendation")}</th>
+                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
                 {salesVelocityLoading ? (
-                  <LoadingRow colSpan={7} label={tCommon("loading")} />
+                  <LoadingRow colSpan={6} label={tCommon("loading")} />
                 ) : salesVelocity?.length ? (
                   salesVelocity.map((item) => (
                     <tr key={`${item.productVariantId}-${item.warehouseId}`}>
@@ -445,23 +470,16 @@ export default function InsightsPage() {
                           : t("salesVelocity.noDemand")}
                       </td>
                       <td>
-                        <SeverityBadge
+                        <RecommendationCard
+                          recommendation={resolveRecommendation(item)}
                           severity={item.severity}
-                          label={severityLabel(t, item.severity)}
-                        />
-                      </td>
-                      <td className="max-w-xs">
-                        <RecommendationBox
-                          actionCode={item.recommendedActionCode}
-                          params={item.recommendationParams}
-                          severity={item.severity}
-                          translate={tActions}
+                          locale={locale}
                         />
                       </td>
                     </tr>
                   ))
                 ) : (
-                  <EmptyRow colSpan={7} label={tCommon("noData")} />
+                  <EmptyRow colSpan={6} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -491,18 +509,18 @@ export default function InsightsPage() {
                   <th>{t("transfer.to")}</th>
                   <th>{t("transfer.qty")}</th>
                   <th>{t("transfer.coverDays")}</th>
-                  <th>{t("severity.label")}</th>
-                  <th>{t("recommendation")}</th>
-                  <th />
+                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
                 {transferSuggestionsLoading ? (
-                  <LoadingRow colSpan={8} label={tCommon("loading")} />
+                  <LoadingRow colSpan={6} label={tCommon("loading")} />
                 ) : transferSuggestions?.length ? (
                   transferSuggestions.map((item, index) => {
                     const rowKey = `${item.productVariantId}-${item.sourceWarehouseId}-${item.destinationWarehouseId}-${index}`;
-                    const isCreating = creatingTransferKey === rowKey;
+                    const executingActionId = executingActionKey?.startsWith(`${rowKey}:`)
+                      ? executingActionKey.split(":").pop() ?? null
+                      : null;
 
                     return (
                       <tr key={rowKey}>
@@ -522,34 +540,21 @@ export default function InsightsPage() {
                             : tCommon("noData")}
                         </td>
                         <td>
-                          <SeverityBadge
+                          <RecommendationCard
+                            recommendation={resolveRecommendation(item)}
                             severity={item.severity}
-                            label={severityLabel(t, item.severity)}
+                            locale={locale}
+                            executingActionId={executingActionId}
+                            onApiAction={(actionId) =>
+                              handleTransferApiAction(rowKey, actionId, item)
+                            }
                           />
-                        </td>
-                        <td className="max-w-xs">
-                          <RecommendationBox
-                            actionCode={item.recommendedActionCode}
-                            params={item.recommendationParams}
-                            severity={item.severity}
-                            translate={tActions}
-                          />
-                        </td>
-                        <td className="whitespace-nowrap">
-                          <button
-                            type="button"
-                            className="btn-primary text-xs"
-                            disabled={isCreating || createTransferMutation.isPending}
-                            onClick={() => handleCreateTransfer(item, rowKey)}
-                          >
-                            {isCreating ? t("transfer.creating") : t("transfer.createTransfer")}
-                          </button>
                         </td>
                       </tr>
                     );
                   })
                 ) : (
-                  <EmptyRow colSpan={8} label={tCommon("noData")} />
+                  <EmptyRow colSpan={6} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -604,61 +609,6 @@ function InsightSection({
       </div>
     </div>
   );
-}
-
-function RecommendationBox({
-  actionCode,
-  params,
-  severity,
-  translate,
-}: {
-  actionCode?: string;
-  params?: RecommendationParams;
-  severity: string;
-  translate: ReturnType<typeof useTranslations<"insights.actions">>;
-}) {
-  if (!actionCode) {
-    return <span className="text-slate-400">—</span>;
-  }
-
-  let text = actionCode;
-  try {
-    text = translate(actionCode as never, params ?? {});
-  } catch {
-    // keep action code
-  }
-
-  const borderColor =
-    severity === "critical"
-      ? "border-red-300 bg-red-50/50"
-      : severity === "warning"
-        ? "border-amber-300 bg-amber-50/50"
-        : "border-sky-200 bg-slate-50/80";
-
-  return (
-    <p
-      className={clsx(
-        "line-clamp-2 rounded-lg border-l-[3px] px-2.5 py-1.5 text-xs leading-relaxed text-slate-600",
-        borderColor
-      )}
-      title={text}
-    >
-      {text}
-    </p>
-  );
-}
-
-function severityLabel(
-  t: ReturnType<typeof useTranslations<"insights">>,
-  severity: string
-) {
-  if (severity === "critical") {
-    return t("severity.critical");
-  }
-  if (severity === "warning") {
-    return t("severity.warning");
-  }
-  return t("severity.info");
 }
 
 function LoadingRow({ colSpan, label }: { colSpan: number; label: string }) {

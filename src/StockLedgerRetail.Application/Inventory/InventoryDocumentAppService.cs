@@ -24,6 +24,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     private readonly IAuditContext _auditContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPermissionAuthorizationService _permissionAuthorizationService;
+    private readonly ApprovalWorkflowHelper _approvalWorkflowHelper;
 
     public InventoryDocumentAppService(
         IInventoryDocumentRepository inventoryDocumentRepository,
@@ -35,7 +36,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         ITransactionAuditService transactionAuditService,
         IAuditContext auditContext,
         IUnitOfWork unitOfWork,
-        IPermissionAuthorizationService permissionAuthorizationService)
+        IPermissionAuthorizationService permissionAuthorizationService,
+        ApprovalWorkflowHelper approvalWorkflowHelper)
     {
         _inventoryDocumentRepository = inventoryDocumentRepository;
         _productVariantRepository = productVariantRepository;
@@ -47,6 +49,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         _auditContext = auditContext;
         _unitOfWork = unitOfWork;
         _permissionAuthorizationService = permissionAuthorizationService;
+        _approvalWorkflowHelper = approvalWorkflowHelper;
     }
 
     /// <summary>Lấy chi tiết phiếu kèm danh sách dòng hàng.</summary>
@@ -323,9 +326,44 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
                 ProductVariantId = line.ProductVariantId,
                 Quantity = line.Quantity,
                 UnitCost = line.UnitCost,
+                LotCode = line.LotCode?.Trim(),
+                ExpiryDate = line.ExpiryDate,
                 Note = line.Note?.Trim()
             }).ToList();
         }
+
+        await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
+        await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
+
+        var newDto = await LoadDtoAsync(document.Id, cancellationToken);
+        await _transactionAuditService.LogAsync(
+            nameof(InventoryDocument), document.Id, AuditActionType.Update, oldDto, newDto, cancellationToken);
+
+        return newDto;
+    }
+
+    /// <summary>Gửi phiếu chờ duyệt — bắt buộc với phiếu giá trị cao (duyệt 2 cấp).</summary>
+    public async Task<InventoryDocumentDto> SubmitForApprovalAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        if (document.Status is not InventoryDocumentStatus.Draft)
+        {
+            throw new InvalidOperationException("Only draft documents can be submitted for approval.");
+        }
+
+        var oldDto = MapToDto(document);
+        var value = ApprovalWorkflowHelper.CalculateInventoryDocumentValue(document);
+        var now = DateTime.UtcNow;
+
+        document.RequiredApprovalSteps = _approvalWorkflowHelper.GetRequiredApprovalSteps(value);
+        document.CompletedApprovalSteps = 0;
+        document.Status = InventoryDocumentStatus.Pending;
+        document.SubmittedAt = now;
+        document.SubmittedBy = _auditContext.UserName;
 
         await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
         await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
@@ -353,11 +391,39 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             throw new InvalidOperationException("Cancelled documents cannot be approved.");
         }
 
+        if (document.Status is InventoryDocumentStatus.Draft)
+        {
+            var value = ApprovalWorkflowHelper.CalculateInventoryDocumentValue(document);
+            if (_approvalWorkflowHelper.GetRequiredApprovalSteps(value) > 1)
+            {
+                throw new InvalidOperationException(
+                    "High-value documents must be submitted for approval before final approval.");
+            }
+        }
+
         await _permissionAuthorizationService.EnsureCanApproveInventoryDocumentAsync(
             document.CreatedBy,
             cancellationToken);
 
         var oldDto = MapToDto(document);
+
+        if (document.Status is InventoryDocumentStatus.Pending
+            && document.CompletedApprovalSteps + 1 < document.RequiredApprovalSteps)
+        {
+            var now = DateTime.UtcNow;
+            document.CompletedApprovalSteps++;
+            document.FirstApprovedBy = _auditContext.UserName;
+            document.FirstApprovedAt = now;
+
+            await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
+            await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
+
+            var partialDto = await LoadDtoAsync(document.Id, cancellationToken);
+            await _transactionAuditService.LogAsync(
+                nameof(InventoryDocument), document.Id, AuditActionType.Approve, oldDto, partialDto, cancellationToken);
+
+            return partialDto;
+        }
 
         if (document.DocumentType == InventoryDocumentType.Transfer)
         {
@@ -523,6 +589,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
                 ProductVariantId = line.ProductVariantId,
                 Quantity = line.Quantity,
                 UnitCost = line.UnitCost,
+                LotCode = line.LotCode?.Trim(),
+                ExpiryDate = line.ExpiryDate,
                 Note = line.Note?.Trim()
             }).ToList()
         };
@@ -734,6 +802,12 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreatedAt = document.CreatedAt,
         ApprovedBy = document.ApprovedBy,
         ApprovedAt = document.ApprovedAt,
+        SubmittedAt = document.SubmittedAt,
+        SubmittedBy = document.SubmittedBy,
+        RequiredApprovalSteps = document.RequiredApprovalSteps,
+        CompletedApprovalSteps = document.CompletedApprovalSteps,
+        FirstApprovedBy = document.FirstApprovedBy,
+        FirstApprovedAt = document.FirstApprovedAt,
         TransferLifecycleStatus = document.TransferLifecycleStatus,
         InTransitWarehouseId = document.InTransitWarehouseId,
         ShippedAt = document.ShippedAt,
@@ -745,6 +819,9 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             Sku = line.ProductVariant?.Sku ?? string.Empty,
             Quantity = line.Quantity,
             UnitCost = line.UnitCost,
+            StockLotId = line.StockLotId,
+            LotCode = line.LotCode,
+            ExpiryDate = line.ExpiryDate,
             Note = line.Note
         }).ToList()
     };
@@ -766,6 +843,12 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CreatedAt = document.CreatedAt,
         ApprovedBy = document.ApprovedBy,
         ApprovedAt = document.ApprovedAt,
+        SubmittedAt = document.SubmittedAt,
+        SubmittedBy = document.SubmittedBy,
+        RequiredApprovalSteps = document.RequiredApprovalSteps,
+        CompletedApprovalSteps = document.CompletedApprovalSteps,
+        FirstApprovedBy = document.FirstApprovedBy,
+        FirstApprovedAt = document.FirstApprovedAt,
         TransferLifecycleStatus = document.TransferLifecycleStatus,
         InTransitWarehouseId = document.InTransitWarehouseId,
         ShippedAt = document.ShippedAt,

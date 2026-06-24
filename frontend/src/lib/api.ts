@@ -240,6 +240,19 @@ export const cancelDocument = (id: string) =>
     .post<InventoryDocument>(`/api/inventory-documents/${id}/cancel`)
     .then((r) => r.data);
 
+export const submitDocumentForApproval = (id: string) =>
+  api
+    .post<InventoryDocument>(`/api/inventory-documents/${id}/submit-for-approval`)
+    .then((r) => r.data);
+
+export const receiveTransfer = (id: string) =>
+  api
+    .post<InventoryDocument>(`/api/inventory-documents/${id}/receive-transfer`)
+    .then((r) => r.data);
+
+export const approvePurchaseOrder = (id: string) =>
+  api.post<PurchaseOrder>(`/api/purchase-orders/${id}/approve`).then((r) => r.data);
+
 // Stocks & transactions
 export const fetchCurrentStocks = (
   warehouseId?: string,

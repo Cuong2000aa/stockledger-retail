@@ -18,6 +18,7 @@ public class StockLedgerService : IStockLedgerService
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IDocumentNumberGenerator _documentNumberGenerator;
     private readonly IInventoryValuationService _inventoryValuationService;
+    private readonly ILotStockService _lotStockService;
     private readonly IAuditContext _auditContext;
 
     public StockLedgerService(
@@ -27,6 +28,7 @@ public class StockLedgerService : IStockLedgerService
         IWarehouseRepository warehouseRepository,
         IDocumentNumberGenerator documentNumberGenerator,
         IInventoryValuationService inventoryValuationService,
+        ILotStockService lotStockService,
         IAuditContext auditContext)
     {
         _currentStockRepository = currentStockRepository;
@@ -35,6 +37,7 @@ public class StockLedgerService : IStockLedgerService
         _warehouseRepository = warehouseRepository;
         _documentNumberGenerator = documentNumberGenerator;
         _inventoryValuationService = inventoryValuationService;
+        _lotStockService = lotStockService;
         _auditContext = auditContext;
     }
 
@@ -343,6 +346,15 @@ public class StockLedgerService : IStockLedgerService
         };
 
         await _stockTransactionRepository.InsertAsync(transaction, cancellationToken);
+
+        if (quantityDelta > 0)
+        {
+            await _lotStockService.ApplyStockInLotAsync(line, warehouseId, now, cancellationToken);
+        }
+        else if (quantityDelta < 0)
+        {
+            await _lotStockService.ApplyStockOutFefoAsync(line, warehouseId, now, cancellationToken);
+        }
     }
 
     private async Task<decimal?> ResolveTransactionUnitCostAsync(

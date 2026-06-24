@@ -222,7 +222,7 @@ Retail inventory use cases for StockLedger Retail.
 
 **API:** `PUT /api/product-variants/{id}` (cost fields on DTO)
 
-**Status:** ⚠️ Partial — master fields on SKU; cost history API not yet built
+**Status:** ⚠️ Partial — master fields on SKU; cost history via `GET /api/reports/cost-history`
 
 ---
 
@@ -234,7 +234,7 @@ Retail inventory use cases for StockLedger Retail.
 
 **API:** `GET /api/inventory-insights/dead-stock`, `sales-velocity`, `transfer-suggestions` (optional `brandId`, `regionCode`)
 
-**Status:** ✅ Implemented (rule-based)
+**Status:** ✅ Implemented (rule-based, snapshot cache, recommendation cards)
 
 ---
 
@@ -246,7 +246,7 @@ Retail inventory use cases for StockLedger Retail.
 
 **API:** `GET/POST /api/brands`, `GET/PUT /api/brands/{id}`
 
-**Status:** ✅ Implemented (backend API)
+**Status:** ✅ Implemented (backend API + admin list UI)
 
 ---
 
@@ -256,9 +256,11 @@ Retail inventory use cases for StockLedger Retail.
 
 **Goal:** Allow or deny transfers between warehouses of different brands.
 
-**Flow:** `TransferPolicy` rows in DB; validated on transfer create/approve.
+**Flow:** `TransferPolicy` rows; validated on transfer create/approve; managed via admin API.
 
-**Status:** ✅ Implemented (domain + validation; admin API planned)
+**API:** `GET/POST/PUT /api/admin/transfer-policies`
+
+**Status:** ✅ Implemented
 
 ---
 
@@ -283,6 +285,82 @@ Retail inventory use cases for StockLedger Retail.
 **Headers:** `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`
 
 **Status:** ✅ Implemented (RBAC-lite)
+
+---
+
+# UC017 — Inventory Reports
+
+**Actor:** Manager / Finance / Warehouse
+
+**Goal:** Read-only valuation and movement reports without changing stock.
+
+**Queries:**
+
+- Inventory value by SKU/warehouse (`CostPrice × QuantityOnHand`)
+- NXT (opening / in / out / closing) for a date range
+- Near-expiry lots and lot stock balances
+- SKU cost history
+
+**API:** `GET /api/reports/inventory-value`, `nxt`, `near-expiry-lots`, `lot-stocks`, `cost-history`
+
+**Status:** ✅ Implemented
+
+---
+
+# UC018 — Stock Reservation Admin
+
+**Actor:** Warehouse / System admin
+
+**Goal:** View and release POS/OMS stock holds when orders expire or are cancelled.
+
+**API:** `GET /api/stock-reservations`, `POST /api/stock-reservations/{id}/release`
+
+**Status:** ✅ Implemented (list + release; reservations created by integration APIs)
+
+---
+
+# UC019 — Multi-Step Document Approval
+
+**Actor:** Warehouse clerk / Team leader
+
+**Goal:** High-value inventory documents require explicit submission and two approval steps before posting.
+
+**Flow:**
+
+1. Create document (Draft)
+2. `POST .../submit-for-approval` when total line value ≥ threshold
+3. Approver(s) call `POST .../approve` — may require 2 steps (`RequiredApprovalSteps`)
+4. Stock posts only after all steps complete
+
+**Config:** `ApprovalWorkflow:DocumentValueThreshold` (default 10,000,000 VND)
+
+**Status:** ✅ Implemented (inventory documents + PO `PendingApproval`)
+
+---
+
+# UC020 — Lot / Expiry Tracking (FEFO)
+
+**Actor:** Warehouse Staff
+
+**Goal:** Track batch/lot and expiry for SKUs that require it (`TrackLotExpiry` on SKU).
+
+**Domain:** `StockLot` (lot code, expiry), `LotStock` (quantity per warehouse), `LotStockService` for FEFO allocation.
+
+**Reports:** `GET /api/reports/near-expiry-lots`, `lot-stocks`
+
+**Status:** ✅ Implemented (domain + reports; outbound FEFO on stock-out integration path)
+
+---
+
+# UC021 — Background Operations Dashboard
+
+**Actor:** System admin (`system.admin`)
+
+**Goal:** Monitor and trigger background jobs (stock reconciliation, insight snapshot refresh).
+
+**API:** `GET /api/admin/operations`, `PUT/POST .../jobs/{jobKey}`
+
+**Status:** ✅ Implemented
 
 ---
 

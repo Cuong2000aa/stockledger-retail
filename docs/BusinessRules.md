@@ -200,7 +200,7 @@ Every inventory transaction must be linked to a business document.
 | BR1202 | CostSource indicates origin: Manual, Erp, Pos, PurchaseSystem. |
 | BR1203 | Valuation fields do not affect stock ledger processing. |
 | BR1204 | ProductCostHistory records time-bounded cost (EffectiveFrom / EffectiveTo). |
-| BR1205 | ProductCostHistory has no business write API yet — domain preparation only. |
+| BR1205 | ProductCostHistory is readable via `GET /api/reports/cost-history`. |
 | BR1206 | Negative CostPrice or SellingPrice is not allowed on SKU update. |
 
 ---
@@ -215,3 +215,24 @@ Every inventory transaction must be linked to a business document.
 | BR1304 | Fulfillment and insights respect optional `brandId` and `regionCode` filters. |
 | BR1305 | Scope headers (`X-Brand-Id`, etc.) apply when request parameters are omitted. |
 | BR1306 | Transfer suggestions pair warehouses with same brand and compatible region. |
+
+---
+
+# Approval Workflow Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1401 | Document total value ≥ `DocumentValueThreshold` requires `submit-for-approval` before approve. |
+| BR1402 | High-value documents may require multiple approval steps (`RequiredApprovalSteps`). |
+| BR1403 | Stock is not posted until all required approval steps are completed. |
+| BR1404 | Purchase orders above threshold enter `PendingApproval` on submit; `Approve` clears to `Submitted`. |
+
+---
+
+# Lot / Expiry Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1501 | `TrackLotExpiry` on SKU enables lot master and lot stock balances. |
+| BR1502 | Outbound deduction for lot-tracked SKUs follows FEFO (earliest expiry first). |
+| BR1503 | Near-expiry report lists lots with `ExpiryDate` within configured days ahead. |

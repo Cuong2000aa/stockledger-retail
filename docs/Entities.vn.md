@@ -15,7 +15,9 @@
 | PurchaseOrderLine     | Chi tiết PO             | SKU và số lượng đặt / đã nhận        |
 | GoodsReceipt          | Phiếu nhận hàng (GR)    | Nhận hàng theo PO → sinh phiếu nhập   |
 | GoodsReceiptLine      | Chi tiết GR             | Số lượng nhận theo dòng PO            |
-| ProductCostHistory    | Lịch sử giá vốn         | Giá vốn theo thời gian (chưa có API) |
+| ProductCostHistory    | Lịch sử giá vốn         | Đọc qua `/api/reports/cost-history` |
+| StockLot              | Lô hàng                 | Mã lô, HSD theo SKU |
+| LotStock              | Tồn theo lô             | Số lượng lô tại từng kho |
 | Brand                 | Thương hiệu             | Master đa brand                      |
 | TransferPolicy        | Chính sách chuyển kho   | Quy tắc chuyển khác brand             |
 
@@ -344,7 +346,7 @@ Lưu giá vốn theo khoảng thời gian (EffectiveFrom / EffectiveTo).
 
 ## Ghi chú
 
-Bảng đã có trong DB; chưa có API nghiệp vụ ghi — chuẩn bị cho đồng bộ ERP/POS.
+Bảng lưu lịch sử giá vốn; đọc qua `GET /api/reports/cost-history`.
 
 ---
 

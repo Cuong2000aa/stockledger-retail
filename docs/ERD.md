@@ -666,7 +666,51 @@ PO received_quantity is updated when GR is approved; PO status reflects partial 
 
 product_variants.cost_price / selling_price / cost_source are master fields on SKU.
 
-product_cost_histories is prepared for time-bounded cost tracking; not yet wired to application services.
+product_cost_histories stores time-bounded cost; read via GET /api/reports/cost-history.
+
+---
+
+# Lot & Expiry Extension (Migration: AddLotExpiryAndApprovalWorkflow)
+
+## stock_lots
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| product_variant_id | uuid FK | |
+| lot_code | varchar | |
+| expiry_date | date | nullable |
+| received_at | timestamptz | |
+
+## lot_stocks
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| stock_lot_id | uuid FK | |
+| warehouse_id | uuid FK | |
+| quantity_on_hand | numeric | |
+| last_updated_at | timestamptz | |
+
+## Column additions
+
+| Table | New columns |
+|-------|-------------|
+| product_variants | track_lot_expiry |
+| inventory_documents | required_approval_steps, completed_approval_steps, submitted_for_approval_at |
+| purchase_orders | required_approval_steps, completed_approval_steps (PO status includes PendingApproval) |
+
+---
+
+# Insight & Operations Extension
+
+## insight_snapshots
+
+Cached JSON payloads for insight APIs (dead stock, velocity, transfer suggestions).
+
+## background_job_settings
+
+Configurable schedules for reconciliation and insight refresh; admin API at `/api/admin/operations`.
 
 ---
 

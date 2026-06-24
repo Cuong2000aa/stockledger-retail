@@ -29,4 +29,6 @@ public class UpdateProductVariantDto
     public decimal? SellingPrice { get; set; }
 
     public CostSource? CostSource { get; set; }
+
+    public bool TrackLotExpiry { get; set; }
 }

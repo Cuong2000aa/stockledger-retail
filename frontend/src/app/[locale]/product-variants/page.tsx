@@ -1,9 +1,12 @@
 "use client";
 
+import { DataTableCard, CodePill, EmptyTableState } from "@/components/DataTableCard";
+import { FormModal } from "@/components/FormModal";
 import { ListFilterBar } from "@/components/ListFilterBar";
-import { TableSkeleton } from "@/components/LoadingState";
+import { TableSkeleton, StatCardsSkeleton } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
+import { StatCard } from "@/components/StatCard";
 import { ActiveBadge, costSourceKey, isProductActive } from "@/components/StatusBadge";
 import { useListSearch } from "@/hooks/useListSearch";
 import { useNotify } from "@/hooks/useNotify";
@@ -19,7 +22,8 @@ import { formatNumber } from "@/lib/format";
 import { CostSource, ProductStatus, type ProductVariant } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { BadgeDollarSign, Layers, Plus, Tags } from "lucide-react";
+import { useMemo, useState } from "react";
 
 type VariantForm = {
   productId: string;
@@ -82,6 +86,15 @@ export default function ProductVariantsPage() {
   const productMap = new Map(
     products?.items.map((p) => [p.id, p.name]) ?? []
   );
+
+  const stats = useMemo(() => {
+    const items = data?.items ?? [];
+    return {
+      total: data?.totalCount ?? 0,
+      active: items.filter((v) => isProductActive(v.status)).length,
+      withCost: items.filter((v) => v.costPrice != null).length,
+    };
+  }, [data?.items, data?.totalCount]);
 
   const valuationPayload = () => {
     const costPrice = toOptionalNumber(form.costPrice);
@@ -174,12 +187,24 @@ export default function ProductVariantsPage() {
         subtitle={t("subtitle")}
         action={
           <button className="btn-primary" onClick={openCreate}>
-            + {t("create")}
+            <Plus className="h-4 w-4" />
+            {t("create")}
           </button>
         }
       />
 
+      {isLoading && !data ? (
+        <StatCardsSkeleton />
+      ) : (
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <StatCard label={t("stats.total")} value={String(stats.total)} icon={Tags} accent="indigo" />
+          <StatCard label={t("stats.active")} value={String(stats.active)} icon={Layers} accent="emerald" />
+          <StatCard label={t("stats.withCost")} value={String(stats.withCost)} icon={BadgeDollarSign} accent="amber" />
+        </div>
+      )}
+
       <ListFilterBar
+        variant="enhanced"
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder={tFilters("searchSku")}
@@ -187,14 +212,21 @@ export default function ProductVariantsPage() {
         showReset={hasSearch}
       />
 
-      <div className="card">
+      <DataTableCard
+        title={t("title")}
+        icon={Tags}
+        count={data?.totalCount}
+        countLabel={tCommon("total")}
+      >
         {isLoading ? (
-          <TableSkeleton rows={8} cols={6} />
+          <TableSkeleton rows={8} cols={7} />
+        ) : !data?.items.length ? (
+          <EmptyTableState message={tCommon("noData")} />
         ) : (
           <>
-            <div className="table-wrap">
+            <div className="table-wrap max-h-[32rem] overflow-y-auto scrollbar-thin">
               <table className="data-table">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-white">
                   <tr>
                     <th>{t("sku")}</th>
                     <th>{t("product")}</th>
@@ -206,25 +238,21 @@ export default function ProductVariantsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.items.map((v) => (
-                    <tr key={v.id}>
-                      <td className="font-mono text-xs">{v.sku}</td>
-                      <td>{productMap.get(v.productId) ?? v.productId}</td>
-                      <td>
-                        {v.costPrice != null
-                          ? formatNumber(v.costPrice, locale)
-                          : "—"}
+                  {data.items.map((v) => (
+                    <tr key={v.id} className="hover:bg-slate-50/80">
+                      <td><CodePill>{v.sku}</CodePill></td>
+                      <td className="font-medium text-slate-900">
+                        {productMap.get(v.productId) ?? v.productId}
                       </td>
-                      <td>
-                        {v.sellingPrice != null
-                          ? formatNumber(v.sellingPrice, locale)
-                          : "—"}
+                      <td className="tabular-nums">
+                        {v.costPrice != null ? formatNumber(v.costPrice, locale) : "—"}
+                      </td>
+                      <td className="tabular-nums font-medium text-slate-900">
+                        {v.sellingPrice != null ? formatNumber(v.sellingPrice, locale) : "—"}
                       </td>
                       <td className="text-xs">
                         {v.costSource != null
-                          ? t(
-                              `costSources.${costSourceKey(v.costSource)}` as "costSources.Manual"
-                            )
+                          ? t(`costSources.${costSourceKey(v.costSource)}` as "costSources.Manual")
                           : "—"}
                       </td>
                       <td>
@@ -237,15 +265,15 @@ export default function ProductVariantsPage() {
                           }
                         />
                       </td>
-                      <td className="space-x-2">
+                      <td className="space-x-2 whitespace-nowrap">
                         <button
-                          className="text-brand-600 hover:underline"
+                          className="text-sm font-medium text-brand-600 hover:text-brand-700"
                           onClick={() => openEdit(v)}
                         >
                           {tCommon("edit")}
                         </button>
                         <button
-                          className="text-red-600 hover:underline"
+                          className="text-sm font-medium text-red-600 hover:text-red-700"
                           onClick={async () => {
                             if (await confirm(t("deleteConfirm"))) {
                               deleteMutation.mutate(v.id);
@@ -260,25 +288,37 @@ export default function ProductVariantsPage() {
                 </tbody>
               </table>
             </div>
-            {data && (
-              <Pagination
-                page={data.page}
-                pageSize={data.pageSize}
-                totalCount={data.totalCount}
-                onChange={setPage}
-              />
-            )}
+            <Pagination
+              page={data.page}
+              pageSize={data.pageSize}
+              totalCount={data.totalCount}
+              onChange={setPage}
+            />
           </>
         )}
-      </div>
+      </DataTableCard>
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="card max-h-[90vh] w-full max-w-md overflow-y-auto p-6">
-            <h2 className="mb-4 text-lg font-semibold">
-              {editing ? tCommon("edit") : t("create")}
-            </h2>
-            <div className="space-y-3">
+      <FormModal
+        open={modalOpen}
+        title={editing ? tCommon("edit") : t("create")}
+        onClose={() => setModalOpen(false)}
+        size="lg"
+        footer={
+          <>
+            <button className="btn-secondary" onClick={() => setModalOpen(false)}>
+              {tCommon("cancel")}
+            </button>
+            <button
+              className="btn-primary"
+              disabled={saveMutation.isPending}
+              onClick={handleSave}
+            >
+              {tCommon("save")}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
               {!editing && (
                 <>
                   <div>
@@ -406,21 +446,7 @@ export default function ProductVariantsPage() {
                 </select>
               </div>
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button className="btn-secondary" onClick={() => setModalOpen(false)}>
-                {tCommon("cancel")}
-              </button>
-              <button
-                className="btn-primary"
-                disabled={saveMutation.isPending}
-                onClick={handleSave}
-              >
-                {tCommon("save")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </FormModal>
     </div>
   );
 }

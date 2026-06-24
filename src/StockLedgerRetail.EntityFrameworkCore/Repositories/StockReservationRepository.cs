@@ -92,6 +92,39 @@ public class StockReservationRepository : IStockReservationRepository
             .Where(x => x.Status == StockReservationStatus.Active && x.ExpiresAt <= asOfUtc)
             .ToListAsync(cancellationToken);
 
+    public async Task<(List<StockReservation> Items, int TotalCount)> GetPagedListAsync(
+        Guid? warehouseId,
+        StockReservationStatus? status,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.StockReservations
+            .Include(x => x.Lines)
+            .ThenInclude(x => x.ProductVariant)
+            .Include(x => x.Warehouse)
+            .AsNoTracking();
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(x => x.Status == status.Value);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
     public Task<int> CountByDatePrefixAsync(string datePrefix, CancellationToken cancellationToken = default) =>
         _dbContext.StockReservations.CountAsync(
             x => x.ReservationNo.StartsWith(datePrefix),

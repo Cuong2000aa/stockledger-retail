@@ -1,4 +1,5 @@
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Application.Inventory;
 using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
@@ -17,6 +18,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly ITransactionAuditService _transactionAuditService;
     private readonly IAuditContext _auditContext;
+    private readonly ApprovalWorkflowHelper _approvalWorkflowHelper;
 
     public PurchaseOrderAppService(
         IPurchaseOrderRepository purchaseOrderRepository,
@@ -24,7 +26,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         IWarehouseRepository warehouseRepository,
         IProductVariantRepository productVariantRepository,
         ITransactionAuditService transactionAuditService,
-        IAuditContext auditContext)
+        IAuditContext auditContext,
+        ApprovalWorkflowHelper approvalWorkflowHelper)
     {
         _purchaseOrderRepository = purchaseOrderRepository;
         _supplierRepository = supplierRepository;
@@ -32,6 +35,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         _productVariantRepository = productVariantRepository;
         _transactionAuditService = transactionAuditService;
         _auditContext = auditContext;
+        _approvalWorkflowHelper = approvalWorkflowHelper;
     }
 
     public async Task<PagedResultDto<PurchaseOrderDto>> GetListAsync(
@@ -122,8 +126,50 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         }
 
         var oldDto = MapToDto(po);
-        po.Status = PurchaseOrderStatus.Submitted;
-        po.SubmittedAt = DateTime.UtcNow;
+        var value = ApprovalWorkflowHelper.CalculatePurchaseOrderValue(po);
+        var requiredSteps = _approvalWorkflowHelper.GetRequiredApprovalSteps(value);
+        var now = DateTime.UtcNow;
+
+        po.RequiredApprovalSteps = requiredSteps;
+        po.CompletedApprovalSteps = 0;
+        po.SubmittedAt = now;
+        po.Status = requiredSteps > 1
+            ? PurchaseOrderStatus.PendingApproval
+            : PurchaseOrderStatus.Submitted;
+
+        await _purchaseOrderRepository.UpdateAsync(po, cancellationToken);
+        await _purchaseOrderRepository.SaveChangesAsync(cancellationToken);
+
+        var newDto = await GetAsync(po.Id, cancellationToken);
+        await _transactionAuditService.LogAsync(nameof(PurchaseOrder), po.Id, AuditActionType.Approve, oldDto, newDto, cancellationToken);
+        return newDto;
+    }
+
+    public async Task<PurchaseOrderDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var po = await _purchaseOrderRepository.GetByIdWithLinesAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Purchase order '{id}' was not found.");
+
+        if (po.Status is not PurchaseOrderStatus.PendingApproval)
+        {
+            throw new InvalidOperationException("Only purchase orders pending approval can be approved.");
+        }
+
+        var oldDto = MapToDto(po);
+        var now = DateTime.UtcNow;
+
+        if (po.CompletedApprovalSteps + 1 < po.RequiredApprovalSteps)
+        {
+            po.CompletedApprovalSteps++;
+            po.FirstApprovedBy = _auditContext.UserName;
+            po.FirstApprovedAt = now;
+        }
+        else
+        {
+            po.Status = PurchaseOrderStatus.Submitted;
+            po.ApprovedBy = _auditContext.UserName;
+            po.ApprovedAt = now;
+        }
 
         await _purchaseOrderRepository.UpdateAsync(po, cancellationToken);
         await _purchaseOrderRepository.SaveChangesAsync(cancellationToken);
@@ -233,6 +279,12 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         CreatedBy = po.CreatedBy,
         CreatedAt = po.CreatedAt,
         SubmittedAt = po.SubmittedAt,
+        RequiredApprovalSteps = po.RequiredApprovalSteps,
+        CompletedApprovalSteps = po.CompletedApprovalSteps,
+        FirstApprovedBy = po.FirstApprovedBy,
+        FirstApprovedAt = po.FirstApprovedAt,
+        ApprovedBy = po.ApprovedBy,
+        ApprovedAt = po.ApprovedAt,
         Lines = po.Lines.Select(l => new PurchaseOrderLineDto
         {
             Id = l.Id,
@@ -262,6 +314,12 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         Note = po.Note,
         CreatedBy = po.CreatedBy,
         CreatedAt = po.CreatedAt,
-        SubmittedAt = po.SubmittedAt
+        SubmittedAt = po.SubmittedAt,
+        RequiredApprovalSteps = po.RequiredApprovalSteps,
+        CompletedApprovalSteps = po.CompletedApprovalSteps,
+        FirstApprovedBy = po.FirstApprovedBy,
+        FirstApprovedAt = po.FirstApprovedAt,
+        ApprovedBy = po.ApprovedBy,
+        ApprovedAt = po.ApprovedAt
     };
 }

@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "node scripts/dev.mjs",
+    "dev:quick": "next dev --port 3000 --turbo",
     "clean:next": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
-    "dev:fresh": "npm run clean:next && next dev --port 3000",
+    "dev:fresh": "npm run dev",
+    "prebuild": "node scripts/prebuild.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

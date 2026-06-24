@@ -28,6 +28,8 @@ public interface IInventoryDocumentAppService
 
     Task<InventoryDocumentDto> UpdateDraftAsync(Guid id, UpdateInventoryDocumentDraftDto input, CancellationToken cancellationToken = default);
 
+    Task<InventoryDocumentDto> SubmitForApprovalAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<InventoryDocumentDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<InventoryDocumentDto> ReceiveTransferAsync(Guid id, CancellationToken cancellationToken = default);

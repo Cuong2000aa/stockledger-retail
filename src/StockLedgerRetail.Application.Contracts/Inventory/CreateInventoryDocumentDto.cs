@@ -8,6 +8,10 @@ public class CreateInventoryDocumentLineDto
 
     public decimal? UnitCost { get; set; }
 
+    public string? LotCode { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
+
     public string? Note { get; set; }
 }
 

@@ -67,6 +67,7 @@ Represents a sellable SKU.
 * CostPrice
 * SellingPrice
 * CostSource
+* TrackLotExpiry (bool — enable lot/HSD tracking)
 * CreatedAt
 * UpdatedAt
 
@@ -388,9 +389,39 @@ Physical receipt against a purchase order.
 
 ---
 
+---
+
+## StockLot
+
+Batch/lot master for a SKU.
+
+### Fields
+
+* Id
+* ProductVariantId
+* LotCode
+* ExpiryDate (optional)
+* ReceivedAt
+
+---
+
+## LotStock
+
+On-hand quantity for a lot at a warehouse.
+
+### Fields
+
+* Id
+* StockLotId
+* WarehouseId
+* QuantityOnHand
+* LastUpdatedAt
+
+---
+
 ## ProductCostHistory
 
-Time-series cost records per SKU (domain prepared; no write API yet).
+Time-series cost records per SKU.
 
 ### Fields
 
@@ -400,6 +431,8 @@ Time-series cost records per SKU (domain prepared; no write API yet).
 * CostSource
 * EffectiveFrom
 * EffectiveTo (null = current record)
+
+**API:** `GET /api/reports/cost-history`
 
 ---
 

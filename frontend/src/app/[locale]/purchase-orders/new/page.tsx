@@ -13,7 +13,8 @@ import { validatePurchaseOrderForm } from "@/lib/validation";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useInsightPrefill } from "@/features/insights/useInsightPrefill";
 
 export default function NewPurchaseOrderPage() {
   const t = useTranslations("purchaseOrders");
@@ -29,6 +30,38 @@ export default function NewPurchaseOrderPage() {
   const [lines, setLines] = useState([
     { productVariantId: "", orderedQuantity: 1, unitCost: undefined as number | undefined },
   ]);
+
+  const applyPrefill = useCallback(
+    (values: Partial<{
+      warehouseId: string;
+      productVariantId: string;
+      orderedQuantity: number;
+      note: string;
+      referenceNo: string;
+    }>) => {
+      if (values.warehouseId) {
+        setWarehouseId(values.warehouseId);
+      }
+      if (values.note) {
+        setNote(values.note);
+      }
+      if (values.referenceNo) {
+        setReferenceNo(values.referenceNo);
+      }
+      if (values.productVariantId || values.orderedQuantity) {
+        setLines([
+          {
+            productVariantId: values.productVariantId ?? "",
+            orderedQuantity: values.orderedQuantity ?? 1,
+            unitCost: undefined,
+          },
+        ]);
+      }
+    },
+    []
+  );
+
+  useInsightPrefill(applyPrefill);
 
   const { data: suppliers } = useQuery({
     queryKey: ["suppliers-all"],

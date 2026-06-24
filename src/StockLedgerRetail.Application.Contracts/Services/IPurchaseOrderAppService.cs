@@ -20,5 +20,7 @@ public interface IPurchaseOrderAppService
 
     Task<PurchaseOrderDto> SubmitAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<PurchaseOrderDto> ApproveAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<PurchaseOrderDto> CancelAsync(Guid id, CancellationToken cancellationToken = default);
 }

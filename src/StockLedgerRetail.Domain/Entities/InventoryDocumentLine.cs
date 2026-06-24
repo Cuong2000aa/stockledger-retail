@@ -12,11 +12,19 @@ public class InventoryDocumentLine
 
     public decimal? UnitCost { get; set; }
 
+    public Guid? StockLotId { get; set; }
+
+    public string? LotCode { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
+
     public string? Note { get; set; }
 
     public InventoryDocument Document { get; set; } = null!;
 
     public ProductVariant ProductVariant { get; set; } = null!;
+
+    public StockLot? StockLot { get; set; }
 
     public ICollection<StockTransaction> StockTransactions { get; set; } = new List<StockTransaction>();
 }

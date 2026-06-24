@@ -1,3 +1,5 @@
+using StockLedgerRetail.Enums;
+
 namespace StockLedgerRetail.Domain.Repositories;
 
 public class DeadStockFact
@@ -11,6 +13,8 @@ public class DeadStockFact
     public Guid? BrandId { get; set; }
 
     public string? RegionCode { get; set; }
+
+    public WarehouseType WarehouseType { get; set; }
 
     public string WarehouseCode { get; set; } = string.Empty;
 
@@ -36,6 +40,8 @@ public class SalesVelocityFact
     public Guid? BrandId { get; set; }
 
     public string? RegionCode { get; set; }
+
+    public WarehouseType WarehouseType { get; set; }
 
     public string WarehouseCode { get; set; } = string.Empty;
 

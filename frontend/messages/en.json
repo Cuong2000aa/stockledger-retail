@@ -38,9 +38,65 @@
     "stockTransactions": "Stock History",
     "suppliers": "Suppliers",
     "purchaseOrders": "Purchase Orders",
-    "insights": "Insights"
+    "goodsReceipts": "Goods Receipts",
+    "insights": "Insights",
+    "reports": "Reports",
+    "stockReservations": "Reservations",
+    "adminSection": "Administration",
+    "operations": "Operations",
+    "brands": "Brands",
+    "users": "Users",
+    "teams": "Teams",
+    "permissions": "Permissions",
+    "transferPolicies": "Transfer policies"
+  },
+  "operations": {
+    "title": "System operations",
+    "subtitle": "Monitor background jobs, adjust schedules, and trigger manual runs.",
+    "adminOnly": "This page is restricted to system administrators (system.admin).",
+    "refresh": "Refresh",
+    "historyTitle": "Run history",
+    "historySubtitle": "Select a job to view its recent executions.",
+    "enabled": "Enabled",
+    "intervalMinutes": "Interval (minutes)",
+    "save": "Save",
+    "runNow": "Run now",
+    "running": "Running…",
+    "saved": "Job settings saved.",
+    "nextRun": "Next run",
+    "lastRun": "Last completed",
+    "columns": {
+      "started": "Started",
+      "status": "Status",
+      "trigger": "Trigger",
+      "duration": "Duration",
+      "message": "Message"
+    },
+    "status": {
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "idle": "Idle",
+      "warning": "Warning"
+    },
+    "jobs": {
+      "insight_snapshots": {
+        "name": "Insight snapshots",
+        "description": "Precomputes inventory insights for fast dashboard reads."
+      },
+      "stock_reconciliation": {
+        "name": "Stock reconciliation",
+        "description": "Compares ledger balances with current stock snapshots."
+      }
+    },
+    "triggers": {
+      "scheduled": "Scheduled",
+      "manual": "Manual",
+      "manualBy": "Manual ({email})"
+    }
   },
   "filters": {
+    "title": "Filters",
     "searchPlaceholder": "Enter keywords...",
     "clear": "Clear filters",
     "allStatuses": "All statuses",
@@ -83,7 +139,13 @@
     "name": "Name",
     "brand": "Brand",
     "category": "Category",
-    "deleteConfirm": "Delete this product?"
+    "deleteConfirm": "Delete this product?",
+    "stats": {
+      "total": "Total products",
+      "active": "Active",
+      "inactive": "Inactive",
+      "brands": "Brands (page)"
+    }
   },
   "variants": {
     "title": "SKUs",
@@ -100,6 +162,11 @@
     "sellingPrice": "Selling price",
     "costSource": "Cost source",
     "deleteConfirm": "Delete this SKU?",
+    "stats": {
+      "total": "Total SKUs",
+      "active": "Active",
+      "withCost": "With cost (page)"
+    },
     "costSources": {
       "Manual": "Manual",
       "Erp": "ERP",
@@ -126,7 +193,12 @@
     "postalCode": "Postal code",
     "phone": "Phone",
     "contactName": "Contact person",
-    "deleteConfirm": "Delete this warehouse?"
+    "deleteConfirm": "Delete this warehouse?",
+    "stats": {
+      "total": "Total warehouses",
+      "active": "Active",
+      "stores": "Stores (page)"
+    }
   },
   "documents": {
     "title": "Inventory Documents",
@@ -173,6 +245,11 @@
       "Adjustment": "Adjustment",
       "Transfer": "Transfer",
       "StockCount": "Stock Count"
+    },
+    "stats": {
+      "total": "Total documents",
+      "draft": "Draft (page)",
+      "approved": "Approved (page)"
     }
   },
   "stocks": {
@@ -183,7 +260,10 @@
     "onHand": "On hand",
     "reserved": "Reserved",
     "available": "Available",
-    "lastUpdated": "Last updated"
+    "lastUpdated": "Last updated",
+    "stats": {
+      "total": "Stock lines"
+    }
   },
   "transactions": {
     "title": "Stock History",
@@ -195,7 +275,23 @@
     "before": "Before",
     "after": "After",
     "date": "Date",
-    "createdBy": "Created by"
+    "createdBy": "Created by",
+    "types": {
+      "In": "Stock in",
+      "Out": "Stock out",
+      "TransferIn": "Transfer in",
+      "TransferOut": "Transfer out",
+      "AdjustmentIn": "Adjustment in",
+      "AdjustmentOut": "Adjustment out",
+      "CountAdjustmentIn": "Count adjustment in",
+      "CountAdjustmentOut": "Count adjustment out"
+    },
+    "stats": {
+      "total": "Total transactions",
+      "inbound": "Inbound (page)",
+      "outbound": "Outbound (page)",
+      "netChange": "Net change"
+    }
   },
   "suppliers": {
     "title": "Suppliers",
@@ -207,7 +303,12 @@
     "phone": "Phone",
     "email": "Email",
     "address": "Address",
-    "deleteConfirm": "Delete this supplier?"
+    "deleteConfirm": "Delete this supplier?",
+    "stats": {
+      "total": "Total suppliers",
+      "active": "Active",
+      "withContact": "With contact (page)"
+    }
   },
   "purchaseOrders": {
     "title": "Purchase Orders",
@@ -231,7 +332,12 @@
     "statusSubmitted": "Submitted",
     "statusPartiallyReceived": "Partially received",
     "statusReceived": "Received",
-    "statusCancelled": "Cancelled"
+    "statusCancelled": "Cancelled",
+    "stats": {
+      "total": "Total POs",
+      "open": "Open (page)",
+      "received": "Completed (page)"
+    }
   },
   "goodsReceipts": {
     "title": "Goods Receipts",
@@ -304,7 +410,44 @@
       "createTransfer": "Create transfer",
       "creating": "Creating..."
     },
-    "recommendation": "Recommended action",
+    "recommendation": {
+      "label": "Recommended action",
+      "titles": {
+        "dead_stock_critical_markdown": "Urgent clearance",
+        "dead_stock_markdown_or_transfer": "Reduce or relocate stock",
+        "dead_stock_review": "Monitor slow mover",
+        "velocity_replenish_urgent": "Urgent replenishment",
+        "velocity_replenish_plan": "Plan replenishment",
+        "velocity_monitor": "Stable demand",
+        "velocity_no_demand_review": "Review zero demand",
+        "transfer_execute": "Rebalance inventory"
+      },
+      "evidence": {
+        "daysIdle": "Idle",
+        "onHand": "On hand",
+        "costValue": "Cost value",
+        "outboundQty": "Outbound",
+        "avgDaily": "Avg/day",
+        "coverDays": "Cover",
+        "destCoverDays": "Dest cover",
+        "quantity": "Qty",
+        "transferBlocked": "Blocked",
+        "warehouseType": "Warehouse type"
+      },
+      "ctas": {
+        "view_stock": "View stock",
+        "draft_transfer": "Draft transfer",
+        "draft_stock_out": "Draft stock-out",
+        "draft_po": "Create PO",
+        "review_dead_stock": "Review dead stock",
+        "preview_transfer": "Review draft",
+        "create_transfer": "Create transfer"
+      },
+      "blocked": {
+        "no_clearance_destination": "No clearance warehouse in brand/region",
+        "no_internal_source": "No surplus warehouse in same brand"
+      }
+    },
     "actions": {
       "dead_stock_critical_markdown": "Prioritize markdown clearance at {warehouseCode} — SKU {sku} idle for {days} days.",
       "dead_stock_markdown_or_transfer": "Consider markdown or move to outlet — {sku} at {warehouseCode} ({days} days without sales).",
@@ -394,5 +537,71 @@
     "signOut": "Sign out",
     "stubHint": "Temporary: admin / 1234 (SSO/API later)",
     "loginTagline": "Smart inventory management — track movements and optimize stock flow."
+  },
+  "goodsReceipts": {
+    "listTitle": "Goods receipts",
+    "listSubtitle": "Receipts linked to purchase orders",
+    "grNo": "GR No.",
+    "poNo": "PO No.",
+    "receiptDate": "Receipt date",
+    "statusDraft": "Draft",
+    "statusApproved": "Approved",
+    "statusCancelled": "Cancelled"
+  },
+  "reports": {
+    "title": "Inventory reports",
+    "subtitle": "Inventory value, movement summary, and near-expiry lot tracking",
+    "inventoryValue": "Inventory value",
+    "nxtClosing": "Closing value",
+    "nearExpiry": "Near-expiry lots",
+    "expiryCritical": "Expires within 7 days",
+    "nxtTitle": "In — Out — Balance",
+    "nearExpiryTitle": "Lots nearing expiry",
+    "noNearExpiry": "No near-expiry lots",
+    "opening": "Opening",
+    "in": "In",
+    "out": "Out",
+    "closing": "Closing",
+    "lot": "Lot",
+    "qty": "Qty",
+    "daysLeft": "Days left",
+    "allWarehouses": "All warehouses",
+    "runReconciliation": "Reconcile stock",
+    "reconciliationDone": "Reconciliation completed"
+  },
+  "stockReservations": {
+    "title": "POS reservations",
+    "subtitle": "Held stock from POS/OMS — monitor and release manually",
+    "reservationNo": "Reservation",
+    "warehouse": "Warehouse",
+    "reference": "Reference",
+    "qty": "Qty",
+    "expires": "Expires",
+    "release": "Release",
+    "releaseConfirm": "Release this reservation?"
+  },
+  "admin": {
+    "brands": {
+      "title": "Brands",
+      "subtitle": "Multi-brand configuration",
+      "code": "Code",
+      "name": "Name"
+    },
+    "users": {
+      "title": "Users",
+      "subtitle": "Accounts and permission groups"
+    },
+    "teams": {
+      "title": "Teams",
+      "subtitle": "Team leaders can approve members' documents"
+    },
+    "permissions": {
+      "title": "Permission groups",
+      "subtitle": "View permissions by group (read-only)"
+    },
+    "transferPolicies": {
+      "title": "Transfer policies",
+      "subtitle": "Rules for cross-brand transfers"
+    }
   }
 }

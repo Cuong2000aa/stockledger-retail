@@ -28,6 +28,18 @@ public class PurchaseOrder
 
     public DateTime? SubmittedAt { get; set; }
 
+    public int RequiredApprovalSteps { get; set; } = 1;
+
+    public int CompletedApprovalSteps { get; set; }
+
+    public string? FirstApprovedBy { get; set; }
+
+    public DateTime? FirstApprovedAt { get; set; }
+
+    public string? ApprovedBy { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
+
     public DateTime? CancelledAt { get; set; }
 
     public Supplier? Supplier { get; set; }

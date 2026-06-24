@@ -13,8 +13,14 @@ using StockLedgerRetail.Application.PurchaseOrders;
 using StockLedgerRetail.Application.GoodsReceipts;
 using StockLedgerRetail.Application.Analytics;
 using StockLedgerRetail.Application.Insights;
+using StockLedgerRetail.Application.Operations;
+using StockLedgerRetail.Application.Reports;
+using StockLedgerRetail.Application.Seed;
+using StockLedgerRetail.Application.StockReservations;
+using StockLedgerRetail.Application.TransferPolicies;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Inventory;
+using StockLedgerRetail.Insights;
 using StockLedgerRetail.Identity;
 using StockLedgerRetail.Services;
 
@@ -41,6 +47,9 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IWarehouseAppService, WarehouseAppService>();
         services.AddScoped<IStockLedgerService, StockLedgerService>();
         services.AddScoped<ITransferPolicyService, TransferPolicyService>();
+        services.AddScoped<ITransferPolicyAppService, TransferPolicyAppService>();
+        services.AddScoped<ILotStockService, LotStockService>();
+        services.AddScoped<ApprovalWorkflowHelper>();
         services.AddScoped<IInTransitWarehouseService, InTransitWarehouseService>();
         services.AddScoped<IInventoryValuationService, InventoryValuationService>();
         services.AddScoped<IStockReconciliationService, StockReconciliationService>();
@@ -55,13 +64,27 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IGoodsReceiptAppService, GoodsReceiptAppService>();
         services.AddScoped<IAnalyticsAppService, AnalyticsAppService>();
         services.AddScoped<IInventoryInsightsAppService, InventoryInsightsAppService>();
+        services.AddScoped<IInsightRecommendationEngine, InsightRecommendationEngine>();
+        services.AddScoped<IInventoryInsightsSnapshotService, InventoryInsightsSnapshotService>();
+        services.AddSingleton<IBackgroundJobCoordinator, BackgroundJobCoordinator>();
+        services.AddScoped<IBackgroundJobExecutor, BackgroundJobExecutor>();
+        services.AddScoped<IAdminOperationsAppService, AdminOperationsAppService>();
+        services.AddScoped<IStockReservationQueryAppService, StockReservationQueryAppService>();
+        services.AddScoped<IInventoryReportsAppService, InventoryReportsAppService>();
+        services.AddScoped<IFbDataSeedService, FbDataSeedService>();
 
         if (configuration is not null)
         {
+            services.Configure<FbDataSeedOptions>(
+                configuration.GetSection(FbDataSeedOptions.SectionName));
+            services.Configure<ApprovalWorkflowOptions>(
+                configuration.GetSection(ApprovalWorkflowOptions.SectionName));
             services.Configure<SalesIntegrationOptions>(
                 configuration.GetSection(SalesIntegrationOptions.SectionName));
             services.Configure<StockReconciliationOptions>(
                 configuration.GetSection(StockReconciliationOptions.SectionName));
+            services.Configure<InsightSnapshotOptions>(
+                configuration.GetSection(InsightSnapshotOptions.SectionName));
             services.Configure<StubAuthOptions>(
                 configuration.GetSection(StubAuthOptions.SectionName));
         }

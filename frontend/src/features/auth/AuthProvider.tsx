@@ -13,6 +13,7 @@ import { AppLayout } from "@/components/AppLayout";
 import {
   clearAuthSession,
   getAuthSession,
+  isSystemAdminSession,
   setAuthSession,
   type AuthSession,
 } from "@/lib/auth-session";
@@ -26,6 +27,7 @@ type AuthContextValue = {
   login: (input: LoginInput) => Promise<void>;
   logout: () => void;
   hasPermission: (code: string) => boolean;
+  isSystemAdmin: boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -45,8 +47,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    setSession(getAuthSession());
-    setIsLoading(false);
+    const stored = getAuthSession();
+    if (!stored?.email) {
+      setIsLoading(false);
+      return;
+    }
+
+    setSession(stored);
+
+    apiClient
+      .get<{
+        email: string;
+        displayName: string;
+        permissionCodes: string[];
+        groupCodes: string[];
+      }>("/api/auth/me")
+      .then(({ data }) => {
+        const nextSession: AuthSession = {
+          email: data.email,
+          displayName: data.displayName,
+          permissionCodes: data.permissionCodes ?? [],
+          groupCodes: data.groupCodes ?? [],
+        };
+        setAuthSession(nextSession);
+        setSession(nextSession);
+      })
+      .catch(() => {
+        clearAuthSession();
+        setSession(null);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback(
@@ -73,10 +103,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasPermission = useCallback(
     (code: string) => {
-      if (!session) {
+      if (!session?.permissionCodes?.length) {
         return false;
       }
-      if (session.permissionCodes.includes("system.admin")) {
+      if (isSystemAdminSession(session)) {
         return true;
       }
       return session.permissionCodes.includes(code);
@@ -84,19 +114,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [session]
   );
 
+  const isSystemAdmin = useMemo(
+    () => isSystemAdminSession(session),
+    [session]
+  );
+
   const value = useMemo(
-    () => ({ session, isLoading, login, logout, hasPermission }),
-    [session, isLoading, login, logout, hasPermission]
+    () => ({ session, isLoading, login, logout, hasPermission, isSystemAdmin }),
+    [session, isLoading, login, logout, hasPermission, isSystemAdmin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function AuthShell({ children }: { children: React.ReactNode }) {
-  const { session, isLoading } = useAuth();
+  const { session, isLoading, isSystemAdmin } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === "/login";
+  const isAdminRoute = pathname.startsWith("/admin");
 
   useEffect(() => {
     if (isLoading) {
@@ -108,7 +144,10 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
     if (session && isLoginPage) {
       router.replace("/");
     }
-  }, [session, isLoading, isLoginPage, router]);
+    if (session && isAdminRoute && !isSystemAdmin) {
+      router.replace("/");
+    }
+  }, [session, isLoading, isLoginPage, isAdminRoute, isSystemAdmin, router]);
 
   if (isLoading) {
     return (
@@ -126,6 +165,10 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!session) {
+    return null;
+  }
+
+  if (isAdminRoute && !isSystemAdmin) {
     return null;
   }
 

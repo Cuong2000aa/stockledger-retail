@@ -4,6 +4,7 @@ import type {
   SalesVelocityInsight,
   TransferSuggestion,
 } from "./types";
+import { createTransferPayloadFromCta } from "./recommendation-utils";
 
 export const fetchDeadStockInsights = (
   warehouseId?: string,
@@ -62,3 +63,19 @@ export const createTransferFromSuggestion = (item: TransferSuggestion) =>
       },
     ],
   });
+
+export const createTransferFromCtaPayload = (payload: Record<string, string>) => {
+  const item = createTransferPayloadFromCta(payload);
+  return createTransfer({
+    sourceWarehouseId: item.sourceWarehouseId,
+    destinationWarehouseId: item.destinationWarehouseId,
+    documentDate: new Date().toISOString(),
+    note: `[INSIGHT] ${item.sku}: ${item.sourceWarehouseCode} → ${item.destinationWarehouseCode}`,
+    lines: [
+      {
+        productVariantId: item.productVariantId,
+        quantity: item.suggestedQuantity,
+      },
+    ],
+  });
+};

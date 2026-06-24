@@ -182,7 +182,14 @@ POST /api/inventory-documents/transfer
 
 ## Cross-Brand Transfer Policy
 
-Insert into `transfer_policies` (or future admin API):
+Manage via admin API:
+
+```http
+GET/POST /api/admin/transfer-policies
+PUT    /api/admin/transfer-policies/{id}
+```
+
+Or insert into `transfer_policies`:
 
 ```sql
 INSERT INTO transfer_policies (id, "SourceBrandId", "DestinationBrandId", "AllowCrossBrand", "IsActive", "Note")
@@ -198,7 +205,9 @@ Without a matching policy, transfer create/approve fails with: *Cross-brand tran
 | Area | Path |
 |------|------|
 | Brand API | `src/StockLedgerRetail.HttpApi/Controllers/BrandsController.cs` |
-| Transfer policy | `src/StockLedgerRetail.Application/Inventory/TransferPolicyService.cs` |
+| Transfer policy admin | `src/StockLedgerRetail.HttpApi/Controllers/TransferPoliciesController.cs` |
+| Reports | `src/StockLedgerRetail.HttpApi/Controllers/InventoryReportsController.cs` |
+| Demo seed | `src/StockLedgerRetail.Application/Seed/FbDataSeedService.cs` |
 | In-transit | `src/StockLedgerRetail.Application/Inventory/InTransitWarehouseService.cs` |
 | Scope middleware | `host/StockLedgerRetail.HttpApi.Host/Middleware/BrandScopeMiddleware.cs` |
 | Fulfillment | `src/StockLedgerRetail.Application/Integration/WarehouseFulfillmentService.cs` |
