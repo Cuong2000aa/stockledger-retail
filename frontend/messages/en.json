@@ -386,7 +386,43 @@
       "warehouse": "Warehouse",
       "allWarehouses": "All warehouses",
       "deadStockDays": "Dead stock days",
-      "lookbackDays": "Lookback days"
+      "lookbackDays": "Lookback days",
+      "searching": "Searching warehouses…",
+      "deadStockDaysHint": "SKUs with no outbound for this many days are treated as dead stock.",
+      "lookbackDaysHint": "Used for sales velocity and transfer suggestions."
+    },
+    "tabHints": {
+      "deadStock": "On-hand SKUs with no sales — tied capital and obsolescence risk",
+      "velocity": "Low cover or zero demand — replenish or review",
+      "transfer": "Rebalance surplus warehouses and demand-heavy locations"
+    },
+    "copilot": {
+      "bannerTitle": "Insights summary",
+      "explain": "Explain",
+      "explainTitle": "Recommendation explanation",
+      "explainSubtitle": "Rule-based analysis from snapshots — ready for AI copilot",
+      "evidenceTitle": "Evidence",
+      "futureAiNote": "AI copilot will add richer explanations and contextual chat.",
+      "summaryDeadStock": "Found {count} dead-stock SKUs tying up ~{capital} capital; {critical} need urgent action.",
+      "summaryDeadStockEmpty": "No dead stock for the current filters — inventory is moving well.",
+      "summaryVelocity": "{alerts} SKUs need attention for cover or demand in the lookback window.",
+      "summaryVelocityEmpty": "Sales velocity looks stable — no low-cover alerts.",
+      "summaryTransfer": "{count} transfer suggestions can rebalance stock across warehouses.",
+      "summaryTransferEmpty": "No transfer suggestions match the current filters.",
+      "explainIntro": "The system rated {location} at priority P{priority}.",
+      "locationSkuWarehouse": "{sku} at warehouse {warehouse}",
+      "locationTransfer": "{sku}: {from} → {to}",
+      "locationItem": "this item",
+      "rationale": {
+        "deadCritical": "Long idle stock ties up capital — prioritize clearance or outlet transfer.",
+        "deadMarkdown": "Slow mover — consider markdown or relocation to an outlet channel.",
+        "deadReview": "Monitor further or consider stopping replenishment.",
+        "velocityUrgent": "Low cover vs recent sales — stock-out risk without timely replenishment.",
+        "velocityPlan": "Plan replenishment or transfer within the next few days.",
+        "velocityNoDemand": "No outbound in the period — review dead stock or discontinuation.",
+        "velocityMonitor": "Stable demand — continue monitoring, no urgent action needed.",
+        "transfer": "Balance surplus and low-cover warehouses — reduce dead stock at source."
+      }
     },
     "deadStock": {
       "title": "Dead stock",
@@ -407,6 +443,7 @@
       "subtitle": "Suggested rebalancing from surplus warehouses to demand-heavy warehouses",
       "from": "From",
       "to": "To",
+      "route": "Route",
       "qty": "Suggested qty",
       "coverDays": "Dest cover",
       "createTransfer": "Create transfer",
