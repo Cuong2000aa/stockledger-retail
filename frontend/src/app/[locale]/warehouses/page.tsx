@@ -337,7 +337,10 @@ export default function WarehousesPage() {
                   }
                 >
                   {Object.values(WarehouseType)
-                    .filter((v) => typeof v === "number")
+                    .filter(
+                      (v) =>
+                        typeof v === "number" && v !== WarehouseType.InTransit
+                    )
                     .map((v) => (
                       <option key={v} value={v}>
                         {tTypes(warehouseTypeKey(v as WarehouseType))}

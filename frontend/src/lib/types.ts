@@ -23,6 +23,7 @@ export enum WarehouseType {
   SubWarehouse = 3,
   Defect = 4,
   Return = 5,
+  InTransit = 6,
 }
 
 export enum WarehouseStatus {
