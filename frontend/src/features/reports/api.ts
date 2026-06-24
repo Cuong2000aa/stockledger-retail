@@ -8,17 +8,28 @@ import type {
   StockReservationStatus,
 } from "@/lib/types";
 
-export const fetchInventoryValueReport = (warehouseId?: string, brandId?: string) =>
+export const fetchInventoryValueReport = (
+  warehouseId?: string,
+  brandId?: string,
+  page = 1,
+  pageSize = 50
+) =>
   apiClient
     .get<InventoryValueReport>("/api/reports/inventory-value", {
-      params: { warehouseId, brandId },
+      params: { warehouseId, brandId, page, pageSize },
     })
     .then((r) => r.data);
 
-export const fetchNxtReport = (fromDate: string, toDate: string, warehouseId?: string) =>
+export const fetchNxtReport = (
+  fromDate: string,
+  toDate: string,
+  warehouseId?: string,
+  page = 1,
+  pageSize = 50
+) =>
   apiClient
     .get<NxtReport>("/api/reports/nxt", {
-      params: { fromDate, toDate, warehouseId },
+      params: { fromDate, toDate, warehouseId, page, pageSize },
     })
     .then((r) => r.data);
 

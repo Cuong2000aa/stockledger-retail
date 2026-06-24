@@ -20,6 +20,7 @@
     "of": "của",
     "items": "mục",
     "noData": "Không có dữ liệu",
+    "loadError": "Không tải được dữ liệu. Thử lại sau.",
     "error": "Đã xảy ra lỗi",
     "success": "Thành công",
     "required": "Bắt buộc",
@@ -596,7 +597,12 @@
     "daysLeft": "Còn (ngày)",
     "allWarehouses": "Tất cả kho",
     "runReconciliation": "Đối soát tồn",
-    "reconciliationDone": "Đã chạy đối soát"
+    "reconciliationDone": "Đã chạy đối soát",
+    "searchWarehouse": "Tìm kho…",
+    "loadNxt": "Tải NXT",
+    "loadExpiry": "Tải cận HSD",
+    "clickLoadNxt": "Chọn khoảng ngày và bấm «Tải NXT»",
+    "clickLoadExpiry": "Bấm «Tải cận HSD» để xem lô"
   },
   "admin": {
     "brands": {

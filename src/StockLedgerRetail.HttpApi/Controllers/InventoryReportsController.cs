@@ -20,16 +20,22 @@ public class InventoryReportsController : ControllerBase
     public Task<InventoryValueReportDto> GetInventoryValueAsync(
         [FromQuery] Guid? warehouseId,
         [FromQuery] Guid? brandId,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken) =>
-        _inventoryReportsAppService.GetInventoryValueAsync(warehouseId, brandId, cancellationToken);
+        _inventoryReportsAppService.GetInventoryValueAsync(
+            warehouseId, brandId, page, pageSize, cancellationToken);
 
     [HttpGet("nxt")]
     public Task<NxtReportDto> GetNxtReportAsync(
         [FromQuery] DateTime fromDate,
         [FromQuery] DateTime toDate,
         [FromQuery] Guid? warehouseId,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken) =>
-        _inventoryReportsAppService.GetNxtReportAsync(fromDate, toDate, warehouseId, cancellationToken);
+        _inventoryReportsAppService.GetNxtReportAsync(
+            fromDate, toDate, warehouseId, page, pageSize, cancellationToken);
 
     [HttpGet("cost-history")]
     public Task<PagedResultDto<ProductCostHistoryDto>> GetCostHistoryAsync(

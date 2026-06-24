@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using StockLedgerRetail.Caching;
 using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
@@ -8,125 +11,121 @@ namespace StockLedgerRetail.Application.Reports;
 
 public class InventoryReportsAppService : IInventoryReportsAppService
 {
-    private readonly ICurrentStockRepository _currentStockRepository;
-    private readonly IStockTransactionRepository _stockTransactionRepository;
+    private const string LogScope = "Reports";
+
+    private readonly IInventoryReportReadRepository _inventoryReportReadRepository;
     private readonly IProductCostHistoryRepository _productCostHistoryRepository;
     private readonly IStockLotRepository _stockLotRepository;
     private readonly ILotStockRepository _lotStockRepository;
+    private readonly ICacheService _cacheService;
+    private readonly CacheOptions _cacheOptions;
+    private readonly ILogger<InventoryReportsAppService> _logger;
 
     public InventoryReportsAppService(
-        ICurrentStockRepository currentStockRepository,
-        IStockTransactionRepository stockTransactionRepository,
+        IInventoryReportReadRepository inventoryReportReadRepository,
         IProductCostHistoryRepository productCostHistoryRepository,
         IStockLotRepository stockLotRepository,
-        ILotStockRepository lotStockRepository)
+        ILotStockRepository lotStockRepository,
+        ICacheService cacheService,
+        IOptions<CacheOptions> cacheOptions,
+        ILogger<InventoryReportsAppService> logger)
     {
-        _currentStockRepository = currentStockRepository;
-        _stockTransactionRepository = stockTransactionRepository;
+        _inventoryReportReadRepository = inventoryReportReadRepository;
         _productCostHistoryRepository = productCostHistoryRepository;
         _stockLotRepository = stockLotRepository;
         _lotStockRepository = lotStockRepository;
+        _cacheService = cacheService;
+        _cacheOptions = cacheOptions.Value;
+        _logger = logger;
     }
 
     public async Task<InventoryValueReportDto> GetInventoryValueAsync(
         Guid? warehouseId = null,
         Guid? brandId = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
-        var stocks = await _currentStockRepository.GetListAsync(warehouseId, null, cancellationToken);
-        var lines = stocks
-            .Where(s => s.QuantityOnHand > 0)
-            .Where(s => !brandId.HasValue || s.ProductVariant?.BrandId == brandId.Value)
-            .Select(s =>
-            {
-                var unitCost = s.ProductVariant?.CostPrice ?? 0;
-                return new InventoryValueLineDto
-                {
-                    ProductVariantId = s.ProductVariantId,
-                    Sku = s.ProductVariant?.Sku ?? string.Empty,
-                    WarehouseId = s.WarehouseId,
-                    WarehouseCode = s.Warehouse?.Code ?? string.Empty,
-                    QuantityOnHand = s.QuantityOnHand,
-                    UnitCost = s.ProductVariant?.CostPrice,
-                    InventoryValue = s.QuantityOnHand * unitCost
-                };
-            })
-            .OrderByDescending(x => x.InventoryValue)
-            .ToList();
+        var paging = PagingNormalizer.Normalize(page, pageSize);
+        var cacheKey = CacheKeys.InventoryValue(warehouseId, brandId, paging.Page, paging.PageSize);
 
-        return new InventoryValueReportDto
+        var cachedReport = await TryGetCachedReportAsync<InventoryValueReportDto>(
+            reportName: "InventoryValue",
+            cacheKey,
+            cancellationToken);
+
+        if (cachedReport is not null)
         {
-            TotalValue = lines.Sum(x => x.InventoryValue),
-            Lines = lines
-        };
+            return cachedReport;
+        }
+
+        var reportFromDatabase = await BuildInventoryValueReportFromDatabaseAsync(
+            warehouseId,
+            brandId,
+            paging.Skip,
+            paging.Take,
+            paging.Page,
+            paging.PageSize,
+            cancellationToken);
+
+        await StoreReportInCacheAsync(
+            reportName: "InventoryValue",
+            cacheKey,
+            reportFromDatabase,
+            ttl: TimeSpan.FromMinutes(_cacheOptions.ReportTtlMinutes),
+            cancellationToken);
+
+        return reportFromDatabase;
     }
 
     public async Task<NxtReportDto> GetNxtReportAsync(
         DateTime fromDate,
         DateTime toDate,
         Guid? warehouseId = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
-        var transactions = await _stockTransactionRepository.GetByDateRangeAsync(fromDate, toDate, cancellationToken);
-        if (warehouseId.HasValue)
+        var paging = PagingNormalizer.Normalize(page, pageSize);
+        var dateRange = ReportDateRange.FromUserInput(fromDate, toDate);
+        var cacheKey = CacheKeys.NxtReport(
+            dateRange.FromInclusiveUtc,
+            dateRange.ToDateForDisplay,
+            warehouseId,
+            paging.Page,
+            paging.PageSize);
+
+        var cachedReport = await TryGetCachedReportAsync<NxtReportDto>(
+            reportName: "NXT",
+            cacheKey,
+            cancellationToken);
+
+        if (cachedReport is not null)
         {
-            transactions = transactions.Where(x => x.WarehouseId == warehouseId.Value).ToList();
+            return cachedReport;
         }
 
-        var stocks = await _currentStockRepository.GetListAsync(warehouseId, null, cancellationToken);
-        var keys = stocks
-            .Select(s => (s.ProductVariantId, s.WarehouseId))
-            .Union(transactions.Select(t => (t.ProductVariantId, t.WarehouseId)))
-            .Distinct()
-            .ToList();
+        var reportFromDatabase = await BuildNxtReportFromDatabaseAsync(
+            dateRange,
+            warehouseId,
+            paging.Skip,
+            paging.Take,
+            paging.Page,
+            paging.PageSize,
+            cancellationToken);
 
-        var lines = new List<NxtMovementLineDto>();
-        foreach (var (variantId, whId) in keys)
-        {
-            var variantTransactions = transactions
-                .Where(t => t.ProductVariantId == variantId && t.WarehouseId == whId)
-                .ToList();
+        var ttlMinutes = dateRange.IncludesToday()
+            ? _cacheOptions.ReportCurrentPeriodTtlMinutes
+            : _cacheOptions.ReportTtlMinutes;
 
-            var inQty = variantTransactions.Where(t => t.QuantityDelta > 0).Sum(t => t.QuantityDelta);
-            var outQty = -variantTransactions.Where(t => t.QuantityDelta < 0).Sum(t => t.QuantityDelta);
-            var closing = stocks.FirstOrDefault(s => s.ProductVariantId == variantId && s.WarehouseId == whId);
-            var closingQty = closing?.QuantityOnHand ?? 0;
-            var openingQty = closingQty - inQty + outQty;
-            var unitCost = closing?.ProductVariant?.CostPrice ?? variantTransactions.FirstOrDefault()?.UnitCost;
+        await StoreReportInCacheAsync(
+            reportName: "NXT",
+            cacheKey,
+            reportFromDatabase,
+            ttl: TimeSpan.FromMinutes(ttlMinutes),
+            cancellationToken);
 
-            var cost = unitCost ?? 0;
-            lines.Add(new NxtMovementLineDto
-            {
-                ProductVariantId = variantId,
-                Sku = closing?.ProductVariant?.Sku
-                    ?? variantTransactions.FirstOrDefault()?.ProductVariant?.Sku
-                    ?? string.Empty,
-                WarehouseId = whId,
-                WarehouseCode = closing?.Warehouse?.Code
-                    ?? variantTransactions.FirstOrDefault()?.Warehouse?.Code
-                    ?? string.Empty,
-                OpeningQuantity = openingQty,
-                InQuantity = inQty,
-                OutQuantity = outQty,
-                ClosingQuantity = closingQty,
-                UnitCost = unitCost,
-                OpeningValue = openingQty * cost,
-                InValue = inQty * cost,
-                OutValue = outQty * cost,
-                ClosingValue = closingQty * cost
-            });
-        }
-
-        return new NxtReportDto
-        {
-            FromDate = fromDate,
-            ToDate = toDate,
-            TotalOpeningValue = lines.Sum(x => x.OpeningValue),
-            TotalInValue = lines.Sum(x => x.InValue),
-            TotalOutValue = lines.Sum(x => x.OutValue),
-            TotalClosingValue = lines.Sum(x => x.ClosingValue),
-            Lines = lines.OrderByDescending(x => x.ClosingValue).ToList()
-        };
+        return reportFromDatabase;
     }
 
     public async Task<PagedResultDto<ProductCostHistoryDto>> GetCostHistoryAsync(
@@ -225,4 +224,172 @@ public class InventoryReportsAppService : IInventoryReportsAppService
             normalizedPage,
             normalizedPageSize);
     }
+
+    private async Task<T?> TryGetCachedReportAsync<T>(
+        string reportName,
+        string cacheKey,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        var cached = await _cacheService.GetAsync<T>(cacheKey, cancellationToken);
+        if (cached is null)
+        {
+            if (_cacheOptions.LogOperations)
+            {
+                _logger.LogDebug(
+                    "{Scope} {ReportName} cache miss — will query database. key={CacheKey}",
+                    LogScope,
+                    reportName,
+                    cacheKey);
+            }
+
+            return null;
+        }
+
+        if (_cacheOptions.LogOperations)
+        {
+            _logger.LogDebug(
+                "{Scope} {ReportName} cache hit. key={CacheKey}",
+                LogScope,
+                reportName,
+                cacheKey);
+        }
+
+        return cached;
+    }
+
+    private async Task StoreReportInCacheAsync<T>(
+        string reportName,
+        string cacheKey,
+        T report,
+        TimeSpan ttl,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        await _cacheService.SetAsync(cacheKey, report, ttl, cancellationToken);
+
+        if (_cacheOptions.LogOperations)
+        {
+            _logger.LogDebug(
+                "{Scope} {ReportName} stored in cache. key={CacheKey}, ttlMinutes={TtlMinutes}",
+                LogScope,
+                reportName,
+                cacheKey,
+                ttl.TotalMinutes);
+        }
+    }
+
+    private async Task<InventoryValueReportDto> BuildInventoryValueReportFromDatabaseAsync(
+        Guid? warehouseId,
+        Guid? brandId,
+        int skip,
+        int take,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogDebug(
+            "{Scope} Building inventory value report from database. warehouseId={WarehouseId}, brandId={BrandId}, page={Page}, pageSize={PageSize}",
+            LogScope,
+            warehouseId,
+            brandId,
+            page,
+            pageSize);
+
+        var (totalValue, totalLineCount) = await _inventoryReportReadRepository.GetInventoryValueTotalsAsync(
+            warehouseId,
+            brandId,
+            cancellationToken);
+
+        var linesFromDatabase = await _inventoryReportReadRepository.GetInventoryValueLinesAsync(
+            warehouseId,
+            brandId,
+            skip,
+            take,
+            cancellationToken);
+
+        return new InventoryValueReportDto
+        {
+            TotalValue = totalValue,
+            TotalLineCount = totalLineCount,
+            Page = page,
+            PageSize = pageSize,
+            Lines = linesFromDatabase.Select(MapInventoryValueLine).ToList()
+        };
+    }
+
+    private async Task<NxtReportDto> BuildNxtReportFromDatabaseAsync(
+        ReportDateRange dateRange,
+        Guid? warehouseId,
+        int skip,
+        int take,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogDebug(
+            "{Scope} Building NXT report from database. from={FromInclusive}, toExclusive={ToExclusive}, warehouseId={WarehouseId}, page={Page}, pageSize={PageSize}",
+            LogScope,
+            dateRange.FromInclusiveUtc,
+            dateRange.ToExclusiveUtc,
+            warehouseId,
+            page,
+            pageSize);
+
+        var totals = await _inventoryReportReadRepository.GetNxtTotalsAsync(
+            dateRange.FromInclusiveUtc,
+            dateRange.ToExclusiveUtc,
+            warehouseId,
+            cancellationToken);
+
+        var linesFromDatabase = await _inventoryReportReadRepository.GetNxtLinesAsync(
+            dateRange.FromInclusiveUtc,
+            dateRange.ToExclusiveUtc,
+            warehouseId,
+            skip,
+            take,
+            cancellationToken);
+
+        return new NxtReportDto
+        {
+            FromDate = dateRange.FromInclusiveUtc,
+            ToDate = dateRange.ToDateForDisplay,
+            TotalOpeningValue = totals.TotalOpeningValue,
+            TotalInValue = totals.TotalInValue,
+            TotalOutValue = totals.TotalOutValue,
+            TotalClosingValue = totals.TotalClosingValue,
+            TotalLineCount = totals.TotalLineCount,
+            Page = page,
+            PageSize = pageSize,
+            Lines = linesFromDatabase.Select(MapNxtLine).ToList()
+        };
+    }
+
+    private static InventoryValueLineDto MapInventoryValueLine(InventoryValueLineReadModel line) => new()
+    {
+        ProductVariantId = line.ProductVariantId,
+        Sku = line.Sku,
+        WarehouseId = line.WarehouseId,
+        WarehouseCode = line.WarehouseCode,
+        QuantityOnHand = line.QuantityOnHand,
+        UnitCost = line.UnitCost,
+        InventoryValue = line.InventoryValue
+    };
+
+    private static NxtMovementLineDto MapNxtLine(NxtMovementLineReadModel line) => new()
+    {
+        ProductVariantId = line.ProductVariantId,
+        Sku = line.Sku,
+        WarehouseId = line.WarehouseId,
+        WarehouseCode = line.WarehouseCode,
+        OpeningQuantity = line.OpeningQuantity,
+        InQuantity = line.InQuantity,
+        OutQuantity = line.OutQuantity,
+        ClosingQuantity = line.ClosingQuantity,
+        UnitCost = line.UnitCost,
+        OpeningValue = line.OpeningValue,
+        InValue = line.InValue,
+        OutValue = line.OutValue,
+        ClosingValue = line.ClosingValue
+    };
 }

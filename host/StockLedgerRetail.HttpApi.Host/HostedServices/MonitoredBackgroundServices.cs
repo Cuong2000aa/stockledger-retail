@@ -60,3 +60,29 @@ public class StockReconciliationHostedService : BackgroundService
             },
             stoppingToken);
 }
+
+public class StockReservationExpiryHostedService : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<StockReservationExpiryHostedService> _logger;
+
+    public StockReservationExpiryHostedService(
+        IServiceScopeFactory scopeFactory,
+        ILogger<StockReservationExpiryHostedService> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        BackgroundJobLoop.RunAsync(
+            BackgroundJobKeys.ReservationExpiry,
+            _scopeFactory,
+            _logger,
+            async (services, cancellationToken) =>
+            {
+                var reservationService = services.GetRequiredService<IStockReservationService>();
+                await reservationService.RefreshExpiredReservationsAsync(cancellationToken);
+            },
+            stoppingToken);
+}

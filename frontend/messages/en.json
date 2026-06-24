@@ -20,6 +20,7 @@
     "of": "of",
     "items": "items",
     "noData": "No data",
+    "loadError": "Could not load data. Please try again.",
     "error": "An error occurred",
     "success": "Success",
     "required": "Required",
@@ -570,7 +571,12 @@
     "daysLeft": "Days left",
     "allWarehouses": "All warehouses",
     "runReconciliation": "Reconcile stock",
-    "reconciliationDone": "Reconciliation completed"
+    "reconciliationDone": "Reconciliation completed",
+    "searchWarehouse": "Search warehouse…",
+    "loadNxt": "Load NXT",
+    "loadExpiry": "Load expiry",
+    "clickLoadNxt": "Pick a date range and click «Load NXT»",
+    "clickLoadExpiry": "Click «Load expiry» to view lots"
   },
   "stockReservations": {
     "title": "POS reservations",

@@ -1,4 +1,5 @@
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Caching;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
@@ -20,6 +21,7 @@ public class StockLedgerService : IStockLedgerService
     private readonly IInventoryValuationService _inventoryValuationService;
     private readonly ILotStockService _lotStockService;
     private readonly IAuditContext _auditContext;
+    private readonly IInventoryCacheInvalidator _inventoryCacheInvalidator;
 
     public StockLedgerService(
         ICurrentStockRepository currentStockRepository,
@@ -29,7 +31,8 @@ public class StockLedgerService : IStockLedgerService
         IDocumentNumberGenerator documentNumberGenerator,
         IInventoryValuationService inventoryValuationService,
         ILotStockService lotStockService,
-        IAuditContext auditContext)
+        IAuditContext auditContext,
+        IInventoryCacheInvalidator inventoryCacheInvalidator)
     {
         _currentStockRepository = currentStockRepository;
         _stockTransactionRepository = stockTransactionRepository;
@@ -39,6 +42,7 @@ public class StockLedgerService : IStockLedgerService
         _inventoryValuationService = inventoryValuationService;
         _lotStockService = lotStockService;
         _auditContext = auditContext;
+        _inventoryCacheInvalidator = inventoryCacheInvalidator;
     }
 
     /// <summary>Xử lý phiếu đã duyệt theo loại (StockIn, StockOut, Adjustment).</summary>
@@ -355,6 +359,11 @@ public class StockLedgerService : IStockLedgerService
         {
             await _lotStockService.ApplyStockOutFefoAsync(line, warehouseId, now, cancellationToken);
         }
+
+        await _inventoryCacheInvalidator.InvalidateStockAsync(
+            warehouseId,
+            line.ProductVariantId,
+            cancellationToken);
     }
 
     private async Task<decimal?> ResolveTransactionUnitCostAsync(

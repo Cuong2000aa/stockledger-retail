@@ -1,3 +1,4 @@
+using StockLedgerRetail.Application.Caching;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using StockLedgerRetail.Application.Authorization;
@@ -75,6 +76,7 @@ public static class StockLedgerRetailApplicationModule
 
         if (configuration is not null)
         {
+            services.AddStockLedgerRetailCaching(configuration);
             services.Configure<FbDataSeedOptions>(
                 configuration.GetSection(FbDataSeedOptions.SectionName));
             services.Configure<ApprovalWorkflowOptions>(

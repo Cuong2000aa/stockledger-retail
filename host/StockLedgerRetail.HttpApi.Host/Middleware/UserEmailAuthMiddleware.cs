@@ -1,10 +1,11 @@
+using Microsoft.Extensions.Logging;
 using StockLedgerRetail.Audit;
-using StockLedgerRetail.Domain.Repositories;
+using StockLedgerRetail.Caching;
 
 namespace StockLedgerRetail.HttpApi.Host.Middleware;
 
 /// <summary>
-/// Nhận diện user theo email từ header X-User-Email và load quyền từ DB.
+/// Nhận diện user theo email từ header X-User-Email và load quyền từ cache/DB.
 /// Bỏ qua /api/integration và swagger.
 /// </summary>
 public class UserEmailAuthMiddleware
@@ -13,17 +14,22 @@ public class UserEmailAuthMiddleware
 
     private readonly RequestDelegate _next;
     private readonly bool _requireUserEmail;
+    private readonly ILogger<UserEmailAuthMiddleware> _logger;
 
-    public UserEmailAuthMiddleware(RequestDelegate next, IConfiguration configuration)
+    public UserEmailAuthMiddleware(
+        RequestDelegate next,
+        IConfiguration configuration,
+        ILogger<UserEmailAuthMiddleware> logger)
     {
         _next = next;
         _requireUserEmail = configuration.GetValue("Auth:RequireUserEmail", true);
+        _logger = logger;
     }
 
     public async Task InvokeAsync(
         HttpContext context,
         ICurrentUserContext currentUserContext,
-        IAppUserRepository appUserRepository)
+        IUserAuthCacheService userAuthCacheService)
     {
         if (HttpMethods.IsOptions(context.Request.Method))
         {
@@ -55,7 +61,7 @@ public class UserEmailAuthMiddleware
         }
 
         var email = emailHeader.ToString().Trim().ToLowerInvariant();
-        var user = await appUserRepository.GetByEmailWithPermissionsAsync(email, context.RequestAborted);
+        var user = await userAuthCacheService.GetByEmailAsync(email, context.RequestAborted);
 
         if (user is null || !user.IsActive)
         {
@@ -69,15 +75,15 @@ public class UserEmailAuthMiddleware
 
         if (currentUserContext is CurrentUserContext mutable)
         {
-            var permissionCodes = user.GroupAssignments
-                .Where(x => x.Group.IsActive)
-                .SelectMany(x => x.Group.Permissions)
-                .Select(x => x.Permission.Code)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            mutable.SetUser(user.Id, user.Email, user.DisplayName, permissionCodes);
+            mutable.SetUser(user.UserId, user.Email, user.DisplayName, user.PermissionCodes);
         }
+
+        _logger.LogDebug(
+            "Authenticated {Email} for {Method} {Path} with {PermissionCount} permission(s).",
+            user.Email,
+            context.Request.Method,
+            context.Request.Path,
+            user.PermissionCodes.Count);
 
         await _next(context);
     }

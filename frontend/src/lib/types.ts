@@ -613,6 +613,9 @@ export interface StockReservationListItem {
 
 export interface InventoryValueReport {
   totalValue: number;
+  totalLineCount: number;
+  page: number;
+  pageSize: number;
   lines: {
     productVariantId: string;
     sku: string;
@@ -631,6 +634,9 @@ export interface NxtReport {
   totalInValue: number;
   totalOutValue: number;
   totalClosingValue: number;
+  totalLineCount: number;
+  page: number;
+  pageSize: number;
   lines: {
     productVariantId: string;
     sku: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import { AsyncSearchSelect } from "@/components/AsyncSearchSelect";
 import { Link, useRouter } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
 import { useNotify } from "@/hooks/useNotify";
@@ -16,7 +17,7 @@ import { validateInventoryDocumentForm } from "@/lib/validation";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { use, useState, useCallback } from "react";
+import { use, useState, useCallback, useEffect } from "react";
 import { useInsightPrefill } from "@/features/insights/useInsightPrefill";
 
 type DocKind =
@@ -59,6 +60,7 @@ export default function NewDocumentPage({
   const [referenceNo, setReferenceNo] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<LineState[]>([emptyLine()]);
+  const [warehouseSearch, setWarehouseSearch] = useState("");
 
   const applyPrefill = useCallback(
     (values: Partial<{
@@ -101,15 +103,22 @@ export default function NewDocumentPage({
 
   useInsightPrefill(applyPrefill);
 
+  const [debouncedWarehouseSearch, setDebouncedWarehouseSearch] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedWarehouseSearch(warehouseSearch.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [warehouseSearch]);
+
   const { data: warehouses } = useQuery({
-    queryKey: ["warehouses-all"],
-    queryFn: () => fetchWarehouses(1, 100),
+    queryKey: ["warehouses-doc", debouncedWarehouseSearch],
+    queryFn: () => fetchWarehouses(1, 100, debouncedWarehouseSearch || undefined),
+    staleTime: 60_000,
   });
 
-  const { data: variants } = useQuery({
-    queryKey: ["variants-all"],
-    queryFn: () => fetchProductVariants(1, 200),
-  });
+  const loadVariantOptions = useCallback(async (search: string) => {
+    const result = await fetchProductVariants(1, 50, search || undefined);
+    return result.items.map((v) => ({ id: v.id, label: v.sku }));
+  }, []);
 
   const titleMap: Record<DocKind, string> = {
     "stock-in": t("createStockIn"),
@@ -120,7 +129,6 @@ export default function NewDocumentPage({
   };
 
   const title = titleMap[kind] ?? t("title");
-  const hasVariants = (variants?.items.length ?? 0) > 0;
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -201,7 +209,7 @@ export default function NewDocumentPage({
       destinationWarehouseId,
       reason,
       lines,
-      hasVariants,
+      hasVariants: true,
     });
 
     if (notifyValidation(issues)) {
@@ -218,8 +226,7 @@ export default function NewDocumentPage({
   };
 
   const addLine = () => {
-    const firstVariant = variants?.items[0]?.id ?? "";
-    setLines([...lines, { ...emptyLine(), productVariantId: firstVariant }]);
+    setLines([...lines, emptyLine()]);
   };
 
   return (
@@ -241,6 +248,13 @@ export default function NewDocumentPage({
                 <label className="mb-1 block text-sm font-medium">
                   {t("sourceWarehouse")} *
                 </label>
+                <input
+                  type="search"
+                  className="input mb-1"
+                  placeholder={tCommon("search")}
+                  value={warehouseSearch}
+                  onChange={(e) => setWarehouseSearch(e.target.value)}
+                />
                 <select
                   className="input"
                   value={sourceWarehouseId}
@@ -282,6 +296,13 @@ export default function NewDocumentPage({
                     : t("warehouse")}{" "}
                 *
               </label>
+              <input
+                type="search"
+                className="input mb-1"
+                placeholder={tCommon("search")}
+                value={warehouseSearch}
+                onChange={(e) => setWarehouseSearch(e.target.value)}
+              />
               <select
                 className="input"
                 value={warehouseId}
@@ -345,20 +366,15 @@ export default function NewDocumentPage({
                 key={idx}
                 className="mb-3 flex flex-wrap gap-2 rounded-lg border border-slate-200 p-3"
               >
-                <select
-                  className="input min-w-[200px] flex-1"
+                <AsyncSearchSelect
                   value={line.productVariantId}
-                  onChange={(e) =>
-                    updateLine(idx, { productVariantId: e.target.value })
-                  }
-                >
-                  <option value="">{t("selectSku")}</option>
-                  {variants?.items.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.sku}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => updateLine(idx, { productVariantId: id })}
+                  placeholder={tCommon("search")}
+                  emptyLabel={t("selectSku")}
+                  queryKeyPrefix={`doc-variant-${idx}`}
+                  fetchOptions={loadVariantOptions}
+                  className="input min-w-[200px] flex-1"
+                />
                 {kind === "adjustment" ? (
                   <input
                     type="number"

@@ -50,7 +50,6 @@ public class SalesIntegrationService : ISalesIntegrationService
         CheckSalesAvailabilityRequestDto input,
         CancellationToken cancellationToken = default)
     {
-        await _stockReservationService.RefreshExpiredReservationsAsync(cancellationToken);
         await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
         ValidateSalesLines(input.Lines);
 
@@ -68,21 +67,15 @@ public class SalesIntegrationService : ISalesIntegrationService
         };
     }
 
-    public async Task<CheckMultiWarehouseAvailabilityResponseDto> CheckMultiWarehouseAvailabilityAsync(
+    public Task<CheckMultiWarehouseAvailabilityResponseDto> CheckMultiWarehouseAvailabilityAsync(
         CheckMultiWarehouseAvailabilityRequestDto input,
-        CancellationToken cancellationToken = default)
-    {
-        await _stockReservationService.RefreshExpiredReservationsAsync(cancellationToken);
-        return await _warehouseFulfillmentService.CheckAvailabilityAsync(input, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        _warehouseFulfillmentService.CheckAvailabilityAsync(input, cancellationToken);
 
-    public async Task<AllocateWarehouseResponseDto> AllocateWarehouseAsync(
+    public Task<AllocateWarehouseResponseDto> AllocateWarehouseAsync(
         AllocateWarehouseRequestDto input,
-        CancellationToken cancellationToken = default)
-    {
-        await _stockReservationService.RefreshExpiredReservationsAsync(cancellationToken);
-        return await _warehouseFulfillmentService.AllocateWarehouseAsync(input, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        _warehouseFulfillmentService.AllocateWarehouseAsync(input, cancellationToken);
 
     /// <summary>
     /// Xác nhận bán — tạo phiếu xuất, duyệt và trừ tồn.

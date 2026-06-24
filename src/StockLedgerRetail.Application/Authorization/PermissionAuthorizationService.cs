@@ -54,6 +54,12 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
         CancellationToken cancellationToken = default)
     {
         EnsureAuthenticated();
+
+        if (await CanBypassDocumentOwnershipAsync(documentCreatedBy, cancellationToken))
+        {
+            return;
+        }
+
         await EnsureOwnOrTeamManagedAsync(documentCreatedBy, PermissionCodes.InventoryDocumentsUpdate, cancellationToken);
     }
 
@@ -64,24 +70,11 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
     {
         EnsureAuthenticated();
 
-        // Pending: người duyệt (hoặc trưởng nhóm) có thể hủy phiếu chờ duyệt dù không phải người tạo.
-        if (documentStatus == InventoryDocumentStatus.Pending)
+        // Draft/Pending: người duyệt hoặc trưởng nhóm có thể hủy dù không phải người tạo.
+        if (documentStatus is InventoryDocumentStatus.Draft or InventoryDocumentStatus.Pending
+            && await CanBypassDocumentOwnershipAsync(documentCreatedBy, cancellationToken))
         {
-            if (_currentUser.HasPermission(PermissionCodes.InventoryDocumentsApprove))
-            {
-                return;
-            }
-
-            if (_currentUser.HasPermission(PermissionCodes.InventoryDocumentsApproveTeam)
-                && _currentUser.UserId.HasValue
-                && !string.Equals(documentCreatedBy, _currentUser.Email, StringComparison.OrdinalIgnoreCase)
-                && await _teamRepository.IsLeaderOfMemberAsync(
-                    _currentUser.UserId.Value,
-                    documentCreatedBy,
-                    cancellationToken))
-            {
-                return;
-            }
+            return;
         }
 
         await EnsureOwnOrTeamManagedAsync(documentCreatedBy, PermissionCodes.InventoryDocumentsCancel, cancellationToken);
@@ -93,18 +86,7 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
     {
         EnsureAuthenticated();
 
-        if (_currentUser.HasPermission(PermissionCodes.InventoryDocumentsApprove))
-        {
-            return;
-        }
-
-        if (_currentUser.HasPermission(PermissionCodes.InventoryDocumentsApproveTeam)
-            && _currentUser.UserId.HasValue
-            && !string.Equals(documentCreatedBy, _currentUser.Email, StringComparison.OrdinalIgnoreCase)
-            && await _teamRepository.IsLeaderOfMemberAsync(
-                _currentUser.UserId.Value,
-                documentCreatedBy,
-                cancellationToken))
+        if (await CanBypassDocumentOwnershipAsync(documentCreatedBy, cancellationToken))
         {
             return;
         }
@@ -144,6 +126,32 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
     public void EnsureAdminGroupsManage() => EnsurePermission(PermissionCodes.AdminGroupsManage);
 
     public void EnsureAdminTeamsManage() => EnsurePermission(PermissionCodes.AdminTeamsManage);
+
+    /// <summary>
+    /// Cho phép duyệt/hủy phiếu Draft hoặc Pending của người khác khi có quyền duyệt toàn hệ thống hoặc trưởng nhóm.
+    /// </summary>
+    private async Task<bool> CanBypassDocumentOwnershipAsync(
+        string documentCreatedBy,
+        CancellationToken cancellationToken)
+    {
+        if (_currentUser.HasPermission(PermissionCodes.InventoryDocumentsApprove))
+        {
+            return true;
+        }
+
+        if (_currentUser.HasPermission(PermissionCodes.InventoryDocumentsApproveTeam)
+            && _currentUser.UserId.HasValue
+            && !string.Equals(documentCreatedBy, _currentUser.Email, StringComparison.OrdinalIgnoreCase)
+            && await _teamRepository.IsLeaderOfMemberAsync(
+                _currentUser.UserId.Value,
+                documentCreatedBy,
+                cancellationToken))
+        {
+            return true;
+        }
+
+        return false;
+    }
 
     private async Task EnsureOwnOrTeamManagedAsync(
         string documentCreatedBy,

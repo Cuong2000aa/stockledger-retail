@@ -53,6 +53,17 @@ public class BackgroundJobBootstrapHostedService : IHostedService
                 IntervalMinutes = Math.Max(5, reconciliationOptions?.IntervalMinutes ?? 60),
                 LastStatus = BackgroundJobStatuses.Idle,
                 NextRunAtUtc = DateTime.UtcNow.AddMinutes(2)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                JobKey = BackgroundJobKeys.ReservationExpiry,
+                DisplayName = "Reservation expiry",
+                Description = "Releases expired POS stock reservations to free available quantity.",
+                IsEnabled = true,
+                IntervalMinutes = 5,
+                LastStatus = BackgroundJobStatuses.Idle,
+                NextRunAtUtc = DateTime.UtcNow.AddMinutes(1)
             }
         };
 
