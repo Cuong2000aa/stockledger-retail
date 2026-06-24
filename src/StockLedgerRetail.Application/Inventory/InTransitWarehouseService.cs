@@ -66,7 +66,6 @@ public class InTransitWarehouseService : IInTransitWarehouseService
         };
 
         await _warehouseRepository.InsertAsync(warehouse, cancellationToken);
-        await _warehouseRepository.SaveChangesAsync(cancellationToken);
         return warehouse.Id;
     }
 }

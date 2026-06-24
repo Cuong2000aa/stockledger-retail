@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace StockLedgerRetail.HttpApi.Host.Middleware;
 
@@ -26,7 +27,9 @@ public class ExceptionHandlingMiddleware
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        var statusCode = exception switch
+        var root = Unwrap(exception);
+
+        var statusCode = root switch
         {
             KeyNotFoundException => HttpStatusCode.NotFound,
             UnauthorizedAccessException => HttpStatusCode.Forbidden,
@@ -40,9 +43,20 @@ public class ExceptionHandlingMiddleware
 
         var payload = JsonSerializer.Serialize(new
         {
-            error = exception.Message
+            error = root.Message
         });
 
         return context.Response.WriteAsync(payload);
+    }
+
+    private static Exception Unwrap(Exception exception)
+    {
+        while (exception.InnerException is { } inner
+               && exception is DbUpdateException or InvalidOperationException)
+        {
+            exception = inner;
+        }
+
+        return exception;
     }
 }

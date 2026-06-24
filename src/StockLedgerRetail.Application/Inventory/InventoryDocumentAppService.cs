@@ -433,40 +433,55 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
                 document.DestinationWarehouseId!.Value,
                 variantIds,
                 cancellationToken);
-
-            var sourceWarehouse = await _warehouseRepository.GetByIdAsync(
-                document.SourceWarehouseId!.Value,
-                cancellationToken)
-                ?? throw new InvalidOperationException("Source warehouse was not found.");
-
-            document.InTransitWarehouseId = await _inTransitWarehouseService.GetOrCreateInTransitWarehouseIdAsync(
-                sourceWarehouse.BrandId,
-                cancellationToken);
         }
 
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            if (document.DocumentType == InventoryDocumentType.Transfer)
+            var workingDocument = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, ct)
+                ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+            if (workingDocument.Status is InventoryDocumentStatus.Approved or InventoryDocumentStatus.Completed)
             {
-                await _stockLedgerService.ProcessTransferShipAsync(document, ct);
+                throw new InvalidOperationException("Document is already approved.");
+            }
+
+            if (workingDocument.Status is InventoryDocumentStatus.Cancelled)
+            {
+                throw new InvalidOperationException("Cancelled documents cannot be approved.");
+            }
+
+            if (workingDocument.DocumentType == InventoryDocumentType.Transfer)
+            {
+                var sourceWarehouse = await _warehouseRepository.GetByIdAsync(
+                    workingDocument.SourceWarehouseId!.Value,
+                    ct)
+                    ?? throw new InvalidOperationException("Source warehouse was not found.");
+
+                workingDocument.InTransitWarehouseId =
+                    await _inTransitWarehouseService.GetOrCreateInTransitWarehouseIdAsync(
+                        sourceWarehouse.BrandId,
+                        ct);
+            }
+
+            if (workingDocument.DocumentType == InventoryDocumentType.Transfer)
+            {
+                await _stockLedgerService.ProcessTransferShipAsync(workingDocument, ct);
             }
             else
             {
-                await _stockLedgerService.ProcessApprovedDocumentAsync(document, ct);
+                await _stockLedgerService.ProcessApprovedDocumentAsync(workingDocument, ct);
             }
 
             var now = DateTime.UtcNow;
-            document.Status = InventoryDocumentStatus.Approved;
-            document.ApprovedBy = _auditContext.UserName;
-            document.ApprovedAt = now;
+            workingDocument.Status = InventoryDocumentStatus.Approved;
+            workingDocument.ApprovedBy = _auditContext.UserName;
+            workingDocument.ApprovedAt = now;
 
-            if (document.DocumentType == InventoryDocumentType.Transfer)
+            if (workingDocument.DocumentType == InventoryDocumentType.Transfer)
             {
-                document.TransferLifecycleStatus = TransferLifecycleStatus.Shipped;
-                document.ShippedAt = now;
+                workingDocument.TransferLifecycleStatus = TransferLifecycleStatus.Shipped;
+                workingDocument.ShippedAt = now;
             }
-
-            await _inventoryDocumentRepository.UpdateAsync(document, ct);
         }, cancellationToken);
 
         var newDto = await LoadDtoAsync(document.Id, cancellationToken);
@@ -507,14 +522,30 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
 
         await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            await _stockLedgerService.ProcessTransferReceiveAsync(document, ct);
+            var workingDocument = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, ct)
+                ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+            if (workingDocument.DocumentType is not InventoryDocumentType.Transfer)
+            {
+                throw new InvalidOperationException("Only transfer documents can be received.");
+            }
+
+            if (workingDocument.Status is not InventoryDocumentStatus.Approved)
+            {
+                throw new InvalidOperationException("Transfer must be approved (shipped) before receive.");
+            }
+
+            if (workingDocument.TransferLifecycleStatus is not TransferLifecycleStatus.Shipped)
+            {
+                throw new InvalidOperationException("Transfer is not in shipped state.");
+            }
+
+            await _stockLedgerService.ProcessTransferReceiveAsync(workingDocument, ct);
 
             var now = DateTime.UtcNow;
-            document.TransferLifecycleStatus = TransferLifecycleStatus.Received;
-            document.ReceivedAt = now;
-            document.Status = InventoryDocumentStatus.Completed;
-
-            await _inventoryDocumentRepository.UpdateAsync(document, ct);
+            workingDocument.TransferLifecycleStatus = TransferLifecycleStatus.Received;
+            workingDocument.ReceivedAt = now;
+            workingDocument.Status = InventoryDocumentStatus.Completed;
         }, cancellationToken);
 
         var newDto = await LoadDtoAsync(document.Id, cancellationToken);
@@ -524,7 +555,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         return newDto;
     }
 
-    /// <summary>Hủy phiếu Draft — không tác động tồn kho.</summary>
+    /// <summary>Hủy phiếu Draft hoặc Pending — không tác động tồn kho.</summary>
     public async Task<InventoryDocumentDto> CancelAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
@@ -532,11 +563,12 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
 
         await _permissionAuthorizationService.EnsureCanCancelInventoryDocumentAsync(
             document.CreatedBy,
+            document.Status,
             cancellationToken);
 
-        if (document.Status is not InventoryDocumentStatus.Draft)
+        if (document.Status is not (InventoryDocumentStatus.Draft or InventoryDocumentStatus.Pending))
         {
-            throw new InvalidOperationException("Only draft documents can be cancelled.");
+            throw new InvalidOperationException("Only draft or pending documents can be cancelled.");
         }
 
         var oldDto = MapToDto(document);

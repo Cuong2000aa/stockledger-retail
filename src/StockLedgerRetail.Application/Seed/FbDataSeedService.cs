@@ -364,9 +364,51 @@ public class FbDataSeedService : IFbDataSeedService
             LastUpdatedAt = now
         }, cancellationToken);
 
-        // Sauce & dough at store level (no lot demo)
+        // Sauce & dough at store — with matching lot stock
         var sauceId = Guid.Parse("c1000001-0001-4001-8001-000000000002");
         var doughId = Guid.Parse("c1000001-0001-4001-8001-000000000003");
+        var sauceLotId = Guid.Parse("d1000001-0001-4001-8001-000000000003");
+        var doughLotId = Guid.Parse("d1000001-0001-4001-8001-000000000004");
+
+        await _stockLotRepository.InsertAsync(new StockLot
+        {
+            Id = sauceLotId,
+            ProductVariantId = sauceId,
+            LotCode = "DOM-SAUCE-20260610",
+            ExpiryDate = now.Date.AddDays(20),
+            ReceivedAt = now.AddDays(-5)
+        }, cancellationToken);
+
+        await _stockLotRepository.InsertAsync(new StockLot
+        {
+            Id = doughLotId,
+            ProductVariantId = doughId,
+            LotCode = "DOM-DOUGH-20260612",
+            ExpiryDate = now.Date.AddDays(14),
+            ReceivedAt = now.AddDays(-1)
+        }, cancellationToken);
+
+        await _stockLotRepository.SaveChangesAsync(cancellationToken);
+
+        await _lotStockRepository.InsertAsync(new LotStock
+        {
+            Id = Guid.Parse("e1000001-0001-4001-8001-000000000003"),
+            StockLotId = sauceLotId,
+            WarehouseId = DominosStoreId,
+            QuantityOnHand = 30,
+            LastUpdatedAt = now
+        }, cancellationToken);
+
+        await _lotStockRepository.InsertAsync(new LotStock
+        {
+            Id = Guid.Parse("e1000001-0001-4001-8001-000000000004"),
+            StockLotId = doughLotId,
+            WarehouseId = DominosStoreId,
+            QuantityOnHand = 200,
+            LastUpdatedAt = now
+        }, cancellationToken);
+
+        await _lotStockRepository.SaveChangesAsync(cancellationToken);
 
         await _currentStockRepository.InsertAsync(new CurrentStock
         {

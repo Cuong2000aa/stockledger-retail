@@ -105,7 +105,11 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
 
     public Task UpdateAsync(InventoryDocument document, CancellationToken cancellationToken = default)
     {
-        _dbContext.InventoryDocuments.Update(document);
+        if (_dbContext.Entry(document).State == EntityState.Detached)
+        {
+            _dbContext.InventoryDocuments.Update(document);
+        }
+
         return Task.CompletedTask;
     }
 

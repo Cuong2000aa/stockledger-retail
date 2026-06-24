@@ -299,17 +299,28 @@ export default function DocumentDetailPage({
               </>
             )}
             {isPending && (
-              <button
-                className="btn-primary"
-                disabled={approveMutation.isPending}
-                onClick={async () => {
-                  if (await confirm(needsSecondApproval ? t("approveStepConfirm") : t("approveConfirm"))) {
-                    approveMutation.mutate();
-                  }
-                }}
-              >
-                {needsSecondApproval ? t("approveStep") : t("approve")}
-              </button>
+              <>
+                <button
+                  className="btn-primary"
+                  disabled={approveMutation.isPending}
+                  onClick={async () => {
+                    if (await confirm(needsSecondApproval ? t("approveStepConfirm") : t("approveConfirm"))) {
+                      approveMutation.mutate();
+                    }
+                  }}
+                >
+                  {needsSecondApproval ? t("approveStep") : t("approve")}
+                </button>
+                <button
+                  className="btn-danger"
+                  disabled={cancelMutation.isPending}
+                  onClick={async () => {
+                    if (await confirm(t("cancelConfirm"))) cancelMutation.mutate();
+                  }}
+                >
+                  {t("cancelDoc")}
+                </button>
+              </>
             )}
             {canReceiveTransfer && (
               <button

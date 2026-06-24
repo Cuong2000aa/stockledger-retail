@@ -112,8 +112,6 @@ public class CurrentStockRepository : ICurrentStockRepository
         stock.LastTransactionId = lastTransactionId;
         stock.LastUpdatedAt = updatedAt;
 
-        _dbContext.CurrentStocks.Update(stock);
-
         return new StockOnHandChangeResult(
             stock.Id,
             beforeOnHand,
@@ -156,8 +154,6 @@ public class CurrentStockRepository : ICurrentStockRepository
         stock.QuantityReserved = reservedQuantity;
         stock.QuantityAvailable = stock.QuantityOnHand - reservedQuantity;
         stock.LastUpdatedAt = updatedAt;
-
-        _dbContext.CurrentStocks.Update(stock);
     }
 
     public Task<List<CurrentStock>> GetByVariantsAndWarehousesAsync(
@@ -251,7 +247,11 @@ public class CurrentStockRepository : ICurrentStockRepository
 
     public Task UpdateAsync(CurrentStock currentStock, CancellationToken cancellationToken = default)
     {
-        _dbContext.CurrentStocks.Update(currentStock);
+        if (_dbContext.Entry(currentStock).State == EntityState.Detached)
+        {
+            _dbContext.CurrentStocks.Update(currentStock);
+        }
+
         return Task.CompletedTask;
     }
 
