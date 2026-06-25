@@ -5,7 +5,8 @@ using StockLedgerRetail.Services;
 namespace StockLedgerRetail.Controllers;
 
 /// <summary>
-/// Read-only inventory insights for operational decision support and future AI orchestration.
+/// API insight tồn kho chỉ đọc cho quản lý vận hành.
+/// Tổng hợp tín hiệu tồn, giá bán, giá vốn, PO/GR và xu hướng để hỗ trợ ra quyết định.
 /// </summary>
 [ApiController]
 [Route("api/inventory-insights")]
@@ -83,6 +84,7 @@ public class InventoryInsightsController : ControllerBase
             maxResults,
             cancellationToken);
 
+    /// <summary>Gợi ý SKU nên markdown/xả hàng do bán chậm, kèm giá trị tồn và biên lợi nhuận.</summary>
     [HttpGet("markdown-candidates")]
     public Task<List<MarkdownCandidateInsightDto>> GetMarkdownCandidatesAsync(
         [FromQuery] Guid? warehouseId,
@@ -101,6 +103,7 @@ public class InventoryInsightsController : ControllerBase
             maxResults,
             cancellationToken);
 
+    /// <summary>Phát hiện SKU có rủi ro khuyến mãi dựa trên giá promotion/markdown, tốc độ bán và số ngày cover.</summary>
     [HttpGet("promotion-risk")]
     public Task<List<PromotionRiskInsightDto>> GetPromotionRiskAsync(
         [FromQuery] Guid? warehouseId,
@@ -117,6 +120,7 @@ public class InventoryInsightsController : ControllerBase
             maxResults,
             cancellationToken);
 
+    /// <summary>Phát hiện SKU có rủi ro cần đặt hàng lại dựa trên cover thấp và pipeline PO/GR đang mở.</summary>
     [HttpGet("reorder-risk")]
     public Task<List<ReorderRiskInsightDto>> GetReorderRiskAsync(
         [FromQuery] Guid? warehouseId,
@@ -133,6 +137,7 @@ public class InventoryInsightsController : ControllerBase
             maxResults,
             cancellationToken);
 
+    /// <summary>Tóm tắt xu hướng tồn kho và luân chuyển giữa kỳ hiện tại với kỳ trước cùng độ dài.</summary>
     [HttpGet("trend-summary")]
     public Task<List<TrendSummaryInsightDto>> GetTrendSummaryAsync(
         [FromQuery] Guid? warehouseId,
@@ -149,6 +154,7 @@ public class InventoryInsightsController : ControllerBase
             maxResults,
             cancellationToken);
 
+    /// <summary>Lấy executive summary tổng hợp KPI insight theo phạm vi lọc hiện tại.</summary>
     [HttpGet("executive-summary")]
     public Task<InsightsExecutiveSummaryDto> GetExecutiveSummaryAsync(
         [FromQuery] Guid? warehouseId,

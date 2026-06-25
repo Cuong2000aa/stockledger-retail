@@ -6,7 +6,7 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Controllers;
 
-/// <summary>Tra cứu barcode từng đơn vị theo SKU và kho.</summary>
+/// <summary>API tra cứu barcode từng đơn vị theo SKU và kho.</summary>
 [ApiController]
 [Route("api/unit-barcodes")]
 public class UnitBarcodesController : ControllerBase
@@ -18,6 +18,7 @@ public class UnitBarcodesController : ControllerBase
         _variantUnitBarcodeAppService = variantUnitBarcodeAppService;
     }
 
+    /// <summary>Lấy danh sách unit barcode có phân trang theo SKU, kho, trạng thái và từ khóa.</summary>
     [HttpGet]
     public Task<PagedResultDto<VariantUnitBarcodeDto>> GetListAsync(
         [FromQuery] Guid productVariantId,

@@ -30,7 +30,18 @@ builder.Services.AddScoped<IAuditContext, HttpAuditContext>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new() { Title = "StockLedger Retail API", Version = "v1" });
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "StockLedger Retail API",
+        Version = "v1",
+        Description = "API quản lý tồn kho bán lẻ. Mô tả tiếng Việt hiển thị dưới từng endpoint (summary)."
+    });
+
+    var httpApiXml = Path.Combine(AppContext.BaseDirectory, "StockLedgerRetail.HttpApi.xml");
+    if (File.Exists(httpApiXml))
+    {
+        options.IncludeXmlComments(httpApiXml, includeControllerXmlComments: true);
+    }
 });
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

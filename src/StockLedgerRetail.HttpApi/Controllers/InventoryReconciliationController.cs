@@ -4,6 +4,10 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Controllers;
 
+/// <summary>
+/// API đối soát tồn kho giữa sổ cái giao dịch và bảng tồn hiện tại.
+/// Dùng để phát hiện lệch tồn do lỗi dữ liệu hoặc quy trình ghi sổ.
+/// </summary>
 [ApiController]
 [Route("api/inventory/reconciliation")]
 public class InventoryReconciliationController : ControllerBase
