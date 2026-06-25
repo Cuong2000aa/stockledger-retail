@@ -230,13 +230,30 @@ Retail inventory use cases for StockLedger Retail.
 
 # UC012 — Inventory Insights
 
-**Actor:** Manager / AI Copilot
+**Actor:** Manager / Merchandising / AI Copilot (future)
 
-**Goal:** Decision support — dead stock, sales velocity, transfer suggestions.
+**Goal:** Pricing-aware decision support across dead stock, velocity, transfers, markdown, promotion/reorder risk, and trends — with executive KPIs and drill-down actions.
 
-**API:** `GET /api/inventory-insights/dead-stock`, `sales-velocity`, `transfer-suggestions` (optional `brandId`, `regionCode`)
+**API:**
 
-**Status:** ✅ Implemented (rule-based, snapshot cache, recommendation cards)
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/inventory-insights/executive-summary` | Aggregated KPIs for current scope |
+| `GET .../dead-stock` | SKUs with on-hand but no recent outbound |
+| `GET .../sales-velocity` | Outbound rate and cover days |
+| `GET .../transfer-suggestions` | Surplus → deficit warehouse pairs (same brand/region) |
+| `GET .../markdown-candidates` | Slow movers with margin and inventory value |
+| `GET .../promotion-risk` | Promotion price vs velocity and cover |
+| `GET .../reorder-risk` | Low cover with open PO/GR signals |
+| `GET .../trend-summary` | Period-over-period inventory deltas |
+
+**Filters:** `warehouseId`, `brandId`, `regionCode`, `lookbackDays`, `daysWithoutOutbound`, `maxResults`
+
+**UI:** `/[locale]/insights` — executive summary strip, 7 tabs, recommendation cards with CTAs to stock history, SKU, reports, draft transfer/PO.
+
+**Docs:** [Insights.md](Insights.md), [Insights.vi.md](Insights.vi.md)
+
+**Status:** ✅ Implemented (rule-based, pricing-aware DTOs, snapshot cache, recommendation engine)
 
 ---
 

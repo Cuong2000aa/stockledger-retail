@@ -21,6 +21,14 @@ import {
 } from "@/lib/api";
 import { validateProductVariantForm } from "@/lib/validation";
 import { formatNumber } from "@/lib/format";
+import {
+  calcPriceAfterVat,
+  calcPriceBeforeVat,
+  parsePriceField,
+  recalcFromVatChange,
+  recalcPriceAfterVat,
+  recalcPriceBeforeVat,
+} from "@/lib/pricing";
 import { CostSource, PriceType, ProductStatus, type ProductPrice, type ProductVariant } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -82,9 +90,37 @@ const emptyPriceForm = (): PriceForm => ({
 });
 
 function toOptionalNumber(value: string): number | undefined {
-  if (value.trim() === "") return undefined;
-  const n = Number(value);
-  return Number.isNaN(n) ? undefined : n;
+  return parsePriceField(value);
+}
+
+function syncVariantFormPricing(form: VariantForm, priceForm: PriceForm): VariantForm {
+  return {
+    ...form,
+    sellingPriceBeforeVat: priceForm.priceBeforeVat,
+    sellingPriceAfterVat: priceForm.priceAfterVat,
+    vatRate: priceForm.vatRate,
+    sellingPrice: priceForm.priceAfterVat || form.sellingPrice,
+  };
+}
+
+function priceFormFromVariant(v: ProductVariant): PriceForm {
+  return {
+    priceBeforeVat: v.sellingPriceBeforeVat != null ? String(v.sellingPriceBeforeVat) : "",
+    vatRate: v.vatRate != null ? String(v.vatRate) : "",
+    priceAfterVat: v.sellingPriceAfterVat != null ? String(v.sellingPriceAfterVat) : "",
+    effectiveFrom: new Date().toISOString().slice(0, 10),
+    effectiveTo: "",
+  };
+}
+
+function priceFormFromProductPrice(price: ProductPrice): PriceForm {
+  return {
+    priceBeforeVat: String(price.priceBeforeVat),
+    vatRate: String(price.vatRate),
+    priceAfterVat: String(price.priceAfterVat),
+    effectiveFrom: price.effectiveFrom.slice(0, 10),
+    effectiveTo: price.effectiveTo?.slice(0, 10) ?? "",
+  };
 }
 
 function calcMarginSnapshot(variant: ProductVariant) {
@@ -147,10 +183,19 @@ export default function ProductVariantsPage() {
 
   const valuationPayload = () => {
     const costPrice = toOptionalNumber(form.costPrice);
-    const sellingPrice = toOptionalNumber(form.sellingPrice);
-    const sellingPriceBeforeVat = toOptionalNumber(form.sellingPriceBeforeVat);
-    const sellingPriceAfterVat = toOptionalNumber(form.sellingPriceAfterVat) ?? sellingPrice;
-    const vatRate = toOptionalNumber(form.vatRate);
+    const sellingPriceBeforeVat =
+      toOptionalNumber(regularPriceForm.priceBeforeVat) ??
+      toOptionalNumber(form.sellingPriceBeforeVat);
+    const vatRate =
+      toOptionalNumber(regularPriceForm.vatRate) ?? toOptionalNumber(form.vatRate);
+    const sellingPriceAfterVat =
+      (sellingPriceBeforeVat != null && vatRate != null
+        ? calcPriceAfterVat(sellingPriceBeforeVat, vatRate)
+        : undefined) ??
+      toOptionalNumber(regularPriceForm.priceAfterVat) ??
+      toOptionalNumber(form.sellingPriceAfterVat) ??
+      toOptionalNumber(form.sellingPrice);
+    const sellingPrice = sellingPriceAfterVat;
     const costSource =
       costPrice !== undefined && form.costSource
         ? (Number(form.costSource) as CostSource)
@@ -164,6 +209,11 @@ export default function ProductVariantsPage() {
       vatRate,
       costSource,
     };
+  };
+
+  const setRegularPriceFormSynced = (next: PriceForm) => {
+    setRegularPriceForm(next);
+    setForm((current) => syncVariantFormPricing(current, next));
   };
 
   const saveMutation = useMutation({
@@ -219,17 +269,38 @@ export default function ProductVariantsPage() {
         throw new Error("Price history can only be managed after the SKU is created.");
       }
 
+      const before = parsePriceField(input.form.priceBeforeVat);
+      const after = parsePriceField(input.form.priceAfterVat);
+      const vatRate = Number(input.form.vatRate || 0);
+
+      let priceBeforeVat = before ?? 0;
+      let priceAfterVat = after ?? 0;
+      if (before != null) {
+        priceAfterVat = calcPriceAfterVat(before, vatRate);
+      } else if (after != null) {
+        priceBeforeVat = calcPriceBeforeVat(after, vatRate);
+        priceAfterVat = after;
+      }
+
       return upsertProductPrice(editing.id, {
         priceType: input.priceType,
-        priceBeforeVat: Number(input.form.priceBeforeVat || 0),
-        vatRate: Number(input.form.vatRate || 0),
-        priceAfterVat:
-          input.form.priceAfterVat.trim() === "" ? undefined : Number(input.form.priceAfterVat),
+        priceBeforeVat,
+        vatRate,
+        priceAfterVat,
         effectiveFrom: input.form.effectiveFrom,
         effectiveTo: input.form.effectiveTo || undefined,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (savedPrice, variables) => {
+      const syncedPriceForm = priceFormFromProductPrice(savedPrice);
+      if (variables.priceType === PriceType.Regular) {
+        setRegularPriceFormSynced(syncedPriceForm);
+      } else if (variables.priceType === PriceType.Promotion) {
+        setPromotionPriceForm(syncedPriceForm);
+      } else if (variables.priceType === PriceType.Markdown) {
+        setMarkdownPriceForm(syncedPriceForm);
+      }
+
       await qc.invalidateQueries({ queryKey: ["product-variants"] });
       await qc.invalidateQueries({ queryKey: ["product-price-history"] });
     },
@@ -277,13 +348,9 @@ export default function ProductVariantsPage() {
       trackLotExpiry: v.trackLotExpiry ?? false,
       isBarcode: v.isBarcode ?? false,
     });
-    setRegularPriceForm({
-      priceBeforeVat: v.sellingPriceBeforeVat != null ? String(v.sellingPriceBeforeVat) : "",
-      vatRate: v.vatRate != null ? String(v.vatRate) : "",
-      priceAfterVat: v.sellingPriceAfterVat != null ? String(v.sellingPriceAfterVat) : "",
-      effectiveFrom: new Date().toISOString().slice(0, 10),
-      effectiveTo: "",
-    });
+    const regularPrice = priceFormFromVariant(v);
+    setRegularPriceForm(regularPrice);
+    setForm((current) => syncVariantFormPricing(current, regularPrice));
     setPromotionPriceForm(emptyPriceForm());
     setMarkdownPriceForm(emptyPriceForm());
     setModalOpen(true);
@@ -385,7 +452,17 @@ export default function ProductVariantsPage() {
             step="any"
             className="input"
             value={formState.priceBeforeVat}
-            onChange={(e) => setFormState({ ...formState, priceBeforeVat: e.target.value })}
+            onChange={(e) => {
+              const next = {
+                ...formState,
+                priceBeforeVat: e.target.value,
+                priceAfterVat: recalcPriceAfterVat({
+                  priceBeforeVat: e.target.value,
+                  vatRate: formState.vatRate,
+                }),
+              };
+              setFormState(next);
+            }}
           />
         </div>
         <div>
@@ -397,7 +474,17 @@ export default function ProductVariantsPage() {
             step="any"
             className="input"
             value={formState.vatRate}
-            onChange={(e) => setFormState({ ...formState, vatRate: e.target.value })}
+            onChange={(e) => {
+              const recalced = recalcFromVatChange({
+                ...formState,
+                vatRate: e.target.value,
+              });
+              setFormState({
+                ...formState,
+                vatRate: e.target.value,
+                ...recalced,
+              });
+            }}
           />
         </div>
       </div>
@@ -410,7 +497,17 @@ export default function ProductVariantsPage() {
             step="any"
             className="input"
             value={formState.priceAfterVat}
-            onChange={(e) => setFormState({ ...formState, priceAfterVat: e.target.value })}
+            onChange={(e) => {
+              const next = {
+                ...formState,
+                priceAfterVat: e.target.value,
+                priceBeforeVat: recalcPriceBeforeVat({
+                  priceAfterVat: e.target.value,
+                  vatRate: formState.vatRate,
+                }),
+              };
+              setFormState(next);
+            }}
           />
         </div>
         <div>
@@ -731,7 +828,7 @@ export default function ProductVariantsPage() {
                   title={t("regularPriceTitle")}
                   description={t("regularPriceDesc")}
                   formState={regularPriceForm}
-                  setFormState={setRegularPriceForm}
+                  setFormState={setRegularPriceFormSynced}
                   priceType={PriceType.Regular}
                   history={groupedPrices.regular}
                 />

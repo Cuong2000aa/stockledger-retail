@@ -461,17 +461,31 @@
       "deadSkus": "Dead stock SKUs",
       "tiedCapital": "Capital tied up",
       "lowCover": "Low cover alerts",
-      "transfers": "Transfer suggestions"
+      "transfers": "Transfer suggestions",
+      "markdownCandidates": "Markdown candidates",
+      "promotionRisk": "Promotion risk",
+      "reorderRisk": "Reorder risk",
+      "trend": "Trend watch",
+      "marginAtRisk": "Margin at risk",
+      "transferValue": "Transfer value"
     },
     "tabs": {
       "deadStock": "Dead stock",
       "velocity": "Sales velocity",
-      "transfer": "Transfers"
+      "transfer": "Transfers",
+      "markdown": "Markdown",
+      "promotionRisk": "Promotion risk",
+      "reorderRisk": "Reorder risk",
+      "trend": "Trend"
     },
     "charts": {
       "deadStockValue": "Top SKUs by tied capital",
       "lowCover": "Lowest stock cover",
-      "transferQty": "Largest transfer quantities"
+      "transferQty": "Largest transfer quantities",
+      "markdownValue": "Top markdown recovery value",
+      "promotionRisk": "Lowest cover under promotion",
+      "reorderRisk": "Largest suggested reorder",
+      "trendDelta": "Largest inventory delta"
     },
     "severity": {
       "label": "Priority",
@@ -492,7 +506,11 @@
     "tabHints": {
       "deadStock": "On-hand SKUs with no sales — tied capital and obsolescence risk",
       "velocity": "Low cover or zero demand — replenish or review",
-      "transfer": "Rebalance surplus warehouses and demand-heavy locations"
+      "transfer": "Rebalance surplus warehouses and demand-heavy locations",
+      "markdown": "Idle SKUs that need markdown or clearance action",
+      "promotionRisk": "Promotions with low cover or margin pressure",
+      "reorderRisk": "Demand-driven reorder warnings with open pipeline context",
+      "trend": "Inventory value, price, and outbound movement shifts"
     },
     "copilot": {
       "bannerTitle": "Insights summary",
@@ -507,6 +525,14 @@
       "summaryVelocityEmpty": "Sales velocity looks stable — no low-cover alerts.",
       "summaryTransfer": "{count} transfer suggestions can rebalance stock across warehouses.",
       "summaryTransferEmpty": "No transfer suggestions match the current filters.",
+      "summaryMarkdown": "{count} markdown candidates hold ~{capital} of slow-moving value.",
+      "summaryMarkdownEmpty": "No markdown candidates for the current filters.",
+      "summaryPromotionRisk": "{alerts} promoted SKUs are at risk of low cover or weak margin.",
+      "summaryPromotionRiskEmpty": "No active promotion risk under the current filters.",
+      "summaryReorderRisk": "{alerts} SKUs need reorder attention based on demand and pipeline.",
+      "summaryReorderRiskEmpty": "Reorder risk looks stable for the current filters.",
+      "summaryTrend": "{count} SKU/warehouse pairs show notable inventory or price trend shifts.",
+      "summaryTrendEmpty": "No major trend shifts detected for the current filters.",
       "explainIntro": "The system rated {location} at priority P{priority}.",
       "locationSkuWarehouse": "{sku} at warehouse {warehouse}",
       "locationTransfer": "{sku}: {from} → {to}",
@@ -519,7 +545,11 @@
         "velocityPlan": "Plan replenishment or transfer within the next few days.",
         "velocityNoDemand": "No outbound in the period — review dead stock or discontinuation.",
         "velocityMonitor": "Stable demand — continue monitoring, no urgent action needed.",
-        "transfer": "Balance surplus and low-cover warehouses — reduce dead stock at source."
+        "transfer": "Balance surplus and low-cover warehouses — reduce dead stock at source.",
+        "markdownCandidate": "Long-idle inventory can recover cash faster through markdown or clearance routing.",
+        "promotionRisk": "Promotion pricing and low cover can compress margin or create stock-out risk.",
+        "reorderRisk": "Demand exceeds near-term stock and inbound pipeline — replenish before service drops.",
+        "trend": "Inventory value, outbound speed, or price shifted materially versus the prior window."
       }
     },
     "deadStock": {
@@ -547,6 +577,32 @@
       "createTransfer": "Create transfer",
       "creating": "Creating..."
     },
+    "markdown": {
+      "title": "Markdown candidates",
+      "subtitle": "Idle inventory that should be discounted or cleared",
+      "depth": "Markdown depth",
+      "recovery": "Recovery value"
+    },
+    "promotionRisk": {
+      "title": "Promotion risk",
+      "subtitle": "Promoted SKUs with tight cover or weak post-discount margin",
+      "regularPrice": "Regular price",
+      "promoPrice": "Promo price",
+      "discount": "Discount"
+    },
+    "reorderRisk": {
+      "title": "Reorder risk",
+      "subtitle": "Demand signals with open PO/receiving context and reorder proposal",
+      "onOrder": "On order",
+      "suggestedQty": "Suggested reorder"
+    },
+    "trend": {
+      "title": "Trend summary",
+      "subtitle": "Inventory value, outbound, and price movement changes versus the previous window",
+      "inventoryDelta": "Inventory delta",
+      "outboundTrend": "Outbound trend",
+      "priceTrend": "Price trend"
+    },
     "recommendation": {
       "label": "Recommended action",
       "titles": {
@@ -557,7 +613,14 @@
         "velocity_replenish_plan": "Plan replenishment",
         "velocity_monitor": "Stable demand",
         "velocity_no_demand_review": "Review zero demand",
-        "transfer_execute": "Rebalance inventory"
+        "transfer_execute": "Rebalance inventory",
+        "markdown_candidate_review": "Review markdown candidate",
+        "markdown_candidate_execute": "Execute markdown review",
+        "promotion_risk_review": "Review promotion setup",
+        "promotion_risk_tight_stock": "Promotion stock pressure",
+        "reorder_risk_urgent": "Urgent reorder",
+        "reorder_risk_plan": "Plan reorder",
+        "trend_review": "Review trend shift"
       },
       "evidence": {
         "daysIdle": "Idle",
@@ -569,7 +632,17 @@
         "destCoverDays": "Dest cover",
         "quantity": "Qty",
         "transferBlocked": "Blocked",
-        "warehouseType": "Warehouse type"
+        "warehouseType": "Warehouse type",
+        "inventoryValue": "Inventory value",
+        "discountPercent": "Discount",
+        "marginRate": "Margin",
+        "markdownDepth": "Markdown",
+        "onOrder": "On order",
+        "inReceiving": "Receiving",
+        "suggestedQty": "Suggested qty",
+        "inventoryDelta": "Inventory delta",
+        "outboundTrend": "Outbound trend",
+        "priceTrend": "Price trend"
       },
       "ctas": {
         "view_stock": "View stock",
@@ -578,7 +651,10 @@
         "draft_po": "Create PO",
         "review_dead_stock": "Review dead stock",
         "preview_transfer": "Review draft",
-        "create_transfer": "Create transfer"
+        "create_transfer": "Create transfer",
+        "view_history": "View history",
+        "review_sku": "Review SKU",
+        "open_reports": "Open reports"
       },
       "blocked": {
         "no_clearance_destination": "No clearance warehouse in brand/region",
@@ -593,7 +669,14 @@
       "velocity_replenish_plan": "Plan replenishment or transfer — {sku} at {warehouseCode} (~{coverDays} days cover).",
       "velocity_monitor": "Keep monitoring — {sku} at {warehouseCode} looks stable.",
       "velocity_no_demand_review": "No recent outbound — review dead stock or stop ordering {sku} at {warehouseCode}.",
-      "transfer_execute": "Transfer {quantity} from {sourceWarehouseCode} to {destinationWarehouseCode} for {sku}."
+      "transfer_execute": "Transfer {quantity} from {sourceWarehouseCode} to {destinationWarehouseCode} for {sku}.",
+      "markdown_candidate_review": "Review markdown plan for {sku} at {warehouseCode}; idle {days} days.",
+      "markdown_candidate_execute": "Execute markdown/clearance review for {sku} at {warehouseCode}.",
+      "promotion_risk_review": "Review promotion setup for {sku} at {warehouseCode}.",
+      "promotion_risk_tight_stock": "Promotion may pressure stock cover for {sku} at {warehouseCode}.",
+      "reorder_risk_urgent": "Reorder urgently for {sku} at {warehouseCode}; suggested qty {suggestedQty}.",
+      "reorder_risk_plan": "Plan reorder for {sku} at {warehouseCode}; suggested qty {suggestedQty}.",
+      "trend_review": "Review recent trend shift for {sku} at {warehouseCode}."
     }
   },
   "dialog": {

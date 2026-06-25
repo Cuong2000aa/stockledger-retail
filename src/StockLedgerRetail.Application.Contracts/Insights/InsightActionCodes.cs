@@ -12,4 +12,15 @@ public static class InsightActionCodes
     public const string VelocityNoDemandReview = "velocity_no_demand_review";
 
     public const string TransferExecute = "transfer_execute";
+
+    public const string MarkdownCandidateReview = "markdown_candidate_review";
+    public const string MarkdownCandidateExecute = "markdown_candidate_execute";
+
+    public const string PromotionRiskReview = "promotion_risk_review";
+    public const string PromotionRiskTightStock = "promotion_risk_tight_stock";
+
+    public const string ReorderRiskUrgent = "reorder_risk_urgent";
+    public const string ReorderRiskPlan = "reorder_risk_plan";
+
+    public const string TrendReview = "trend_review";
 }

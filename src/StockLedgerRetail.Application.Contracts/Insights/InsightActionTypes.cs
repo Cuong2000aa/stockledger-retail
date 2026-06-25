@@ -7,6 +7,9 @@ public static class InsightActionTypes
     public const string Markdown = "markdown";
     public const string Replenish = "replenish";
     public const string Transfer = "transfer";
+    public const string Promote = "promote";
+    public const string Risk = "risk";
+    public const string Trend = "trend";
 }
 
 public static class InsightCtaKinds

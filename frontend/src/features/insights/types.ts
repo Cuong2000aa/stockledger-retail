@@ -1,10 +1,22 @@
 import type {
   DeadStockInsight,
+  InsightsExecutiveSummary,
+  MarkdownCandidateInsight,
+  PromotionRiskInsight,
+  ReorderRiskInsight,
   SalesVelocityInsight,
+  TrendSummaryInsight,
   TransferSuggestion,
 } from "@/lib/types";
 
-export type InsightTab = "deadStock" | "velocity" | "transfer";
+export type InsightTab =
+  | "deadStock"
+  | "velocity"
+  | "transfer"
+  | "markdown"
+  | "promotionRisk"
+  | "reorderRisk"
+  | "trend";
 
 export type InsightSeverity = "info" | "warning" | "critical";
 
@@ -24,6 +36,11 @@ export interface InsightFilterState {
 
 export type {
   DeadStockInsight,
+  InsightsExecutiveSummary,
+  MarkdownCandidateInsight,
+  PromotionRiskInsight,
+  ReorderRiskInsight,
   SalesVelocityInsight,
+  TrendSummaryInsight,
   TransferSuggestion,
 };

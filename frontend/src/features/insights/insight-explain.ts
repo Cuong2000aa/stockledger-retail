@@ -29,6 +29,30 @@ export function getInsightSummaryKey(
       values: { alerts: stats.urgentVelocity ?? 0 },
     };
   }
+  if (tab === "markdown") {
+    return {
+      key: stats.deadCount ? "copilot.summaryMarkdown" : "copilot.summaryMarkdownEmpty",
+      values: { count: stats.deadCount ?? 0, capital: stats.tiedCapital ?? 0 },
+    };
+  }
+  if (tab === "promotionRisk") {
+    return {
+      key: stats.urgentVelocity ? "copilot.summaryPromotionRisk" : "copilot.summaryPromotionRiskEmpty",
+      values: { alerts: stats.urgentVelocity ?? 0 },
+    };
+  }
+  if (tab === "reorderRisk") {
+    return {
+      key: stats.urgentVelocity ? "copilot.summaryReorderRisk" : "copilot.summaryReorderRiskEmpty",
+      values: { alerts: stats.urgentVelocity ?? 0 },
+    };
+  }
+  if (tab === "trend") {
+    return {
+      key: stats.transferCount ? "copilot.summaryTrend" : "copilot.summaryTrendEmpty",
+      values: { count: stats.transferCount ?? 0 },
+    };
+  }
   return {
     key: stats.transferCount ? "copilot.summaryTransfer" : "copilot.summaryTransferEmpty",
     values: { count: stats.transferCount ?? 0 },
@@ -51,6 +75,10 @@ export function getInsightRationaleKey(
   if (code.startsWith("velocity_no_demand")) return "copilot.rationale.velocityNoDemand";
   if (code.startsWith("velocity_monitor")) return "copilot.rationale.velocityMonitor";
   if (code.startsWith("transfer_execute")) return "copilot.rationale.transfer";
+  if (code.startsWith("markdown_candidate")) return "copilot.rationale.markdownCandidate";
+  if (code.startsWith("promotion_risk")) return "copilot.rationale.promotionRisk";
+  if (code.startsWith("reorder_risk")) return "copilot.rationale.reorderRisk";
+  if (code.startsWith("trend_review")) return "copilot.rationale.trend";
   return null;
 }
 

@@ -82,4 +82,86 @@ public class InventoryInsightsController : ControllerBase
             reserveCoverDays,
             maxResults,
             cancellationToken);
+
+    [HttpGet("markdown-candidates")]
+    public Task<List<MarkdownCandidateInsightDto>> GetMarkdownCandidatesAsync(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
+        [FromQuery] int daysWithoutOutbound = 60,
+        [FromQuery] decimal minOnHand = 1,
+        [FromQuery] int maxResults = 50,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.GetMarkdownCandidatesAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            daysWithoutOutbound,
+            minOnHand,
+            maxResults,
+            cancellationToken);
+
+    [HttpGet("promotion-risk")]
+    public Task<List<PromotionRiskInsightDto>> GetPromotionRiskAsync(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
+        [FromQuery] int lookbackDays = 30,
+        [FromQuery] int maxResults = 50,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.GetPromotionRiskAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            lookbackDays,
+            maxResults,
+            cancellationToken);
+
+    [HttpGet("reorder-risk")]
+    public Task<List<ReorderRiskInsightDto>> GetReorderRiskAsync(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
+        [FromQuery] int lookbackDays = 30,
+        [FromQuery] int maxResults = 50,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.GetReorderRiskAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            lookbackDays,
+            maxResults,
+            cancellationToken);
+
+    [HttpGet("trend-summary")]
+    public Task<List<TrendSummaryInsightDto>> GetTrendSummaryAsync(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
+        [FromQuery] int lookbackDays = 30,
+        [FromQuery] int maxResults = 50,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.GetTrendSummaryAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            lookbackDays,
+            maxResults,
+            cancellationToken);
+
+    [HttpGet("executive-summary")]
+    public Task<InsightsExecutiveSummaryDto> GetExecutiveSummaryAsync(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
+        [FromQuery] int lookbackDays = 30,
+        [FromQuery] int daysWithoutOutbound = 60,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.GetExecutiveSummaryAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            lookbackDays,
+            daysWithoutOutbound,
+            cancellationToken);
 }

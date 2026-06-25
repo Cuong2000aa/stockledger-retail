@@ -11,6 +11,14 @@ public interface IInsightRecommendationEngine
     InsightRecommendationDto BuildSalesVelocity(SalesVelocityInsightDto insight, InsightRecommendationContext context);
 
     InsightRecommendationDto BuildTransfer(TransferSuggestionDto insight, InsightRecommendationContext context);
+
+    InsightRecommendationDto BuildMarkdownCandidate(MarkdownCandidateInsightDto insight, InsightRecommendationContext context);
+
+    InsightRecommendationDto BuildPromotionRisk(PromotionRiskInsightDto insight, InsightRecommendationContext context);
+
+    InsightRecommendationDto BuildReorderRisk(ReorderRiskInsightDto insight, InsightRecommendationContext context);
+
+    InsightRecommendationDto BuildTrendSummary(TrendSummaryInsightDto insight, InsightRecommendationContext context);
 }
 
 public class InsightRecommendationEngine : IInsightRecommendationEngine
@@ -70,6 +78,204 @@ public class InsightRecommendationEngine : IInsightRecommendationEngine
             Params = parameters,
             Evidence = BuildTransferEvidence(insight),
             Actions = BuildTransferActions(insight)
+        };
+    }
+
+    public InsightRecommendationDto BuildMarkdownCandidate(MarkdownCandidateInsightDto insight, InsightRecommendationContext context)
+    {
+        var parameters = new Dictionary<string, string>
+        {
+            ["sku"] = insight.Sku,
+            ["warehouseCode"] = insight.WarehouseCode,
+            ["days"] = insight.DaysWithoutOutbound.ToString(),
+            ["markdownDepth"] = insight.MarkdownDepthPercent?.ToString("0.##") ?? "0"
+        };
+
+        var actionCode = insight.Severity == "critical"
+            ? InsightActionCodes.MarkdownCandidateExecute
+            : InsightActionCodes.MarkdownCandidateReview;
+
+        return new InsightRecommendationDto
+        {
+            ActionCode = actionCode,
+            ActionType = InsightActionTypes.Markdown,
+            TitleKey = actionCode,
+            Priority = insight.Severity == "critical" ? 88 : 68,
+            Params = parameters,
+            Evidence = new Dictionary<string, string>
+            {
+                ["sku"] = insight.Sku,
+                ["warehouseCode"] = insight.WarehouseCode,
+                ["daysIdle"] = insight.DaysWithoutOutbound.ToString(),
+                ["inventoryValue"] = (insight.EstimatedInventoryValue ?? 0).ToString("0.##")
+            },
+            Actions = new List<InsightRecommendationCtaDto>
+            {
+                NavigateCta(
+                    "view_history",
+                    "view_history",
+                    "/stock-transactions",
+                    new Dictionary<string, string>
+                    {
+                        ["search"] = insight.Sku,
+                        ["warehouseId"] = insight.WarehouseId.ToString()
+                    },
+                    isPrimary: actionCode == InsightActionCodes.MarkdownCandidateReview),
+                NavigateCta(
+                    "review_sku",
+                    "review_sku",
+                    "/product-variants",
+                    new Dictionary<string, string>
+                    {
+                        ["search"] = insight.Sku
+                    },
+                    isPrimary: actionCode == InsightActionCodes.MarkdownCandidateExecute)
+            }
+        };
+    }
+
+    public InsightRecommendationDto BuildPromotionRisk(PromotionRiskInsightDto insight, InsightRecommendationContext context)
+    {
+        var actionCode = insight.Severity == "critical"
+            ? InsightActionCodes.PromotionRiskTightStock
+            : InsightActionCodes.PromotionRiskReview;
+
+        return new InsightRecommendationDto
+        {
+            ActionCode = actionCode,
+            ActionType = InsightActionTypes.Promote,
+            TitleKey = actionCode,
+            Priority = insight.Severity == "critical" ? 85 : 60,
+            Params = new Dictionary<string, string>
+            {
+                ["sku"] = insight.Sku,
+                ["warehouseCode"] = insight.WarehouseCode,
+                ["coverDays"] = insight.EstimatedDaysOfCover?.ToString("0.##") ?? "0"
+            },
+            Evidence = new Dictionary<string, string>
+            {
+                ["sku"] = insight.Sku,
+                ["warehouseCode"] = insight.WarehouseCode,
+                ["discountPercent"] = insight.PromotionDiscountPercent?.ToString("0.##") ?? "0",
+                ["marginRate"] = insight.MarginRateAfterPromotion?.ToString("0.##") ?? "0"
+            },
+            Actions = new List<InsightRecommendationCtaDto>
+            {
+                NavigateCta(
+                    "view_stock",
+                    "view_stock",
+                    "/current-stocks",
+                    new Dictionary<string, string>
+                    {
+                        ["search"] = insight.Sku,
+                        ["warehouseId"] = insight.WarehouseId.ToString()
+                    },
+                    isPrimary: actionCode == InsightActionCodes.PromotionRiskTightStock),
+                NavigateCta(
+                    "review_sku",
+                    "review_sku",
+                    "/product-variants",
+                    new Dictionary<string, string>
+                    {
+                        ["search"] = insight.Sku
+                    })
+            }
+        };
+    }
+
+    public InsightRecommendationDto BuildReorderRisk(ReorderRiskInsightDto insight, InsightRecommendationContext context)
+    {
+        var actionCode = insight.Severity == "critical"
+            ? InsightActionCodes.ReorderRiskUrgent
+            : InsightActionCodes.ReorderRiskPlan;
+
+        var orderedQuantity = Math.Max(1m, Math.Ceiling(insight.SuggestedReorderQuantity ?? 1m));
+        return new InsightRecommendationDto
+        {
+            ActionCode = actionCode,
+            ActionType = InsightActionTypes.Replenish,
+            TitleKey = actionCode,
+            Priority = insight.Severity == "critical" ? 92 : 70,
+            Params = new Dictionary<string, string>
+            {
+                ["sku"] = insight.Sku,
+                ["warehouseCode"] = insight.WarehouseCode,
+                ["suggestedQty"] = orderedQuantity.ToString("0.##")
+            },
+            Evidence = new Dictionary<string, string>
+            {
+                ["sku"] = insight.Sku,
+                ["warehouseCode"] = insight.WarehouseCode,
+                ["onOrder"] = insight.QuantityOnOrder.ToString("0.##"),
+                ["inReceiving"] = insight.QuantityInReceiving.ToString("0.##")
+            },
+            Actions = new List<InsightRecommendationCtaDto>
+            {
+                NavigateCta(
+                    "draft_po",
+                    "draft_po",
+                    "/purchase-orders/new",
+                    new Dictionary<string, string>
+                    {
+                        ["productVariantId"] = insight.ProductVariantId.ToString(),
+                        ["warehouseId"] = insight.WarehouseId.ToString(),
+                        ["orderedQuantity"] = orderedQuantity.ToString("0.##"),
+                        ["note"] = $"[INSIGHT] Reorder {insight.Sku} at {insight.WarehouseCode}"
+                    },
+                    isPrimary: true),
+                NavigateCta(
+                    "view_stock",
+                    "view_stock",
+                    "/current-stocks",
+                    new Dictionary<string, string>
+                    {
+                        ["search"] = insight.Sku,
+                        ["warehouseId"] = insight.WarehouseId.ToString()
+                    })
+            }
+        };
+    }
+
+    public InsightRecommendationDto BuildTrendSummary(TrendSummaryInsightDto insight, InsightRecommendationContext context)
+    {
+        return new InsightRecommendationDto
+        {
+            ActionCode = InsightActionCodes.TrendReview,
+            ActionType = InsightActionTypes.Trend,
+            TitleKey = InsightActionCodes.TrendReview,
+            Priority = insight.Severity == "warning" ? 58 : 35,
+            Params = new Dictionary<string, string>
+            {
+                ["sku"] = insight.Sku,
+                ["warehouseCode"] = insight.WarehouseCode
+            },
+            Evidence = new Dictionary<string, string>
+            {
+                ["inventoryDelta"] = insight.InventoryValueDelta.ToString("0.##"),
+                ["outboundTrend"] = insight.OutboundTrendPercent.ToString("0.##"),
+                ["priceTrend"] = insight.PriceTrendPercent?.ToString("0.##") ?? "0"
+            },
+            Actions = new List<InsightRecommendationCtaDto>
+            {
+                NavigateCta(
+                    "view_history",
+                    "view_history",
+                    "/stock-transactions",
+                    new Dictionary<string, string>
+                    {
+                        ["search"] = insight.Sku,
+                        ["warehouseId"] = insight.WarehouseId.ToString()
+                    },
+                    isPrimary: true),
+                NavigateCta(
+                    "open_reports",
+                    "open_reports",
+                    "/reports",
+                    new Dictionary<string, string>
+                    {
+                        ["search"] = insight.Sku
+                    })
+            }
         };
     }
 

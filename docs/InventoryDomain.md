@@ -123,7 +123,27 @@ Optional API scope headers: `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
 
 ## Inventory Insights (Read-Only)
 
-Rule-based APIs: dead stock, sales velocity, transfer suggestions. Filterable by `brandId` and `regionCode`. Results may be served from `InsightSnapshot` cache. See [MultiBrand.md](MultiBrand.md).
+Pricing-aware, rule-based decision support — **read-only**, no stock posting.
+
+**Executive layer:** `GET /api/inventory-insights/executive-summary` aggregates KPIs (dead stock value, velocity count, transfer/markdown/promotion/reorder risk, trend deltas).
+
+**Seven analytics views:**
+
+| View | Endpoint |
+|------|----------|
+| Dead stock | `.../dead-stock` |
+| Sales velocity | `.../sales-velocity` |
+| Transfer suggestions | `.../transfer-suggestions` |
+| Markdown candidates | `.../markdown-candidates` |
+| Promotion risk | `.../promotion-risk` |
+| Reorder risk | `.../reorder-risk` |
+| Trend summary | `.../trend-summary` |
+
+DTOs include selling price (before/after VAT), cost, margin, and inventory value from `ProductPrice`, SKU cache, and `InventoryValuationSnapshot`. `InsightRecommendationEngine` attaches drill-down CTAs (stock history, SKU, reports, draft transfer/PO).
+
+Filterable by `warehouseId`, `brandId`, `regionCode`. Results may be served from `InsightSnapshot` cache (refresh via admin operations).
+
+Full reference: [Insights.md](Insights.md) · [Insights.vi.md](Insights.vi.md) · [MultiBrand.md](MultiBrand.md).
 
 ---
 
