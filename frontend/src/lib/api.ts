@@ -26,7 +26,9 @@ import type {
   StockCountLineInput,
   StockTransaction,
   Supplier,
+  UnitBarcodeStatus,
   UpdateDocumentDraftInput,
+  VariantUnitBarcode,
   UpdateProductInput,
   UpdateProductVariantInput,
   UpdateSupplierInput,
@@ -111,6 +113,9 @@ export const fetchProductVariants = (page = 1, pageSize = 50, search?: string) =
       params: { page, pageSize, search: search || undefined },
     })
     .then((r) => r.data);
+
+export const fetchProductVariant = (id: string) =>
+  api.get<ProductVariant>(`/api/product-variants/${id}`).then((r) => r.data);
 
 export const createProductVariant = (input: CreateProductVariantInput) =>
   api.post<ProductVariant>("/api/product-variants", input).then((r) => r.data);
@@ -273,6 +278,29 @@ export const fetchCurrentStocks = (
     })
     .then((r) => r.data);
 
+export const fetchUnitBarcodes = (
+  productVariantId: string,
+  warehouseId: string,
+  options?: {
+    status?: UnitBarcodeStatus;
+    page?: number;
+    pageSize?: number;
+    search?: string;
+  }
+) =>
+  api
+    .get<PagedResult<VariantUnitBarcode>>("/api/unit-barcodes", {
+      params: {
+        productVariantId,
+        warehouseId,
+        status: options?.status,
+        page: options?.page ?? 1,
+        pageSize: options?.pageSize ?? 50,
+        search: options?.search || undefined,
+      },
+    })
+    .then((r) => r.data);
+
 export const fetchStockTransactions = (
   warehouseId?: string,
   productVariantId?: string,
@@ -363,12 +391,33 @@ export const fetchGoodsReceipts = (
 export const fetchGoodsReceipt = (id: string) =>
   api.get<GoodsReceipt>(`/api/goods-receipts/${id}`).then((r) => r.data);
 
+/** Approved receipts with line barcodes — used to prefill receive PO form. */
+export const fetchApprovedGoodsReceiptsForPo = async (purchaseOrderId: string) => {
+  const list = await fetchGoodsReceipts(purchaseOrderId, undefined, 1, 100);
+  const approved = list.items.filter(
+    (gr) => gr.status === GoodsReceiptStatus.Approved
+  );
+
+  if (approved.length === 0) {
+    return [] as GoodsReceipt[];
+  }
+
+  return Promise.all(approved.map((gr) => fetchGoodsReceipt(gr.id)));
+};
+
 export const createGoodsReceipt = (body: {
   purchaseOrderId: string;
   receiptDate?: string;
   referenceNo?: string;
   note?: string;
-  lines: { purchaseOrderLineId: string; receivedQuantity: number; note?: string }[];
+  lines: {
+    purchaseOrderLineId: string;
+    receivedQuantity: number;
+    barcodes?: string[];
+    lotCode?: string;
+    expiryDate?: string;
+    note?: string;
+  }[];
 }) => api.post<GoodsReceipt>("/api/goods-receipts", body).then((r) => r.data);
 
 export const approveGoodsReceipt = (id: string) =>

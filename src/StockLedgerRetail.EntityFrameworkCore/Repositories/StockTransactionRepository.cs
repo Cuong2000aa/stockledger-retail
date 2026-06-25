@@ -95,10 +95,10 @@ public class StockTransactionRepository : IStockTransactionRepository
 
     public Task<List<StockTransaction>> GetByDateRangeAsync(
         DateTime fromDate,
-        DateTime toDate,
+        DateTime toDateExclusive,
         CancellationToken cancellationToken = default) =>
         _dbContext.StockTransactions
-            .Where(x => x.TransactionDate >= fromDate && x.TransactionDate <= toDate)
+            .Where(x => x.TransactionDate >= fromDate && x.TransactionDate < toDateExclusive)
             .ToListAsync(cancellationToken);
 
     public async Task<List<StockLedgerAggregate>> GetAggregatedQuantitiesAsync(

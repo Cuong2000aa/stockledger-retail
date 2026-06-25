@@ -1,4 +1,5 @@
 using StockLedgerRetail.Analytics;
+using StockLedgerRetail.Application.Reports;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
 using StockLedgerRetail.Services;
@@ -75,15 +76,17 @@ public class AnalyticsAppService : IAnalyticsAppService
         DateTime? toDate = null,
         CancellationToken cancellationToken = default)
     {
-        var to = toDate ?? DateTime.UtcNow;
-        var from = fromDate ?? to.AddDays(-30);
+        var dateRange = ReportDateRange.FromOptionalUserInput(fromDate, toDate);
 
-        var transactions = await _stockTransactionRepository.GetByDateRangeAsync(from, to, cancellationToken);
+        var transactions = await _stockTransactionRepository.GetByDateRangeAsync(
+            dateRange.FromInclusiveUtc,
+            dateRange.ToExclusiveUtc,
+            cancellationToken);
 
         return new MovementSummaryDto
         {
-            FromDate = from,
-            ToDate = to,
+            FromDate = dateRange.FromInclusiveUtc,
+            ToDate = dateRange.ToDateForDisplay,
             TotalIn = transactions.Where(t => t.QuantityDelta > 0).Sum(t => t.QuantityDelta),
             TotalOut = Math.Abs(transactions.Where(t => t.QuantityDelta < 0).Sum(t => t.QuantityDelta)),
             TransactionCount = transactions.Count

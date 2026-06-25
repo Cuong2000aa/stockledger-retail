@@ -70,6 +70,15 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<LotStock> LotStocks => Set<LotStock>();
 
+    public DbSet<VariantUnitBarcode> VariantUnitBarcodes => Set<VariantUnitBarcode>();
+
+    public DbSet<InventoryDocumentLineBarcode> InventoryDocumentLineBarcodes =>
+        Set<InventoryDocumentLineBarcode>();
+
+    public DbSet<PurchaseOrderLineBarcode> PurchaseOrderLineBarcodes => Set<PurchaseOrderLineBarcode>();
+
+    public DbSet<GoodsReceiptLineBarcode> GoodsReceiptLineBarcodes => Set<GoodsReceiptLineBarcode>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(StockLedgerRetailDbContext).Assembly);

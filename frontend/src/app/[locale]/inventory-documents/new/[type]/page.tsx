@@ -1,24 +1,33 @@
 "use client";
 
 import { AsyncSearchSelect } from "@/components/AsyncSearchSelect";
+import { LineBarcodeSection } from "@/components/LineBarcodeSection";
+import {
+  DocumentFormShell,
+  DocumentLineCard,
+  FormField,
+  FormSection,
+} from "@/components/document-form";
 import { Link, useRouter } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
 import { useNotify } from "@/hooks/useNotify";
+import { useVariantCache } from "@/hooks/useVariantCache";
 import {
   createAdjustment,
   createStockCount,
   createStockIn,
   createStockOut,
   createTransfer,
-  fetchProductVariants,
   fetchWarehouses,
 } from "@/lib/api";
 import { validateInventoryDocumentForm } from "@/lib/validation";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
+import { parseUnitBarcodes } from "@/lib/unitBarcode";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { use, useState, useCallback, useEffect } from "react";
+import { use, useState, useCallback, useEffect, useMemo } from "react";
 import { useInsightPrefill } from "@/features/insights/useInsightPrefill";
+import { ListOrdered, Plus, Warehouse } from "lucide-react";
 
 type DocKind =
   | "stock-in"
@@ -32,6 +41,7 @@ type LineState = {
   quantity: number;
   adjustmentQuantity: number;
   countedQuantity: number;
+  barcodesText: string;
 };
 
 const emptyLine = (): LineState => ({
@@ -39,6 +49,7 @@ const emptyLine = (): LineState => ({
   quantity: 1,
   adjustmentQuantity: 1,
   countedQuantity: 0,
+  barcodesText: "",
 });
 
 export default function NewDocumentPage({
@@ -72,21 +83,13 @@ export default function NewDocumentPage({
       note: string;
       referenceNo: string;
     }>) => {
-      if (values.warehouseId) {
-        setWarehouseId(values.warehouseId);
-      }
-      if (values.sourceWarehouseId) {
-        setSourceWarehouseId(values.sourceWarehouseId);
-      }
+      if (values.warehouseId) setWarehouseId(values.warehouseId);
+      if (values.sourceWarehouseId) setSourceWarehouseId(values.sourceWarehouseId);
       if (values.destinationWarehouseId) {
         setDestinationWarehouseId(values.destinationWarehouseId);
       }
-      if (values.note) {
-        setNote(values.note);
-      }
-      if (values.referenceNo) {
-        setReferenceNo(values.referenceNo);
-      }
+      if (values.note) setNote(values.note);
+      if (values.referenceNo) setReferenceNo(values.referenceNo);
       if (values.productVariantId || values.quantity) {
         setLines([
           {
@@ -94,6 +97,7 @@ export default function NewDocumentPage({
             quantity: values.quantity ?? 1,
             adjustmentQuantity: values.quantity ?? 1,
             countedQuantity: values.quantity ?? 0,
+            barcodesText: "",
           },
         ]);
       }
@@ -105,20 +109,26 @@ export default function NewDocumentPage({
 
   const [debouncedWarehouseSearch, setDebouncedWarehouseSearch] = useState("");
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedWarehouseSearch(warehouseSearch.trim()), 300);
+    const timer = window.setTimeout(
+      () => setDebouncedWarehouseSearch(warehouseSearch.trim()),
+      300
+    );
     return () => window.clearTimeout(timer);
   }, [warehouseSearch]);
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses-doc", debouncedWarehouseSearch],
-    queryFn: () => fetchWarehouses(1, 100, debouncedWarehouseSearch || undefined),
+    queryFn: () =>
+      fetchWarehouses(1, 100, debouncedWarehouseSearch || undefined),
     staleTime: 60_000,
   });
 
-  const loadVariantOptions = useCallback(async (search: string) => {
-    const result = await fetchProductVariants(1, 50, search || undefined);
-    return result.items.map((v) => ({ id: v.id, label: v.sku }));
-  }, []);
+  const lineVariantIds = useMemo(
+    () => lines.map((line) => line.productVariantId),
+    [lines]
+  );
+  const { variantById, loadVariantOptions, variants } =
+    useVariantCache(lineVariantIds);
 
   const titleMap: Record<DocKind, string> = {
     "stock-in": t("createStockIn"),
@@ -143,6 +153,7 @@ export default function NewDocumentPage({
           lines: lines.map((l) => ({
             productVariantId: l.productVariantId,
             quantity: l.quantity,
+            barcodes: parseUnitBarcodes(l.barcodesText),
           })),
         });
       }
@@ -155,6 +166,7 @@ export default function NewDocumentPage({
           lines: lines.map((l) => ({
             productVariantId: l.productVariantId,
             quantity: l.quantity,
+            barcodes: parseUnitBarcodes(l.barcodesText),
           })),
         });
       }
@@ -168,6 +180,7 @@ export default function NewDocumentPage({
           lines: lines.map((l) => ({
             productVariantId: l.productVariantId,
             quantity: l.quantity,
+            barcodes: parseUnitBarcodes(l.barcodesText),
           })),
         });
       }
@@ -180,6 +193,7 @@ export default function NewDocumentPage({
           lines: lines.map((l) => ({
             productVariantId: l.productVariantId,
             countedQuantity: l.countedQuantity,
+            barcodes: parseUnitBarcodes(l.barcodesText),
           })),
         });
       }
@@ -192,12 +206,11 @@ export default function NewDocumentPage({
         lines: lines.map((l) => ({
           productVariantId: l.productVariantId,
           adjustmentQuantity: l.adjustmentQuantity,
+          barcodes: parseUnitBarcodes(l.barcodesText),
         })),
       });
     },
-    onSuccess: (doc) => {
-      router.push(`/inventory-documents/${doc.id}`);
-    },
+    onSuccess: (doc) => router.push(`/inventory-documents/${doc.id}`),
     onError: notifyError,
   });
 
@@ -209,25 +222,44 @@ export default function NewDocumentPage({
       destinationWarehouseId,
       reason,
       lines,
-      hasVariants: true,
+      hasVariants: variants.length > 0,
+      variantById,
     });
 
-    if (notifyValidation(issues)) {
-      return;
-    }
-
+    if (notifyValidation(issues)) return;
     mutation.mutate();
   };
 
   const updateLine = (idx: number, patch: Partial<LineState>) => {
     const next = [...lines];
-    next[idx] = { ...next[idx], ...patch };
+    const merged = { ...next[idx], ...patch };
+    if (patch.productVariantId !== undefined) {
+      merged.barcodesText = "";
+    }
+    next[idx] = merged;
     setLines(next);
   };
 
-  const addLine = () => {
-    setLines([...lines, emptyLine()]);
-  };
+  const lineQuantity = (line: LineState) =>
+    kind === "adjustment"
+      ? line.adjustmentQuantity
+      : kind === "stock-count"
+        ? line.countedQuantity
+        : line.quantity;
+
+  const warehouseLabel =
+    kind === "stock-in"
+      ? t("destinationWarehouse")
+      : kind === "stock-out"
+        ? t("sourceWarehouse")
+        : t("warehouse");
+
+  const quantityLabel =
+    kind === "adjustment"
+      ? t("adjustmentQuantity")
+      : kind === "stock-count"
+        ? t("countedQuantity")
+        : t("quantity");
 
   return (
     <div>
@@ -240,199 +272,220 @@ export default function NewDocumentPage({
         }
       />
 
-      <div className="card max-w-3xl p-6">
-        <div className="space-y-4">
-          {kind === "transfer" ? (
-            <>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("sourceWarehouse")} *
-                </label>
-                <input
-                  type="search"
-                  className="input mb-1"
-                  placeholder={tCommon("search")}
-                  value={warehouseSearch}
-                  onChange={(e) => setWarehouseSearch(e.target.value)}
-                />
-                <select
-                  className="input"
-                  value={sourceWarehouseId}
-                  onChange={(e) => setSourceWarehouseId(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {warehouses?.items.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {formatWarehouseOptionLabel(w)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("destinationWarehouse")} *
-                </label>
-                <select
-                  className="input"
-                  value={destinationWarehouseId}
-                  onChange={(e) => setDestinationWarehouseId(e.target.value)}
-                >
-                  <option value="">—</option>
-                  {warehouses?.items.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {formatWarehouseOptionLabel(w)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
-          ) : (
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                {kind === "stock-in"
-                  ? t("destinationWarehouse")
-                  : kind === "stock-out"
-                    ? t("sourceWarehouse")
-                    : t("warehouse")}{" "}
-                *
-              </label>
-              <input
-                type="search"
-                className="input mb-1"
-                placeholder={tCommon("search")}
-                value={warehouseSearch}
-                onChange={(e) => setWarehouseSearch(e.target.value)}
-              />
-              <select
-                className="input"
-                value={warehouseId}
-                onChange={(e) => setWarehouseId(e.target.value)}
-              >
-                <option value="">—</option>
-                {warehouses?.items.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {formatWarehouseOptionLabel(w)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {kind === "adjustment" && (
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                {t("reason")} *
-              </label>
-              <input
-                className="input"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1 block text-sm">{t("referenceNo")}</label>
-            <input
-              className="input"
-              value={referenceNo}
-              onChange={(e) => setReferenceNo(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm">{t("note")}</label>
-            <textarea
-              className="input"
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium">{t("lines")} *</span>
-              <button
-                type="button"
-                className="text-sm text-brand-600 hover:underline"
-                onClick={addLine}
-              >
-                + {t("addLine")}
-              </button>
-            </div>
-            {lines.map((line, idx) => (
-              <div
-                key={idx}
-                className="mb-3 flex flex-wrap gap-2 rounded-lg border border-slate-200 p-3"
-              >
-                <AsyncSearchSelect
-                  value={line.productVariantId}
-                  onChange={(id) => updateLine(idx, { productVariantId: id })}
-                  placeholder={tCommon("search")}
-                  emptyLabel={t("selectSku")}
-                  queryKeyPrefix={`doc-variant-${idx}`}
-                  fetchOptions={loadVariantOptions}
-                  className="input min-w-[200px] flex-1"
-                />
-                {kind === "adjustment" ? (
-                  <input
-                    type="number"
-                    className="input w-32"
-                    placeholder={t("adjustmentQuantity")}
-                    value={line.adjustmentQuantity}
-                    onChange={(e) =>
-                      updateLine(idx, {
-                        adjustmentQuantity: Number(e.target.value),
-                      })
-                    }
-                  />
-                ) : kind === "stock-count" ? (
-                  <input
-                    type="number"
-                    min={0}
-                    className="input w-32"
-                    placeholder={t("countedQuantity")}
-                    value={line.countedQuantity}
-                    onChange={(e) =>
-                      updateLine(idx, {
-                        countedQuantity: Number(e.target.value),
-                      })
-                    }
-                  />
+      <DocumentFormShell
+        footer={
+          <>
+            <Link href="/inventory-documents" className="btn-secondary">
+              {tCommon("cancel")}
+            </Link>
+            <button
+              className="btn-primary"
+              disabled={mutation.isPending}
+              onClick={handleSave}
+            >
+              {tCommon("save")}
+            </button>
+          </>
+        }
+      >
+        <div className="grid gap-6 lg:grid-cols-5">
+          <div className="space-y-6 lg:col-span-2">
+            <FormSection title={tCommon("formGeneralInfo")} icon={Warehouse}>
+              <div className="space-y-4">
+                {kind === "transfer" ? (
+                  <>
+                    <FormField label={t("sourceWarehouse")} required>
+                      <input
+                        type="search"
+                        className="input mb-2"
+                        placeholder={tCommon("search")}
+                        value={warehouseSearch}
+                        onChange={(e) => setWarehouseSearch(e.target.value)}
+                      />
+                      <select
+                        className="input"
+                        value={sourceWarehouseId}
+                        onChange={(e) => setSourceWarehouseId(e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {warehouses?.items.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {formatWarehouseOptionLabel(w)}
+                          </option>
+                        ))}
+                      </select>
+                    </FormField>
+                    <FormField label={t("destinationWarehouse")} required>
+                      <select
+                        className="input"
+                        value={destinationWarehouseId}
+                        onChange={(e) =>
+                          setDestinationWarehouseId(e.target.value)
+                        }
+                      >
+                        <option value="">—</option>
+                        {warehouses?.items.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {formatWarehouseOptionLabel(w)}
+                          </option>
+                        ))}
+                      </select>
+                    </FormField>
+                  </>
                 ) : (
+                  <FormField label={warehouseLabel} required>
+                    <input
+                      type="search"
+                      className="input mb-2"
+                      placeholder={tCommon("search")}
+                      value={warehouseSearch}
+                      onChange={(e) => setWarehouseSearch(e.target.value)}
+                    />
+                    <select
+                      className="input"
+                      value={warehouseId}
+                      onChange={(e) => setWarehouseId(e.target.value)}
+                    >
+                      <option value="">—</option>
+                      {warehouses?.items.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {formatWarehouseOptionLabel(w)}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                )}
+
+                {kind === "adjustment" && (
+                  <FormField label={t("reason")} required>
+                    <input
+                      className="input"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </FormField>
+                )}
+
+                <FormField label={t("referenceNo")}>
                   <input
-                    type="number"
-                    min={1}
-                    className="input w-28"
-                    value={line.quantity}
-                    onChange={(e) =>
-                      updateLine(idx, { quantity: Number(e.target.value) })
-                    }
+                    className="input"
+                    value={referenceNo}
+                    onChange={(e) => setReferenceNo(e.target.value)}
                   />
-                )}
-                {lines.length > 1 && (
-                  <button
-                    type="button"
-                    className="text-sm text-red-600"
-                    onClick={() => setLines(lines.filter((_, i) => i !== idx))}
-                  >
-                    {tCommon("delete")}
-                  </button>
-                )}
+                </FormField>
+                <FormField label={t("note")}>
+                  <textarea
+                    className="input min-h-[88px] resize-y"
+                    rows={3}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </FormField>
               </div>
-            ))}
+            </FormSection>
           </div>
 
-          <button
-            className="btn-primary"
-            disabled={mutation.isPending}
-            onClick={handleSave}
-          >
-            {tCommon("save")}
-          </button>
+          <div className="lg:col-span-3">
+            <FormSection
+              title={`${t("lines")} *`}
+              description={tCommon("formLinesHint")}
+              icon={ListOrdered}
+              action={
+                <button
+                  type="button"
+                  className="btn-secondary !px-3 !py-1.5 !text-xs"
+                  onClick={() => setLines([...lines, emptyLine()])}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {t("addLine")}
+                </button>
+              }
+            >
+              <div className="space-y-3">
+                {lines.map((line, idx) => (
+                  <DocumentLineCard
+                    key={idx}
+                    index={idx + 1}
+                    canRemove={lines.length > 1}
+                    onRemove={() => setLines(lines.filter((_, i) => i !== idx))}
+                  >
+                    <div className="grid gap-3 sm:grid-cols-12">
+                      <FormField
+                        label={t("selectSku")}
+                        required
+                        className="sm:col-span-8"
+                      >
+                        <AsyncSearchSelect
+                          value={line.productVariantId}
+                          onChange={(id) =>
+                            updateLine(idx, { productVariantId: id })
+                          }
+                          placeholder={tCommon("search")}
+                          emptyLabel={t("selectSku")}
+                          queryKeyPrefix={`doc-variant-${idx}`}
+                          fetchOptions={loadVariantOptions}
+                          className="input w-full"
+                        />
+                      </FormField>
+                      <FormField
+                        label={quantityLabel}
+                        required
+                        className="sm:col-span-4"
+                      >
+                        {kind === "adjustment" ? (
+                          <input
+                            type="number"
+                            className="input"
+                            value={line.adjustmentQuantity}
+                            onChange={(e) =>
+                              updateLine(idx, {
+                                adjustmentQuantity: Number(e.target.value),
+                              })
+                            }
+                          />
+                        ) : kind === "stock-count" ? (
+                          <input
+                            type="number"
+                            min={0}
+                            className="input"
+                            value={line.countedQuantity}
+                            onChange={(e) =>
+                              updateLine(idx, {
+                                countedQuantity: Number(e.target.value),
+                              })
+                            }
+                          />
+                        ) : (
+                          <input
+                            type="number"
+                            min={1}
+                            className="input"
+                            value={line.quantity}
+                            onChange={(e) =>
+                              updateLine(idx, {
+                                quantity: Number(e.target.value),
+                              })
+                            }
+                          />
+                        )}
+                      </FormField>
+                    </div>
+                    <LineBarcodeSection
+                      productVariantId={line.productVariantId}
+                      variant={variantById.get(line.productVariantId)}
+                      quantity={lineQuantity(line)}
+                      value={line.barcodesText}
+                      onChange={(text) =>
+                        updateLine(idx, { barcodesText: text })
+                      }
+                    />
+                  </DocumentLineCard>
+                ))}
+              </div>
+            </FormSection>
+          </div>
         </div>
-      </div>
+      </DocumentFormShell>
     </div>
   );
 }

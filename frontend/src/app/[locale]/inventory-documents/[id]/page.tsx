@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
+import { formatUnitBarcodes } from "@/lib/unitBarcode";
 import {
   InventoryDocumentStatus,
   InventoryDocumentType,
@@ -347,6 +348,7 @@ export default function DocumentDetailPage({
               <tr>
                 <th>{t("productVariant")}</th>
                 <th>{quantityHeader}</th>
+                <th>{t("barcode")}</th>
                 {isStockCount && isDraft && (
                   <>
                     <th>{t("systemQuantity")}</th>
@@ -364,6 +366,11 @@ export default function DocumentDetailPage({
                   <tr key={line.id}>
                     <td className="font-mono text-xs">{line.sku}</td>
                     <td>{formatNumber(line.quantity, locale)}</td>
+                    <td className="max-w-xs font-mono text-xs break-all">
+                      {(line.barcodes?.length ?? 0) > 0
+                        ? formatUnitBarcodes(line.barcodes!)
+                        : "—"}
+                    </td>
                     {isStockCount && isDraft && (
                       <>
                         <td>{formatNumber(onHand, locale)}</td>

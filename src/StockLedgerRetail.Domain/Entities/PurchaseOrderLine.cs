@@ -19,4 +19,7 @@ public class PurchaseOrderLine
     public PurchaseOrder? PurchaseOrder { get; set; }
 
     public ProductVariant? ProductVariant { get; set; }
+
+    public ICollection<PurchaseOrderLineBarcode> UnitBarcodes { get; set; } =
+        new List<PurchaseOrderLineBarcode>();
 }

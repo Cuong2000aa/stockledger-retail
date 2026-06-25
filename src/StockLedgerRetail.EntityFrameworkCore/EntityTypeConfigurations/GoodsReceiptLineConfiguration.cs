@@ -14,6 +14,7 @@ public class GoodsReceiptLineConfiguration : IEntityTypeConfiguration<GoodsRecei
 
         builder.Property(x => x.ReceivedQuantity).HasPrecision(18, 4);
         builder.Property(x => x.UnitCost).HasPrecision(18, 4);
+        builder.Property(x => x.LotCode).HasMaxLength(64);
         builder.Property(x => x.Note).HasMaxLength(500);
 
         builder.HasIndex(x => x.GoodsReceiptId);

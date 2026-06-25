@@ -1,4 +1,5 @@
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Application.Inventory;
 using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
@@ -20,26 +21,35 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
     private readonly IPurchaseOrderRepository _purchaseOrderRepository;
     private readonly IInventoryDocumentRepository _inventoryDocumentRepository;
     private readonly IInventoryDocumentAppService _inventoryDocumentAppService;
+    private readonly IProductVariantRepository _productVariantRepository;
     private readonly ITransactionAuditService _transactionAuditService;
     private readonly IAuditContext _auditContext;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUnitBarcodeStockService _unitBarcodeStockService;
+    private readonly IPermissionAuthorizationService _permissionAuthorizationService;
 
     public GoodsReceiptAppService(
         IGoodsReceiptRepository goodsReceiptRepository,
         IPurchaseOrderRepository purchaseOrderRepository,
         IInventoryDocumentRepository inventoryDocumentRepository,
         IInventoryDocumentAppService inventoryDocumentAppService,
+        IProductVariantRepository productVariantRepository,
         ITransactionAuditService transactionAuditService,
         IAuditContext auditContext,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IUnitBarcodeStockService unitBarcodeStockService,
+        IPermissionAuthorizationService permissionAuthorizationService)
     {
         _goodsReceiptRepository = goodsReceiptRepository;
         _purchaseOrderRepository = purchaseOrderRepository;
         _inventoryDocumentRepository = inventoryDocumentRepository;
         _inventoryDocumentAppService = inventoryDocumentAppService;
+        _productVariantRepository = productVariantRepository;
         _transactionAuditService = transactionAuditService;
         _auditContext = auditContext;
         _unitOfWork = unitOfWork;
+        _unitBarcodeStockService = unitBarcodeStockService;
+        _permissionAuthorizationService = permissionAuthorizationService;
     }
 
     public async Task<PagedResultDto<GoodsReceiptDto>> GetListAsync(
@@ -88,6 +98,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         }
 
         ValidateReceiptLines(input.Lines, po);
+        await ValidateReceiptLineBarcodesAsync(input.Lines, po, cancellationToken);
 
         var now = DateTime.UtcNow;
         var grId = Guid.NewGuid();
@@ -105,22 +116,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
             Note = input.Note?.Trim(),
             CreatedBy = _auditContext.UserName,
             CreatedAt = now,
-            Lines = input.Lines.Select(line =>
-            {
-                var poLine = po.Lines.First(l => l.Id == line.PurchaseOrderLineId);
-                return new GoodsReceiptLine
-                {
-                    Id = Guid.NewGuid(),
-                    GoodsReceiptId = grId,
-                    PurchaseOrderLineId = line.PurchaseOrderLineId,
-                    ProductVariantId = poLine.ProductVariantId,
-                    ReceivedQuantity = line.ReceivedQuantity,
-                    UnitCost = poLine.UnitCost,
-                    LotCode = line.LotCode?.Trim(),
-                    ExpiryDate = line.ExpiryDate,
-                    Note = line.Note?.Trim()
-                };
-            }).ToList()
+            Lines = await BuildGoodsReceiptLinesAsync(grId, input.Lines, po, cancellationToken)
         };
 
         await _goodsReceiptRepository.InsertAsync(gr, cancellationToken);
@@ -141,6 +137,10 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
             throw new InvalidOperationException("Only draft goods receipts can be approved.");
         }
 
+        await _permissionAuthorizationService.EnsureCanApproveInventoryDocumentAsync(
+            gr.CreatedBy,
+            cancellationToken);
+
         var po = await _purchaseOrderRepository.GetByIdWithLinesAsync(gr.PurchaseOrderId, cancellationToken)
             ?? throw new InvalidOperationException("Linked purchase order was not found.");
 
@@ -158,12 +158,31 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
                 ct);
 
             InventoryDocumentDto stockInDoc;
+            var applyReceiptToPo = false;
+
             if (existingDoc is not null)
             {
-                stockInDoc = await _inventoryDocumentAppService.GetAsync(existingDoc.Id, ct);
-                if (existingDoc.Status is InventoryDocumentStatus.Draft)
+                switch (existingDoc.Status)
                 {
-                    stockInDoc = await _inventoryDocumentAppService.ApproveAsync(existingDoc.Id, ct);
+                    case InventoryDocumentStatus.Draft:
+                        if (string.IsNullOrWhiteSpace(existingDoc.SourceSystem))
+                        {
+                            existingDoc.SourceSystem = ProcurementSourceSystem;
+                            await _inventoryDocumentRepository.UpdateAsync(existingDoc, ct);
+                            await _inventoryDocumentRepository.SaveChangesAsync(ct);
+                        }
+
+                        stockInDoc = await _inventoryDocumentAppService.ApproveAsync(existingDoc.Id, ct);
+                        applyReceiptToPo = true;
+                        break;
+                    case InventoryDocumentStatus.Approved:
+                    case InventoryDocumentStatus.Completed:
+                        stockInDoc = await _inventoryDocumentAppService.GetAsync(existingDoc.Id, ct);
+                        applyReceiptToPo = !gr.InventoryDocumentId.HasValue;
+                        break;
+                    default:
+                        throw new InvalidOperationException(
+                            $"Cannot approve goods receipt because linked stock-in is in status '{existingDoc.Status}'.");
                 }
             }
             else
@@ -181,31 +200,36 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
                         Quantity = l.ReceivedQuantity,
                         UnitCost = l.UnitCost,
                         LotCode = l.LotCode,
+                        Barcodes = BarcodeNormalization.FromLine(l),
                         ExpiryDate = l.ExpiryDate,
                         Note = l.Note
                     }).ToList()
                 }, ct);
 
                 stockInDoc = await _inventoryDocumentAppService.ApproveAsync(created.Id, ct);
+                applyReceiptToPo = true;
             }
 
-            foreach (var grLine in gr.Lines)
+            if (applyReceiptToPo)
             {
-                var poLine = po.Lines.First(l => l.Id == grLine.PurchaseOrderLineId);
-                poLine.ReceivedQuantity += grLine.ReceivedQuantity;
+                foreach (var grLine in gr.Lines)
+                {
+                    var poLine = po.Lines.First(l => l.Id == grLine.PurchaseOrderLineId);
+                    poLine.ReceivedQuantity += grLine.ReceivedQuantity;
+                }
+
+                po.Status = po.Lines.All(l => l.ReceivedQuantity >= l.OrderedQuantity)
+                    ? PurchaseOrderStatus.Received
+                    : PurchaseOrderStatus.PartiallyReceived;
+
+                await _purchaseOrderRepository.UpdateAsync(po, ct);
             }
-
-            po.Status = po.Lines.All(l => l.ReceivedQuantity >= l.OrderedQuantity)
-                ? PurchaseOrderStatus.Received
-                : PurchaseOrderStatus.PartiallyReceived;
-
             var now = DateTime.UtcNow;
             gr.Status = GoodsReceiptStatus.Approved;
             gr.InventoryDocumentId = stockInDoc.Id;
             gr.ApprovedBy = _auditContext.UserName;
             gr.ApprovedAt = now;
 
-            await _purchaseOrderRepository.UpdateAsync(po, ct);
             await _goodsReceiptRepository.UpdateAsync(gr, ct);
         }, cancellationToken);
 
@@ -271,6 +295,80 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         }
     }
 
+    private async Task<List<GoodsReceiptLine>> BuildGoodsReceiptLinesAsync(
+        Guid goodsReceiptId,
+        List<CreateGoodsReceiptLineDto> lines,
+        PurchaseOrder po,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<GoodsReceiptLine>();
+
+        foreach (var line in lines)
+        {
+            if (line.ReceivedQuantity <= 0)
+            {
+                continue;
+            }
+
+            var poLine = po.Lines.First(l => l.Id == line.PurchaseOrderLineId);
+            var variant = await _productVariantRepository.GetByIdAsync(poLine.ProductVariantId, cancellationToken)
+                ?? throw new InvalidOperationException($"Product variant '{poLine.ProductVariantId}' was not found.");
+
+            var barcodes = BarcodeLineValidator.RequireNormalizedBarcodes(
+                variant,
+                line.ReceivedQuantity,
+                line.Barcodes);
+
+            var lineId = Guid.NewGuid();
+            result.Add(new GoodsReceiptLine
+            {
+                Id = lineId,
+                GoodsReceiptId = goodsReceiptId,
+                PurchaseOrderLineId = line.PurchaseOrderLineId,
+                ProductVariantId = poLine.ProductVariantId,
+                ReceivedQuantity = line.ReceivedQuantity,
+                UnitCost = poLine.UnitCost,
+                LotCode = line.LotCode?.Trim(),
+                ExpiryDate = line.ExpiryDate,
+                Note = line.Note?.Trim(),
+                UnitBarcodes = DocumentLineBarcodeFactory.CreateForGoodsReceiptLine(lineId, barcodes)
+            });
+        }
+
+        return result;
+    }
+
+    private async Task ValidateReceiptLineBarcodesAsync(
+        List<CreateGoodsReceiptLineDto> lines,
+        PurchaseOrder po,
+        CancellationToken cancellationToken)
+    {
+        foreach (var line in lines)
+        {
+            if (line.ReceivedQuantity <= 0)
+            {
+                continue;
+            }
+
+            var poLine = po.Lines.First(l => l.Id == line.PurchaseOrderLineId);
+            var variant = await _productVariantRepository.GetByIdAsync(poLine.ProductVariantId, cancellationToken)
+                ?? throw new InvalidOperationException($"Product variant '{poLine.ProductVariantId}' was not found.");
+
+            var barcodes = BarcodeLineValidator.RequireNormalizedBarcodes(
+                variant,
+                line.ReceivedQuantity,
+                line.Barcodes);
+
+            if (variant.IsBarcode)
+            {
+                await _unitBarcodeStockService.ValidateInboundAsync(
+                    variant.Id,
+                    barcodes,
+                    cancellationToken);
+            }
+        }
+    }
+
     private static void ValidateReceiptAgainstPo(GoodsReceipt gr, PurchaseOrder po)
     {
         foreach (var grLine in gr.Lines)
@@ -319,6 +417,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
             ReceivedQuantity = l.ReceivedQuantity,
             UnitCost = l.UnitCost,
             LotCode = l.LotCode,
+            Barcodes = BarcodeNormalization.FromLine(l),
             ExpiryDate = l.ExpiryDate,
             Note = l.Note
         }).ToList()

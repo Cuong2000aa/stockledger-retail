@@ -17,8 +17,8 @@ internal static class InventoryReportSqlQueries
         FROM current_stocks cs
         INNER JOIN product_variants pv ON pv."Id" = cs."ProductVariantId"
         WHERE cs."QuantityOnHand" > 0
-          AND ({0} IS NULL OR cs."WarehouseId" = {0})
-          AND ({1} IS NULL OR pv."BrandId" = {1})
+          AND (COALESCE({0}::uuid, cs."WarehouseId") = cs."WarehouseId")
+          AND (COALESCE({1}::uuid, pv."BrandId") = pv."BrandId")
         """;
 
     /// <summary>
@@ -38,8 +38,8 @@ internal static class InventoryReportSqlQueries
         INNER JOIN product_variants pv ON pv."Id" = cs."ProductVariantId"
         INNER JOIN warehouses w ON w."Id" = cs."WarehouseId"
         WHERE cs."QuantityOnHand" > 0
-          AND ({0} IS NULL OR cs."WarehouseId" = {0})
-          AND ({1} IS NULL OR pv."BrandId" = {1})
+          AND (COALESCE({0}::uuid, cs."WarehouseId") = cs."WarehouseId")
+          AND (COALESCE({1}::uuid, pv."BrandId") = pv."BrandId")
         ORDER BY "InventoryValue" DESC
         OFFSET {2} LIMIT {3}
         """;
@@ -59,7 +59,7 @@ internal static class InventoryReportSqlQueries
             FROM stock_transactions st
             WHERE st."TransactionDate" >= {0}
               AND st."TransactionDate" < {1}
-              AND ({2} IS NULL OR st."WarehouseId" = {2})
+              AND (COALESCE({2}::uuid, st."WarehouseId") = st."WarehouseId")
             GROUP BY st."ProductVariantId", st."WarehouseId"
         ),
         stock AS (
@@ -70,7 +70,7 @@ internal static class InventoryReportSqlQueries
                 pv."CostPrice" AS unit_cost
             FROM current_stocks cs
             INNER JOIN product_variants pv ON pv."Id" = cs."ProductVariantId"
-            WHERE ({2} IS NULL OR cs."WarehouseId" = {2})
+            WHERE (COALESCE({2}::uuid, cs."WarehouseId") = cs."WarehouseId")
         ),
         keys AS (
             SELECT m."ProductVariantId", m."WarehouseId" FROM movements m
@@ -115,7 +115,7 @@ internal static class InventoryReportSqlQueries
             FROM stock_transactions st
             WHERE st."TransactionDate" >= {0}
               AND st."TransactionDate" < {1}
-              AND ({2} IS NULL OR st."WarehouseId" = {2})
+              AND (COALESCE({2}::uuid, st."WarehouseId") = st."WarehouseId")
             GROUP BY st."ProductVariantId", st."WarehouseId"
         ),
         stock AS (
@@ -129,7 +129,7 @@ internal static class InventoryReportSqlQueries
             FROM current_stocks cs
             INNER JOIN product_variants pv ON pv."Id" = cs."ProductVariantId"
             INNER JOIN warehouses w ON w."Id" = cs."WarehouseId"
-            WHERE ({2} IS NULL OR cs."WarehouseId" = {2})
+            WHERE (COALESCE({2}::uuid, cs."WarehouseId") = cs."WarehouseId")
         ),
         keys AS (
             SELECT m."ProductVariantId", m."WarehouseId" FROM movements m

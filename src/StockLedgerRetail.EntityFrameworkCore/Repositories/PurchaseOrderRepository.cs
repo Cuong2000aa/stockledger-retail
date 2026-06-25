@@ -21,6 +21,8 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
         _dbContext.PurchaseOrders
             .Include(x => x.Lines)
                 .ThenInclude(l => l.ProductVariant)
+            .Include(x => x.Lines)
+                .ThenInclude(l => l.UnitBarcodes)
             .Include(x => x.Supplier)
             .Include(x => x.Warehouse)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

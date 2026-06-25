@@ -26,5 +26,8 @@ public class InventoryDocumentLine
 
     public StockLot? StockLot { get; set; }
 
+    public ICollection<InventoryDocumentLineBarcode> UnitBarcodes { get; set; } =
+        new List<InventoryDocumentLineBarcode>();
+
     public ICollection<StockTransaction> StockTransactions { get; set; } = new List<StockTransaction>();
 }

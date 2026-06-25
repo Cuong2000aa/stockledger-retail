@@ -34,6 +34,9 @@ public class ProductVariant : AuditedEntity
     /// <summary>Bật theo dõi lô/HSD — bắt buộc cho F&amp;B (Dominos, Popeyes).</summary>
     public bool TrackLotExpiry { get; set; }
 
+    /// <summary>Bật quản lý barcode từng đơn vị — số lượng dòng phải bằng số mã barcode riêng biệt.</summary>
+    public bool IsBarcode { get; set; }
+
     public Product Product { get; set; } = null!;
 
     public ICollection<CurrentStock> CurrentStocks { get; set; } = new List<CurrentStock>();

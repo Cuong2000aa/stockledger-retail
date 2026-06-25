@@ -10,6 +10,8 @@ public class CreateInventoryDocumentLineDto
 
     public string? LotCode { get; set; }
 
+    public List<string> Barcodes { get; set; } = new();
+
     public DateTime? ExpiryDate { get; set; }
 
     public string? Note { get; set; }
@@ -51,6 +53,8 @@ public class CreateAdjustmentLineDto
 
     /// <summary>Số lượng điều chỉnh có dấu: dương = tăng tồn, âm = giảm tồn.</summary>
     public decimal AdjustmentQuantity { get; set; }
+
+    public List<string> Barcodes { get; set; } = new();
 
     public string? Note { get; set; }
 }
@@ -94,6 +98,8 @@ public class CreateStockCountLineDto
     public decimal CountedQuantity { get; set; }
 
     public string? Note { get; set; }
+
+    public List<string>? Barcodes { get; set; }
 }
 
 public class CreateStockCountDto

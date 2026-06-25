@@ -19,6 +19,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
     private readonly ITransactionAuditService _transactionAuditService;
     private readonly IAuditContext _auditContext;
     private readonly ApprovalWorkflowHelper _approvalWorkflowHelper;
+    private readonly IPermissionAuthorizationService _permissionAuthorizationService;
 
     public PurchaseOrderAppService(
         IPurchaseOrderRepository purchaseOrderRepository,
@@ -27,7 +28,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         IProductVariantRepository productVariantRepository,
         ITransactionAuditService transactionAuditService,
         IAuditContext auditContext,
-        ApprovalWorkflowHelper approvalWorkflowHelper)
+        ApprovalWorkflowHelper approvalWorkflowHelper,
+        IPermissionAuthorizationService permissionAuthorizationService)
     {
         _purchaseOrderRepository = purchaseOrderRepository;
         _supplierRepository = supplierRepository;
@@ -36,6 +38,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         _transactionAuditService = transactionAuditService;
         _auditContext = auditContext;
         _approvalWorkflowHelper = approvalWorkflowHelper;
+        _permissionAuthorizationService = permissionAuthorizationService;
     }
 
     public async Task<PagedResultDto<PurchaseOrderDto>> GetListAsync(
@@ -72,6 +75,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
         ValidateLines(input.Lines);
         await EnsureVariantsExistAsync(input.Lines, cancellationToken);
+        await ValidateLineBarcodesAsync(input.Lines, cancellationToken);
 
         var now = DateTime.UtcNow;
         var poId = Guid.NewGuid();
@@ -90,16 +94,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
             Note = input.Note?.Trim(),
             CreatedBy = _auditContext.UserName,
             CreatedAt = now,
-            Lines = input.Lines.Select(line => new PurchaseOrderLine
-            {
-                Id = Guid.NewGuid(),
-                PurchaseOrderId = poId,
-                ProductVariantId = line.ProductVariantId,
-                OrderedQuantity = line.OrderedQuantity,
-                ReceivedQuantity = 0,
-                UnitCost = line.UnitCost,
-                Note = line.Note?.Trim()
-            }).ToList()
+            Lines = await BuildPurchaseOrderLinesAsync(poId, input.Lines, cancellationToken)
         };
 
         await _purchaseOrderRepository.InsertAsync(po, cancellationToken);
@@ -154,6 +149,10 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         {
             throw new InvalidOperationException("Only purchase orders pending approval can be approved.");
         }
+
+        await _permissionAuthorizationService.EnsureCanApproveInventoryDocumentAsync(
+            po.CreatedBy,
+            cancellationToken);
 
         var oldDto = MapToDto(po);
         var now = DateTime.UtcNow;
@@ -243,6 +242,56 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         }
     }
 
+    private async Task<List<PurchaseOrderLine>> BuildPurchaseOrderLinesAsync(
+        Guid purchaseOrderId,
+        List<CreatePurchaseOrderLineDto> lines,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<PurchaseOrderLine>();
+
+        foreach (var line in lines)
+        {
+            var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken)
+                ?? throw new InvalidOperationException($"Product variant '{line.ProductVariantId}' was not found.");
+
+            var barcodes = BarcodeLineValidator.RequireNormalizedBarcodes(
+                variant,
+                line.OrderedQuantity,
+                line.Barcodes);
+
+            var lineId = Guid.NewGuid();
+            result.Add(new PurchaseOrderLine
+            {
+                Id = lineId,
+                PurchaseOrderId = purchaseOrderId,
+                ProductVariantId = line.ProductVariantId,
+                OrderedQuantity = line.OrderedQuantity,
+                ReceivedQuantity = 0,
+                UnitCost = line.UnitCost,
+                Note = line.Note?.Trim(),
+                UnitBarcodes = DocumentLineBarcodeFactory.CreateForPurchaseOrderLine(lineId, barcodes)
+            });
+        }
+
+        return result;
+    }
+
+    private async Task ValidateLineBarcodesAsync(
+        List<CreatePurchaseOrderLineDto> lines,
+        CancellationToken cancellationToken)
+    {
+        foreach (var line in lines)
+        {
+            var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken)
+                ?? throw new InvalidOperationException($"Product variant '{line.ProductVariantId}' was not found.");
+
+            BarcodeLineValidator.RequireNormalizedBarcodes(
+                variant,
+                line.OrderedQuantity,
+                line.Barcodes);
+        }
+    }
+
     private async Task EnsureSupplierExistsAsync(Guid supplierId, CancellationToken cancellationToken)
     {
         var supplier = await _supplierRepository.GetByIdAsync(supplierId, cancellationToken);
@@ -293,6 +342,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
             OrderedQuantity = l.OrderedQuantity,
             ReceivedQuantity = l.ReceivedQuantity,
             UnitCost = l.UnitCost,
+            Barcodes = BarcodeNormalization.FromLine(l),
             Note = l.Note
         }).ToList()
     };

@@ -13,7 +13,7 @@ export default function LoginPage() {
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
   const { login } = useAuth();
-  const [username, setUsername] = useState("admin");
+  const [email, setEmail] = useState("admin@stockledger.local");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login({ username, password });
+      await login({ email, password });
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -89,19 +89,19 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label
-                  htmlFor="username"
+                  htmlFor="email"
                   className="mb-1.5 block text-sm font-medium text-slate-700"
                 >
-                  {t("username")}
+                  {t("email")}
                 </label>
                 <div className="relative">
                   <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
-                    id="username"
-                    type="text"
+                    id="email"
+                    type="email"
                     autoComplete="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="input pl-10"
                     required
                   />
@@ -150,7 +150,7 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-xs text-slate-400">{t("stubHint")}</p>
+            <p className="mt-6 text-center text-xs text-slate-400">{t("loginHint")}</p>
           </div>
 
           <div className="mt-6 flex justify-center">

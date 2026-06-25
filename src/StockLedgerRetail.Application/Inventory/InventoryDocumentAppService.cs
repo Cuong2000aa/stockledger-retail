@@ -1,11 +1,13 @@
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Application.Inventory;
+using StockLedgerRetail.Authorization;
 using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
 using StockLedgerRetail.Inventory;
 using StockLedgerRetail.Services;
+using static StockLedgerRetail.BusinessErrorCodes;
 
 namespace StockLedgerRetail.Application.Inventory;
 
@@ -25,6 +27,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPermissionAuthorizationService _permissionAuthorizationService;
     private readonly ApprovalWorkflowHelper _approvalWorkflowHelper;
+    private readonly IUnitBarcodeStockService _unitBarcodeStockService;
+    private readonly ICurrentUserContext _currentUser;
 
     public InventoryDocumentAppService(
         IInventoryDocumentRepository inventoryDocumentRepository,
@@ -37,7 +41,9 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         IAuditContext auditContext,
         IUnitOfWork unitOfWork,
         IPermissionAuthorizationService permissionAuthorizationService,
-        ApprovalWorkflowHelper approvalWorkflowHelper)
+        ApprovalWorkflowHelper approvalWorkflowHelper,
+        IUnitBarcodeStockService unitBarcodeStockService,
+        ICurrentUserContext currentUser)
     {
         _inventoryDocumentRepository = inventoryDocumentRepository;
         _productVariantRepository = productVariantRepository;
@@ -50,6 +56,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         _unitOfWork = unitOfWork;
         _permissionAuthorizationService = permissionAuthorizationService;
         _approvalWorkflowHelper = approvalWorkflowHelper;
+        _unitBarcodeStockService = unitBarcodeStockService;
+        _currentUser = currentUser;
     }
 
     /// <summary>Lấy chi tiết phiếu kèm danh sách dòng hàng.</summary>
@@ -88,6 +96,12 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         await _permissionAuthorizationService.EnsureCanCreateInventoryDocumentAsync(cancellationToken);
         await EnsureWarehouseExistsAsync(input.DestinationWarehouseId, cancellationToken);
         await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
+        await ValidateLineBarcodesAsync(
+            InventoryDocumentType.StockIn,
+            null,
+            input.DestinationWarehouseId,
+            input.Lines,
+            cancellationToken);
         ValidateLines(input.Lines);
 
         var now = DateTime.UtcNow;
@@ -121,6 +135,12 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         await _permissionAuthorizationService.EnsureCanCreateInventoryDocumentAsync(cancellationToken);
         await EnsureWarehouseExistsAsync(input.SourceWarehouseId, cancellationToken);
         await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
+        await ValidateLineBarcodesAsync(
+            InventoryDocumentType.StockOut,
+            input.SourceWarehouseId,
+            null,
+            input.Lines,
+            cancellationToken);
         ValidateLines(input.Lines);
 
         var now = DateTime.UtcNow;
@@ -160,11 +180,13 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
         ValidateAdjustmentLines(input.Lines);
         await EnsureAdjustmentVariantsExistAsync(input.Lines, cancellationToken);
+        await ValidateAdjustmentLineBarcodesAsync(input.WarehouseId, input.Lines, cancellationToken);
 
         var documentLines = input.Lines.Select(line => new CreateInventoryDocumentLineDto
         {
             ProductVariantId = line.ProductVariantId,
             Quantity = line.AdjustmentQuantity,
+            Barcodes = line.Barcodes,
             Note = line.Note
         }).ToList();
 
@@ -205,6 +227,12 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         await EnsureWarehouseExistsAsync(input.SourceWarehouseId, cancellationToken);
         await EnsureWarehouseExistsAsync(input.DestinationWarehouseId, cancellationToken);
         await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
+        await ValidateLineBarcodesAsync(
+            InventoryDocumentType.Transfer,
+            input.SourceWarehouseId,
+            input.DestinationWarehouseId,
+            input.Lines,
+            cancellationToken);
         ValidateLines(input.Lines);
 
         var variantIds = input.Lines.Select(x => x.ProductVariantId).ToList();
@@ -251,7 +279,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         {
             ProductVariantId = line.ProductVariantId,
             Quantity = line.CountedQuantity,
-            Note = line.Note
+            Note = line.Note,
+            Barcodes = line.Barcodes
         }).ToList();
 
         var now = DateTime.UtcNow;
@@ -316,20 +345,19 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         {
             ValidateDraftLines(document.DocumentType, input.Lines);
             await EnsureProductVariantsExistAsync(input.Lines, cancellationToken);
+            if (document.DocumentType is not InventoryDocumentType.StockCount)
+            {
+                await ValidateLineBarcodesAsync(
+                    document.DocumentType,
+                    document.SourceWarehouseId,
+                    document.DestinationWarehouseId,
+                    input.Lines,
+                    cancellationToken);
+            }
 
             await _inventoryDocumentRepository.RemoveLinesByDocumentIdAsync(document.Id, cancellationToken);
 
-            document.Lines = input.Lines.Select(line => new InventoryDocumentLine
-            {
-                Id = Guid.NewGuid(),
-                DocumentId = document.Id,
-                ProductVariantId = line.ProductVariantId,
-                Quantity = line.Quantity,
-                UnitCost = line.UnitCost,
-                LotCode = line.LotCode?.Trim(),
-                ExpiryDate = line.ExpiryDate,
-                Note = line.Note?.Trim()
-            }).ToList();
+            document.Lines = await BuildDocumentLinesAsync(document.Id, input.Lines, cancellationToken);
         }
 
         await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
@@ -395,19 +423,22 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             throw new InvalidOperationException("Cancelled documents cannot be approved.");
         }
 
-        if (document.Status is InventoryDocumentStatus.Draft)
-        {
-            var value = ApprovalWorkflowHelper.CalculateInventoryDocumentValue(document);
-            if (_approvalWorkflowHelper.GetRequiredApprovalSteps(value) > 1)
-            {
-                throw new InvalidOperationException(
-                    "High-value documents must be submitted for approval before final approval.");
-            }
-        }
-
         await _permissionAuthorizationService.EnsureCanApproveInventoryDocumentAsync(
             document.CreatedBy,
             cancellationToken);
+
+        if (document.Status is InventoryDocumentStatus.Draft)
+        {
+            var value = ApprovalWorkflowHelper.CalculateInventoryDocumentValue(document);
+            var requiredSteps = _approvalWorkflowHelper.GetRequiredApprovalSteps(value);
+            var canBypassHighValueWorkflow = IsProcurementSource(document.SourceSystem)
+                || _currentUser.HasPermission(PermissionCodes.InventoryDocumentsApprove);
+
+            if (requiredSteps > 1 && !canBypassHighValueWorkflow)
+            {
+                throw new InvalidOperationException(HighValueSubmitRequired);
+            }
+        }
 
         var oldDto = MapToDto(document);
 
@@ -618,20 +649,45 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             Note = note?.Trim(),
             CreatedBy = _auditContext.UserName,
             CreatedAt = now,
-            Lines = lines.Select(line => new InventoryDocumentLine
+            Lines = await BuildDocumentLinesAsync(documentId, lines, cancellationToken)
+        };
+
+        return document;
+    }
+
+    private async Task<List<InventoryDocumentLine>> BuildDocumentLinesAsync(
+        Guid documentId,
+        List<CreateInventoryDocumentLineDto> lines,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<InventoryDocumentLine>();
+
+        foreach (var line in lines)
+        {
+            var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken)
+                ?? throw new InvalidOperationException($"Product variant '{line.ProductVariantId}' was not found.");
+
+            var barcodes = BarcodeLineValidator.RequireNormalizedBarcodes(
+                variant,
+                line.Quantity,
+                line.Barcodes);
+
+            var lineId = Guid.NewGuid();
+            result.Add(new InventoryDocumentLine
             {
-                Id = Guid.NewGuid(),
+                Id = lineId,
                 DocumentId = documentId,
                 ProductVariantId = line.ProductVariantId,
                 Quantity = line.Quantity,
                 UnitCost = line.UnitCost,
                 LotCode = line.LotCode?.Trim(),
                 ExpiryDate = line.ExpiryDate,
-                Note = line.Note?.Trim()
-            }).ToList()
-        };
+                Note = line.Note?.Trim(),
+                UnitBarcodes = DocumentLineBarcodeFactory.CreateForInventoryLine(lineId, barcodes)
+            });
+        }
 
-        return document;
+        return result;
     }
 
     /// <summary>Sinh mã phiếu theo loại và ngày, ví dụ SI-20250622-0001.</summary>
@@ -802,6 +858,109 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         }
     }
 
+    private async Task ValidateLineBarcodesAsync(
+        InventoryDocumentType documentType,
+        Guid? sourceWarehouseId,
+        Guid? destinationWarehouseId,
+        List<CreateInventoryDocumentLineDto> lines,
+        CancellationToken cancellationToken)
+    {
+        foreach (var line in lines)
+        {
+            var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken)
+                ?? throw new InvalidOperationException($"Product variant '{line.ProductVariantId}' was not found.");
+
+            var barcodes = BarcodeLineValidator.RequireNormalizedBarcodes(
+                variant,
+                line.Quantity,
+                line.Barcodes);
+
+            if (!variant.IsBarcode)
+            {
+                continue;
+            }
+
+            switch (documentType)
+            {
+                case InventoryDocumentType.StockIn:
+                    await _unitBarcodeStockService.ValidateInboundAsync(
+                        variant.Id,
+                        barcodes,
+                        cancellationToken);
+                    break;
+                case InventoryDocumentType.StockOut:
+                case InventoryDocumentType.Transfer:
+                    if (!sourceWarehouseId.HasValue)
+                    {
+                        throw new InvalidOperationException("Source warehouse is required.");
+                    }
+
+                    await _unitBarcodeStockService.ValidateOutboundAsync(
+                        variant.Id,
+                        sourceWarehouseId.Value,
+                        barcodes,
+                        cancellationToken);
+                    break;
+                case InventoryDocumentType.Adjustment:
+                    if (line.Quantity > 0)
+                    {
+                        await _unitBarcodeStockService.ValidateInboundAsync(
+                            variant.Id,
+                            barcodes,
+                            cancellationToken);
+                    }
+                    else if (line.Quantity < 0 && destinationWarehouseId.HasValue)
+                    {
+                        await _unitBarcodeStockService.ValidateOutboundAsync(
+                            variant.Id,
+                            destinationWarehouseId.Value,
+                            barcodes,
+                            cancellationToken);
+                    }
+
+                    break;
+            }
+        }
+    }
+
+    private async Task ValidateAdjustmentLineBarcodesAsync(
+        Guid warehouseId,
+        List<CreateAdjustmentLineDto> lines,
+        CancellationToken cancellationToken)
+    {
+        foreach (var line in lines)
+        {
+            var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken)
+                ?? throw new InvalidOperationException($"Product variant '{line.ProductVariantId}' was not found.");
+
+            var barcodes = BarcodeLineValidator.RequireNormalizedBarcodes(
+                variant,
+                line.AdjustmentQuantity,
+                line.Barcodes);
+
+            if (!variant.IsBarcode)
+            {
+                continue;
+            }
+
+            if (line.AdjustmentQuantity > 0)
+            {
+                await _unitBarcodeStockService.ValidateInboundAsync(
+                    variant.Id,
+                    barcodes,
+                    cancellationToken);
+            }
+            else
+            {
+                await _unitBarcodeStockService.ValidateOutboundAsync(
+                    variant.Id,
+                    warehouseId,
+                    barcodes,
+                    cancellationToken);
+            }
+        }
+    }
+
     /// <summary>Đảm bảo kho nguồn/đích tồn tại.</summary>
     private async Task EnsureWarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken)
     {
@@ -857,6 +1016,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             UnitCost = line.UnitCost,
             StockLotId = line.StockLotId,
             LotCode = line.LotCode,
+            Barcodes = BarcodeNormalization.FromLine(line),
             ExpiryDate = line.ExpiryDate,
             Note = line.Note
         }).ToList()
@@ -890,4 +1050,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         ShippedAt = document.ShippedAt,
         ReceivedAt = document.ReceivedAt
     };
+
+    private static bool IsProcurementSource(string? sourceSystem) =>
+        string.Equals(sourceSystem, "PROCUREMENT", StringComparison.OrdinalIgnoreCase);
 }

@@ -23,8 +23,8 @@ public sealed class ReportDateRange
 
     public static ReportDateRange FromUserInput(DateTime fromDate, DateTime toDate)
     {
-        var fromInclusive = fromDate.Date;
-        var toDisplay = toDate.Date;
+        var fromInclusive = DateTime.SpecifyKind(fromDate.Date, DateTimeKind.Utc);
+        var toDisplay = DateTime.SpecifyKind(toDate.Date, DateTimeKind.Utc);
         var toExclusive = toDisplay.AddDays(1);
 
         if (toExclusive <= fromInclusive)
@@ -32,6 +32,22 @@ public sealed class ReportDateRange
             throw new ArgumentException(
                 "Report toDate must be on or after fromDate.",
                 nameof(toDate));
+        }
+
+        return new ReportDateRange(fromInclusive, toExclusive, toDisplay);
+    }
+
+    public static ReportDateRange FromOptionalUserInput(DateTime? fromDate, DateTime? toDate, int defaultLookbackDays = 30)
+    {
+        var toDisplay = DateTime.SpecifyKind((toDate ?? DateTime.UtcNow).Date, DateTimeKind.Utc);
+        var fromInclusive = DateTime.SpecifyKind(
+            (fromDate ?? toDisplay.AddDays(-defaultLookbackDays)).Date,
+            DateTimeKind.Utc);
+        var toExclusive = toDisplay.AddDays(1);
+
+        if (toExclusive <= fromInclusive)
+        {
+            throw new ArgumentException("Report toDate must be on or after fromDate.");
         }
 
         return new ReportDateRange(fromInclusive, toExclusive, toDisplay);

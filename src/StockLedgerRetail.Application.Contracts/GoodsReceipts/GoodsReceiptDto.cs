@@ -18,6 +18,8 @@ public class GoodsReceiptLineDto
 
     public string? LotCode { get; set; }
 
+    public List<string> Barcodes { get; set; } = new();
+
     public DateTime? ExpiryDate { get; set; }
 
     public string? Note { get; set; }
@@ -67,6 +69,8 @@ public class CreateGoodsReceiptLineDto
     public decimal ReceivedQuantity { get; set; }
 
     public string? LotCode { get; set; }
+
+    public List<string> Barcodes { get; set; } = new();
 
     public DateTime? ExpiryDate { get; set; }
 

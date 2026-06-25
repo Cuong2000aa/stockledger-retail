@@ -32,6 +32,8 @@ public class ProductVariantDto
 
     public bool TrackLotExpiry { get; set; }
 
+    public bool IsBarcode { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

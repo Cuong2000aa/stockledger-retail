@@ -4,30 +4,18 @@ import { Link } from "@/i18n/routing";
 import { PageHeader } from "@/components/PageHeader";
 import { useNotify } from "@/hooks/useNotify";
 import {
+  approvePurchaseOrder,
   cancelPurchaseOrder,
   fetchGoodsReceipts,
   fetchPurchaseOrder,
   submitPurchaseOrder,
 } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
+import { purchaseOrderStatusLabel } from "@/lib/purchaseOrderStatus";
 import { GoodsReceiptStatus, PurchaseOrderStatus } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { use } from "react";
-
-function poStatusLabel(
-  status: PurchaseOrderStatus,
-  t: ReturnType<typeof useTranslations<"purchaseOrders">>
-) {
-  switch (status) {
-    case PurchaseOrderStatus.Draft: return t("statusDraft");
-    case PurchaseOrderStatus.Submitted: return t("statusSubmitted");
-    case PurchaseOrderStatus.PartiallyReceived: return t("statusPartiallyReceived");
-    case PurchaseOrderStatus.Received: return t("statusReceived");
-    case PurchaseOrderStatus.Cancelled: return t("statusCancelled");
-    default: return String(status);
-  }
-}
 
 export default function PurchaseOrderDetailPage({
   params,
@@ -72,14 +60,25 @@ export default function PurchaseOrderDetailPage({
     onError: notifyError,
   });
 
+  const approveMutation = useMutation({
+    mutationFn: () => approvePurchaseOrder(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["purchase-order", id] });
+      qc.invalidateQueries({ queryKey: ["purchase-orders"] });
+    },
+    onError: notifyError,
+  });
+
   if (isLoading || !po) {
     return <p className="text-slate-500">{tCommon("loading")}</p>;
   }
 
   const canSubmit = po.status === PurchaseOrderStatus.Draft;
+  const canApprove = po.status === PurchaseOrderStatus.PendingApproval;
   const canCancel =
     po.status === PurchaseOrderStatus.Draft ||
-    po.status === PurchaseOrderStatus.Submitted;
+    po.status === PurchaseOrderStatus.Submitted ||
+    po.status === PurchaseOrderStatus.PendingApproval;
   const canReceive =
     po.status === PurchaseOrderStatus.Submitted ||
     po.status === PurchaseOrderStatus.PartiallyReceived;
@@ -108,7 +107,7 @@ export default function PurchaseOrderDetailPage({
           </div>
           <div>
             <dt className="text-xs text-slate-500">{tCommon("status")}</dt>
-            <dd>{poStatusLabel(po.status, t)}</dd>
+            <dd>{purchaseOrderStatusLabel(po.status, t)}</dd>
           </div>
           <div>
             <dt className="text-xs text-slate-500">{t("orderDate")}</dt>
@@ -125,6 +124,19 @@ export default function PurchaseOrderDetailPage({
         </dl>
 
         <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+          {canApprove && (
+            <button
+              className="btn-primary"
+              disabled={approveMutation.isPending}
+              onClick={async () => {
+                if (await confirm(t("approveConfirm"))) {
+                  approveMutation.mutate();
+                }
+              }}
+            >
+              {t("approve")}
+            </button>
+          )}
           {canSubmit && (
             <button
               className="btn-primary"

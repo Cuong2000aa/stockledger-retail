@@ -20,6 +20,8 @@ public class CurrentStockDto
 
     public decimal QuantityAvailable { get; set; }
 
+    public bool IsBarcode { get; set; }
+
     public Guid? LastTransactionId { get; set; }
 
     public DateTime LastUpdatedAt { get; set; }

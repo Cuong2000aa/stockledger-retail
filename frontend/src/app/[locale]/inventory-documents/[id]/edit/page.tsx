@@ -1,13 +1,18 @@
 "use client";
 
 import { Link, useRouter } from "@/i18n/routing";
+import { LineBarcodeSection } from "@/components/LineBarcodeSection";
+import {
+  DocumentFormShell,
+  DocumentLineCard,
+  FormField,
+  FormSection,
+} from "@/components/document-form";
 import { PageHeader } from "@/components/PageHeader";
 import { useNotify } from "@/hooks/useNotify";
-import {
-  fetchInventoryDocument,
-  fetchProductVariants,
-  updateDocumentDraft,
-} from "@/lib/api";
+import { useVariantCache } from "@/hooks/useVariantCache";
+import { fetchInventoryDocument, updateDocumentDraft } from "@/lib/api";
+import { formatVariantOptionLabel } from "@/lib/formatVariantLabel";
 import {
   InventoryDocumentStatus,
   InventoryDocumentType,
@@ -16,13 +21,16 @@ import {
   type InventoryDocumentKind,
   validateInventoryDocumentDraftLines,
 } from "@/lib/validation";
+import { formatUnitBarcodes, parseUnitBarcodes } from "@/lib/unitBarcode";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useMemo } from "react";
+import { FileText, ListOrdered, Plus } from "lucide-react";
 
 type LineState = {
   productVariantId: string;
   quantity: number;
+  barcodesText: string;
 };
 
 function documentTypeToKind(type: InventoryDocumentType): InventoryDocumentKind {
@@ -63,11 +71,6 @@ export default function EditDocumentPage({
     queryFn: () => fetchInventoryDocument(id),
   });
 
-  const { data: variants } = useQuery({
-    queryKey: ["variants-all"],
-    queryFn: () => fetchProductVariants(1, 200),
-  });
-
   useEffect(() => {
     if (!doc || initialized) return;
     setReferenceNo(doc.referenceNo ?? "");
@@ -76,6 +79,7 @@ export default function EditDocumentPage({
       doc.lines.map((l) => ({
         productVariantId: l.productVariantId,
         quantity: l.quantity,
+        barcodesText: formatUnitBarcodes(l.barcodes ?? []),
       }))
     );
     setInitialized(true);
@@ -83,7 +87,13 @@ export default function EditDocumentPage({
 
   const isStockCount = doc?.documentType === InventoryDocumentType.StockCount;
   const isAdjustment = doc?.documentType === InventoryDocumentType.Adjustment;
-  const hasVariants = (variants?.items.length ?? 0) > 0;
+
+  const lineVariantIds = useMemo(
+    () => lines.map((line) => line.productVariantId),
+    [lines]
+  );
+  const { variantById, variants } = useVariantCache(lineVariantIds);
+  const hasVariants = variants.length > 0;
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -93,11 +103,10 @@ export default function EditDocumentPage({
         lines: lines.map((l) => ({
           productVariantId: l.productVariantId,
           quantity: l.quantity,
+          barcodes: parseUnitBarcodes(l.barcodesText),
         })),
       }),
-    onSuccess: () => {
-      router.push(`/inventory-documents/${id}`);
-    },
+    onSuccess: () => router.push(`/inventory-documents/${id}`),
     onError: notifyError,
   });
 
@@ -110,6 +119,7 @@ export default function EditDocumentPage({
       quantity: isStockCount || isAdjustment ? 0 : line.quantity,
       adjustmentQuantity: isAdjustment ? line.quantity : 0,
       countedQuantity: isStockCount ? line.quantity : 0,
+      barcodesText: line.barcodesText,
     }));
 
     if (
@@ -118,6 +128,7 @@ export default function EditDocumentPage({
           kind,
           lines: validationLines,
           hasVariants,
+          variantById,
         })
       )
     ) {
@@ -136,7 +147,10 @@ export default function EditDocumentPage({
       <div>
         <PageHeader title={doc.documentNo} />
         <p className="text-red-600">{t("editDraftOnly")}</p>
-        <Link href={`/inventory-documents/${id}`} className="btn-secondary mt-4 inline-block">
+        <Link
+          href={`/inventory-documents/${id}`}
+          className="btn-secondary mt-4 inline-block"
+        >
           {tCommon("back")}
         </Link>
       </div>
@@ -145,7 +159,11 @@ export default function EditDocumentPage({
 
   const updateLine = (idx: number, patch: Partial<LineState>) => {
     const next = [...lines];
-    next[idx] = { ...next[idx], ...patch };
+    const merged = { ...next[idx], ...patch };
+    if (patch.productVariantId !== undefined) {
+      merged.barcodesText = "";
+    }
+    next[idx] = merged;
     setLines(next);
   };
 
@@ -166,97 +184,129 @@ export default function EditDocumentPage({
         }
       />
 
-      <div className="card max-w-3xl p-6">
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm">{t("referenceNo")}</label>
-            <input
-              className="input"
-              value={referenceNo}
-              onChange={(e) => setReferenceNo(e.target.value)}
-            />
+      <DocumentFormShell
+        footer={
+          <>
+            <Link href={`/inventory-documents/${id}`} className="btn-secondary">
+              {tCommon("cancel")}
+            </Link>
+            <button
+              className="btn-primary"
+              disabled={mutation.isPending || lines.length === 0}
+              onClick={handleSave}
+            >
+              {t("saveDraft")}
+            </button>
+          </>
+        }
+      >
+        <div className="grid gap-6 lg:grid-cols-5">
+          <div className="lg:col-span-2">
+            <FormSection title={tCommon("formGeneralInfo")} icon={FileText}>
+              <div className="space-y-4">
+                <FormField label={t("referenceNo")}>
+                  <input
+                    className="input"
+                    value={referenceNo}
+                    onChange={(e) => setReferenceNo(e.target.value)}
+                  />
+                </FormField>
+                <FormField label={t("note")}>
+                  <textarea
+                    className="input min-h-[88px] resize-y"
+                    rows={3}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </FormField>
+              </div>
+            </FormSection>
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm">{t("note")}</label>
-            <textarea
-              className="input"
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium">{t("lines")}</span>
-              <button
-                type="button"
-                className="text-sm text-brand-600 hover:underline"
-                onClick={() =>
-                  setLines([
-                    ...lines,
-                    {
-                      productVariantId: variants?.items[0]?.id ?? "",
-                      quantity: isStockCount ? 0 : 1,
-                    },
-                  ])
-                }
-              >
-                + {t("addLine")}
-              </button>
-            </div>
-            {lines.map((line, idx) => (
-              <div
-                key={idx}
-                className="mb-3 flex flex-wrap gap-2 rounded-lg border border-slate-200 p-3"
-              >
-                <select
-                  className="input min-w-[200px] flex-1"
-                  value={line.productVariantId}
-                  onChange={(e) =>
-                    updateLine(idx, { productVariantId: e.target.value })
+          <div className="lg:col-span-3">
+            <FormSection
+              title={t("lines")}
+              description={tCommon("formLinesHint")}
+              icon={ListOrdered}
+              action={
+                <button
+                  type="button"
+                  className="btn-secondary !px-3 !py-1.5 !text-xs"
+                  onClick={() =>
+                    setLines([
+                      ...lines,
+                      {
+                        productVariantId: variants[0]?.id ?? "",
+                        quantity: isStockCount ? 0 : 1,
+                        barcodesText: "",
+                      },
+                    ])
                   }
                 >
-                  <option value="">{t("selectSku")}</option>
-                  {variants?.items.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.sku}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={isStockCount ? 0 : isAdjustment ? undefined : 1}
-                  className="input w-32"
-                  placeholder={quantityLabel}
-                  value={line.quantity}
-                  onChange={(e) =>
-                    updateLine(idx, { quantity: Number(e.target.value) })
-                  }
-                />
-                {lines.length > 1 && (
-                  <button
-                    type="button"
-                    className="text-sm text-red-600"
-                    onClick={() => setLines(lines.filter((_, i) => i !== idx))}
+                  <Plus className="h-3.5 w-3.5" />
+                  {t("addLine")}
+                </button>
+              }
+            >
+              <div className="space-y-3">
+                {lines.map((line, idx) => (
+                  <DocumentLineCard
+                    key={idx}
+                    index={idx + 1}
+                    canRemove={lines.length > 1}
+                    onRemove={() => setLines(lines.filter((_, i) => i !== idx))}
                   >
-                    {tCommon("delete")}
-                  </button>
-                )}
+                    <div className="grid gap-3 sm:grid-cols-12">
+                      <FormField
+                        label={t("selectSku")}
+                        required
+                        className="sm:col-span-8"
+                      >
+                        <select
+                          className="input"
+                          value={line.productVariantId}
+                          onChange={(e) =>
+                            updateLine(idx, { productVariantId: e.target.value })
+                          }
+                        >
+                          <option value="">{t("selectSku")}</option>
+                          {variants.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {formatVariantOptionLabel(v)}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                      <FormField
+                        label={quantityLabel}
+                        required
+                        className="sm:col-span-4"
+                      >
+                        <input
+                          type="number"
+                          min={isStockCount ? 0 : isAdjustment ? undefined : 1}
+                          className="input"
+                          value={line.quantity}
+                          onChange={(e) =>
+                            updateLine(idx, { quantity: Number(e.target.value) })
+                          }
+                        />
+                      </FormField>
+                    </div>
+                    <LineBarcodeSection
+                      productVariantId={line.productVariantId}
+                      variant={variantById.get(line.productVariantId)}
+                      quantity={line.quantity}
+                      value={line.barcodesText}
+                      onChange={(text) => updateLine(idx, { barcodesText: text })}
+                    />
+                  </DocumentLineCard>
+                ))}
               </div>
-            ))}
+            </FormSection>
           </div>
-
-          <button
-            className="btn-primary"
-            disabled={mutation.isPending || lines.length === 0}
-            onClick={handleSave}
-          >
-            {t("saveDraft")}
-          </button>
         </div>
-      </div>
+      </DocumentFormShell>
     </div>
   );
 }

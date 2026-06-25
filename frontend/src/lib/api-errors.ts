@@ -94,6 +94,52 @@ const API_ERROR_RULES: Array<{
     pattern: /Either cartSessionId or orderReference is required/i,
     key: "reservationReferenceRequired",
   },
+  {
+    pattern: /^AUTH_CANNOT_APPROVE_DOCUMENT$/i,
+    key: "cannotApproveDocument",
+  },
+  {
+    pattern: /^AUTH_CANNOT_APPROVE_GOODS_RECEIPT$/i,
+    key: "cannotApproveGoodsReceipt",
+  },
+  {
+    pattern: /^AUTH_CANNOT_MANAGE_DOCUMENT$/i,
+    key: "cannotManageDocument",
+  },
+  {
+    pattern: /^AUTH_CANNOT_RECEIVE_TRANSFER$/i,
+    key: "cannotReceiveTransfer",
+  },
+  {
+    pattern: /^WORKFLOW_HIGH_VALUE_SUBMIT_REQUIRED$/i,
+    key: "highValueSubmitRequired",
+  },
+  {
+    pattern: /^AUTH_MISSING_PERMISSION:(.+)$/i,
+    key: "missingPermission",
+    mapValues: (match) => ({ permission: match[1] }),
+  },
+  {
+    pattern: /You are not allowed to approve this document/i,
+    key: "cannotApproveDocument",
+  },
+  {
+    pattern: /High-value documents must be submitted for approval before final approval/i,
+    key: "highValueSubmitRequired",
+  },
+  {
+    pattern: /Missing permission '([^']+)'/i,
+    key: "missingPermission",
+    mapValues: (match) => ({ permission: match[1] }),
+  },
+  {
+    pattern: /You can only manage your own documents or team members/i,
+    key: "cannotManageDocument",
+  },
+  {
+    pattern: /You are not allowed to receive this transfer/i,
+    key: "cannotReceiveTransfer",
+  },
 ];
 
 export function formatApiErrorMessage(
