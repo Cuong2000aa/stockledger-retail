@@ -1,9 +1,11 @@
 "use client";
 
-import { Link } from "@/i18n/routing";
+import { AuditTrailPanel } from "@/components/AuditTrailPanel";
+import { DataTableCard } from "@/components/DataTableCard";
 import { PageHeader } from "@/components/PageHeader";
 import { DocStatusBadge, docTypeKey } from "@/components/StatusBadge";
 import { useNotify } from "@/hooks/useNotify";
+import { Link } from "@/i18n/routing";
 import {
   approveDocument,
   cancelDocument,
@@ -13,7 +15,7 @@ import {
   receiveTransfer,
   submitDocumentForApproval,
 } from "@/lib/api";
-import { formatDate, formatNumber } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { formatUnitBarcodes } from "@/lib/unitBarcode";
 import {
@@ -24,6 +26,13 @@ import {
 } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
+import {
+  ArrowLeft,
+  ClipboardList,
+  FileText,
+  MapPin,
+  Tag,
+} from "lucide-react";
 import { use, useMemo } from "react";
 
 function statusLabel(
@@ -46,10 +55,7 @@ function statusLabel(
   }
 }
 
-function warehouseLabel(
-  id: string | undefined,
-  map: Map<string, Warehouse>
-) {
+function warehouseLabel(id: string | undefined, map: Map<string, Warehouse>) {
   if (!id) return "—";
   const w = map.get(id);
   return w ? formatWarehouseOptionLabel(w) : id;
@@ -163,57 +169,72 @@ export default function DocumentDetailPage({
       : t("quantity");
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title={doc.documentNo}
         subtitle={t("detail")}
         action={
           <div className="flex gap-2">
             {isDraft && (
-              <Link
-                href={`/inventory-documents/${id}/edit`}
-                className="btn-primary"
-              >
+              <Link href={`/inventory-documents/${id}/edit`} className="btn-primary">
                 {t("editDraft")}
               </Link>
             )}
             <Link href="/inventory-documents" className="btn-secondary">
+              <ArrowLeft className="h-4 w-4" />
               {tCommon("back")}
             </Link>
           </div>
         }
       />
 
-      <div className="card mb-6 p-6">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs text-slate-500">{t("type")}</dt>
-            <dd className="font-medium">
-              {t(`types.${docTypeKey(doc.documentType)}` as "types.StockIn")}
-            </dd>
+      <div className="card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                {t("type")}
+              </p>
+              <p className="font-medium text-slate-900">
+                {t(`types.${docTypeKey(doc.documentType)}` as "types.StockIn")}
+              </p>
+            </div>
           </div>
-          <div>
-            <dt className="text-xs text-slate-500">{tCommon("status")}</dt>
-            <dd>
-              <DocStatusBadge
-                status={doc.status}
-                label={statusLabel(doc.status, t)}
-              />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">{t("documentDate")}</dt>
-            <dd>{formatDate(doc.documentDate, locale)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">{t("referenceNo")}</dt>
-            <dd>{doc.referenceNo ?? "—"}</dd>
-          </div>
+          <DocStatusBadge status={doc.status} label={statusLabel(doc.status, t)} />
+        </div>
+
+        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+          {doc.referenceNo && (
+            <div className="flex gap-3">
+              <Tag className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+              <div>
+                <p className="text-xs text-slate-500">{t("referenceNo")}</p>
+                <p className="font-mono text-sm font-medium text-slate-900">{doc.referenceNo}</p>
+              </div>
+            </div>
+          )}
+          {doc.sourceSystem && (
+            <div className="flex gap-3">
+              <Tag className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+              <div>
+                <p className="text-xs text-slate-500">{t("sourceSystem")}</p>
+                <p className="text-sm font-medium text-slate-900">{doc.sourceSystem}</p>
+              </div>
+            </div>
+          )}
           {(isTransfer || doc.documentType === InventoryDocumentType.StockOut) &&
             doc.sourceWarehouseId && (
-              <div>
-                <dt className="text-xs text-slate-500">{t("sourceWarehouse")}</dt>
-                <dd>{warehouseLabel(doc.sourceWarehouseId, warehouseMap)}</dd>
+              <div className="flex gap-3 sm:col-span-2">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                <div>
+                  <p className="text-xs text-slate-500">{t("sourceWarehouse")}</p>
+                  <p className="text-sm text-slate-900">
+                    {warehouseLabel(doc.sourceWarehouseId, warehouseMap)}
+                  </p>
+                </div>
               </div>
             )}
           {(isTransfer ||
@@ -221,138 +242,165 @@ export default function DocumentDetailPage({
             isStockCount ||
             isAdjustment) &&
             doc.destinationWarehouseId && (
-              <div>
-                <dt className="text-xs text-slate-500">
-                  {isTransfer || doc.documentType === InventoryDocumentType.StockIn
-                    ? t("destinationWarehouse")
-                    : t("warehouse")}
-                </dt>
-                <dd>
-                  {warehouseLabel(doc.destinationWarehouseId, warehouseMap)}
-                </dd>
+              <div className="flex gap-3 sm:col-span-2">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                <div>
+                  <p className="text-xs text-slate-500">
+                    {isTransfer || doc.documentType === InventoryDocumentType.StockIn
+                      ? t("destinationWarehouse")
+                      : t("warehouse")}
+                  </p>
+                  <p className="text-sm text-slate-900">
+                    {warehouseLabel(doc.destinationWarehouseId, warehouseMap)}
+                  </p>
+                </div>
               </div>
             )}
-          <div className="sm:col-span-2">
-            <dt className="text-xs text-slate-500">{t("note")}</dt>
-            <dd>{doc.note ?? "—"}</dd>
-          </div>
-          {isTransfer && doc.transferLifecycleStatus !== undefined && (
-            <>
+          {doc.note && (
+            <div className="flex gap-3 sm:col-span-2 lg:col-span-3">
+              <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
               <div>
-                <dt className="text-xs text-slate-500">{t("transferStatus")}</dt>
-                <dd>{t(`transferLifecycle.${TransferLifecycleStatus[doc.transferLifecycleStatus ?? 0]}` as "transferLifecycle.None")}</dd>
+                <p className="text-xs text-slate-500">{t("note")}</p>
+                <p className="text-sm text-slate-700">{doc.note}</p>
               </div>
-              {doc.shippedAt && (
-                <div>
-                  <dt className="text-xs text-slate-500">{t("shippedAt")}</dt>
-                  <dd>{formatDate(doc.shippedAt, locale)}</dd>
-                </div>
-              )}
-              {doc.receivedAt && (
-                <div>
-                  <dt className="text-xs text-slate-500">{t("receivedAt")}</dt>
-                  <dd>{formatDate(doc.receivedAt, locale)}</dd>
-                </div>
-              )}
-            </>
-          )}
-          {isPending && (
-            <div>
-              <dt className="text-xs text-slate-500">{t("approvalProgress")}</dt>
-              <dd>
-                {doc.completedApprovalSteps ?? 0} / {doc.requiredApprovalSteps ?? 1}
-              </dd>
             </div>
           )}
-        </dl>
+          {isTransfer && doc.transferLifecycleStatus !== undefined && (
+            <div className="flex gap-3">
+              <Tag className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+              <div>
+                <p className="text-xs text-slate-500">{t("transferStatus")}</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {t(
+                    `transferLifecycle.${TransferLifecycleStatus[doc.transferLifecycleStatus ?? 0]}` as "transferLifecycle.None"
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+          {isPending && (
+            <div className="flex gap-3">
+              <Tag className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+              <div>
+                <p className="text-xs text-slate-500">{t("approvalProgress")}</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {doc.completedApprovalSteps ?? 0} / {doc.requiredApprovalSteps ?? 1}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {(isDraft || isPending || canReceiveTransfer) && (
-          <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
-            {isDraft && (
-              <>
+          <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+            <div className="flex flex-wrap gap-3">
+              {isDraft && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={submitMutation.isPending}
+                    onClick={async () => {
+                      if (await confirm(t("submitConfirm"))) submitMutation.mutate();
+                    }}
+                  >
+                    {t("submitForApproval")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={approveMutation.isPending}
+                    onClick={async () => {
+                      if (await confirm(t("approveConfirm"))) approveMutation.mutate();
+                    }}
+                  >
+                    {t("approve")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    disabled={cancelMutation.isPending}
+                    onClick={async () => {
+                      if (await confirm(t("cancelConfirm"))) cancelMutation.mutate();
+                    }}
+                  >
+                    {t("cancelDoc")}
+                  </button>
+                </>
+              )}
+              {isPending && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={approveMutation.isPending}
+                    onClick={async () => {
+                      if (
+                        await confirm(
+                          needsSecondApproval ? t("approveStepConfirm") : t("approveConfirm")
+                        )
+                      ) {
+                        approveMutation.mutate();
+                      }
+                    }}
+                  >
+                    {needsSecondApproval ? t("approveStep") : t("approve")}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    disabled={cancelMutation.isPending}
+                    onClick={async () => {
+                      if (await confirm(t("cancelConfirm"))) cancelMutation.mutate();
+                    }}
+                  >
+                    {t("cancelDoc")}
+                  </button>
+                </>
+              )}
+              {canReceiveTransfer && (
                 <button
-                  className="btn-secondary"
-                  disabled={submitMutation.isPending}
-                  onClick={async () => {
-                    if (await confirm(t("submitConfirm"))) submitMutation.mutate();
-                  }}
-                >
-                  {t("submitForApproval")}
-                </button>
-                <button
+                  type="button"
                   className="btn-primary"
-                  disabled={approveMutation.isPending}
+                  disabled={receiveMutation.isPending}
                   onClick={async () => {
-                    if (await confirm(t("approveConfirm"))) approveMutation.mutate();
+                    if (await confirm(t("receiveTransferConfirm"))) receiveMutation.mutate();
                   }}
                 >
-                  {t("approve")}
+                  {t("receiveTransfer")}
                 </button>
-                <button
-                  className="btn-danger"
-                  disabled={cancelMutation.isPending}
-                  onClick={async () => {
-                    if (await confirm(t("cancelConfirm"))) cancelMutation.mutate();
-                  }}
-                >
-                  {t("cancelDoc")}
-                </button>
-              </>
-            )}
-            {isPending && (
-              <>
-                <button
-                  className="btn-primary"
-                  disabled={approveMutation.isPending}
-                  onClick={async () => {
-                    if (await confirm(needsSecondApproval ? t("approveStepConfirm") : t("approveConfirm"))) {
-                      approveMutation.mutate();
-                    }
-                  }}
-                >
-                  {needsSecondApproval ? t("approveStep") : t("approve")}
-                </button>
-                <button
-                  className="btn-danger"
-                  disabled={cancelMutation.isPending}
-                  onClick={async () => {
-                    if (await confirm(t("cancelConfirm"))) cancelMutation.mutate();
-                  }}
-                >
-                  {t("cancelDoc")}
-                </button>
-              </>
-            )}
-            {canReceiveTransfer && (
-              <button
-                className="btn-primary"
-                disabled={receiveMutation.isPending}
-                onClick={async () => {
-                  if (await confirm(t("receiveTransferConfirm"))) receiveMutation.mutate();
-                }}
-              >
-                {t("receiveTransfer")}
-              </button>
-            )}
+              )}
+            </div>
           </div>
         )}
+
+        <AuditTrailPanel
+          locale={locale}
+          fields={{
+            createdBy: doc.createdBy,
+            createdAt: doc.createdAt,
+            updatedBy: doc.updatedBy,
+            updatedAt: doc.updatedAt,
+            submittedBy: doc.submittedBy,
+            submittedAt: doc.submittedAt,
+            approvedBy: doc.approvedBy ?? doc.firstApprovedBy,
+            approvedAt: doc.approvedAt ?? doc.firstApprovedAt,
+          }}
+        />
       </div>
 
-      <div className="card">
-        <div className="border-b border-slate-200 px-4 py-3 font-medium">
-          {t("lines")}
-        </div>
+      <DataTableCard title={t("lines")} icon={ClipboardList} count={doc.lines.length}>
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table text-sm">
             <thead>
               <tr>
                 <th>{t("productVariant")}</th>
-                <th>{quantityHeader}</th>
+                <th className="text-right">{quantityHeader}</th>
                 <th>{t("barcode")}</th>
                 {isStockCount && isDraft && (
                   <>
-                    <th>{t("systemQuantity")}</th>
-                    <th>{t("variance")}</th>
+                    <th className="text-right">{t("systemQuantity")}</th>
+                    <th className="text-right">{t("variance")}</th>
                   </>
                 )}
                 <th>{t("note")}</th>
@@ -365,37 +413,41 @@ export default function DocumentDetailPage({
                 return (
                   <tr key={line.id}>
                     <td className="font-mono text-xs">{line.sku}</td>
-                    <td>{formatNumber(line.quantity, locale)}</td>
-                    <td className="max-w-xs font-mono text-xs break-all">
+                    <td className="text-right font-medium tabular-nums">
+                      {formatNumber(line.quantity, locale)}
+                    </td>
+                    <td className="max-w-xs font-mono text-xs break-all text-slate-600">
                       {(line.barcodes?.length ?? 0) > 0
                         ? formatUnitBarcodes(line.barcodes!)
                         : "—"}
                     </td>
                     {isStockCount && isDraft && (
                       <>
-                        <td>{formatNumber(onHand, locale)}</td>
+                        <td className="text-right tabular-nums">
+                          {formatNumber(onHand, locale)}
+                        </td>
                         <td
-                          className={
+                          className={`text-right tabular-nums font-medium ${
                             variance > 0
-                              ? "text-green-700"
+                              ? "text-emerald-700"
                               : variance < 0
                                 ? "text-red-700"
                                 : ""
-                          }
+                          }`}
                         >
                           {variance > 0 ? "+" : ""}
                           {formatNumber(variance, locale)}
                         </td>
                       </>
                     )}
-                    <td>{line.note ?? "—"}</td>
+                    <td className="text-slate-600">{line.note ?? "—"}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-      </div>
+      </DataTableCard>
     </div>
   );
 }

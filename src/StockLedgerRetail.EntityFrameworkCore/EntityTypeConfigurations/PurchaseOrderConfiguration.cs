@@ -19,6 +19,7 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
         builder.Property(x => x.Note).HasMaxLength(500);
         builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
         builder.Property(x => x.CreatedAt).IsRequired();
+        builder.Property(x => x.UpdatedBy).HasMaxLength(100);
 
         builder.HasIndex(x => x.PoNo).IsUnique();
         builder.HasIndex(x => x.SupplierId);

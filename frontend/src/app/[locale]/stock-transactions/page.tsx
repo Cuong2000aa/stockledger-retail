@@ -14,20 +14,17 @@ import { useListSearch } from "@/hooks/useListSearch";
 import { fetchStockTransactions, fetchWarehouses } from "@/lib/api";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { formatDate, formatNumber } from "@/lib/format";
+import {
+  expandStockTransactionList,
+  isInboundTransaction,
+} from "@/lib/stockTransactionDisplay";
 import { StockTransactionType } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 import { ArrowDownLeft, ArrowUpRight, History, Warehouse } from "lucide-react";
+import clsx from "clsx";
 import { useMemo, useState } from "react";
-
-function isInbound(type: StockTransactionType) {
-  return [
-    StockTransactionType.In,
-    StockTransactionType.TransferIn,
-    StockTransactionType.AdjustmentIn,
-    StockTransactionType.CountAdjustmentIn,
-  ].includes(type);
-}
 
 export default function StockTransactionsPage() {
   const t = useTranslations("transactions");
@@ -59,9 +56,14 @@ export default function StockTransactionsPage() {
       ),
   });
 
+  const displayRows = useMemo(
+    () => expandStockTransactionList(data?.items ?? []),
+    [data?.items]
+  );
+
   const stats = useMemo(() => {
     const items = data?.items ?? [];
-    const inbound = items.filter((tx) => isInbound(tx.transactionType)).length;
+    const inbound = items.filter((tx) => isInboundTransaction(tx.transactionType)).length;
     const outbound = items.length - inbound;
     const netChange = items.reduce((sum, tx) => sum + tx.quantityDelta, 0);
     return {
@@ -139,61 +141,94 @@ export default function StockTransactionsPage() {
         countLabel={tCommon("total")}
       >
         {isLoading ? (
-          <TableSkeleton rows={8} cols={7} />
-        ) : !data?.items.length ? (
+          <TableSkeleton rows={8} cols={9} />
+        ) : !displayRows.length ? (
           <EmptyTableState message={tCommon("noData")} />
         ) : (
           <>
-            <div className="table-wrap max-h-[32rem] overflow-y-auto scrollbar-thin">
-              <table className="data-table">
-                <thead className="sticky top-0 z-10 bg-white">
+            <div className="table-wrap max-h-[36rem] overflow-y-auto scrollbar-thin">
+              <table className="data-table text-sm">
+                <thead className="sticky top-0 z-10 bg-white shadow-sm">
                   <tr>
-                    <th>{t("transactionNo")}</th>
-                    <th>{t("sku")}</th>
                     <th>{t("type")}</th>
-                    <th>{t("delta")}</th>
-                    <th>{t("before")}</th>
-                    <th>{t("after")}</th>
+                    <th>{t("documentNo")}</th>
+                    <th>{t("sku")}</th>
+                    <th>{t("sourceWarehouse")}</th>
+                    <th>{t("destinationWarehouse")}</th>
+                    <th className="text-right">{t("delta")}</th>
+                    <th>{t("barcodes")}</th>
+                    <th>{t("createdBy")}</th>
                     <th>{t("date")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.items.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-slate-50/80">
-                      <td><CodePill>{tx.transactionNo}</CodePill></td>
-                      <td><CodePill>{tx.sku}</CodePill></td>
-                      <td>
-                        <TransactionTypeBadge
-                          type={tx.transactionType}
-                          label={typeLabel(tx.transactionType)}
-                        />
-                      </td>
-                      <td
-                        className={`tabular-nums font-semibold ${
-                          tx.quantityDelta >= 0 ? "text-emerald-700" : "text-red-700"
-                        }`}
+                  {displayRows.map((row, index) => {
+                    const prev = displayRows[index - 1];
+                    const sameGroup = prev?.transactionId === row.transactionId;
+                    return (
+                      <tr
+                        key={row.rowKey}
+                        className={clsx(
+                          "hover:bg-slate-50/80",
+                          sameGroup && "border-t border-dashed border-slate-100",
+                          row.isSplitLine && sameGroup && "bg-slate-50/30"
+                        )}
                       >
-                        {tx.quantityDelta >= 0 ? "+" : ""}
-                        {formatNumber(tx.quantityDelta, locale)}
-                      </td>
-                      <td className="tabular-nums text-slate-600">
-                        {formatNumber(tx.beforeQuantity, locale)}
-                      </td>
-                      <td className="tabular-nums font-medium text-slate-900">
-                        {formatNumber(tx.afterQuantity, locale)}
-                      </td>
-                      <td className="whitespace-nowrap text-xs text-slate-500">
-                        {formatDate(tx.transactionDate, locale)}
-                      </td>
-                    </tr>
-                  ))}
+                        <td>
+                          <TransactionTypeBadge
+                            type={row.transactionType}
+                            label={typeLabel(row.transactionType)}
+                          />
+                        </td>
+                        <td>
+                          {row.documentNo ? (
+                            <Link
+                              href={`/inventory-documents/${row.documentId}`}
+                              className="font-mono text-xs font-medium text-brand-600 hover:underline"
+                            >
+                              {row.documentNo}
+                            </Link>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
+                        <td>
+                          <CodePill>{row.sku}</CodePill>
+                        </td>
+                        <td className="text-xs font-medium text-slate-700">
+                          {row.sourceWarehouse}
+                        </td>
+                        <td className="text-xs font-medium text-slate-700">
+                          {row.destinationWarehouse}
+                        </td>
+                        <td
+                          className={clsx(
+                            "text-right tabular-nums font-semibold",
+                            row.quantityDelta >= 0 ? "text-emerald-700" : "text-red-700"
+                          )}
+                        >
+                          {row.quantityDelta >= 0 ? "+" : ""}
+                          {formatNumber(row.quantityDelta, locale)}
+                        </td>
+                        <td className="font-mono text-xs text-slate-800">
+                          {row.barcode ?? "—"}
+                        </td>
+                        <td className="text-xs text-slate-600">
+                          {row.createdBy ?? "—"}
+                        </td>
+                        <td className="whitespace-nowrap text-xs text-slate-500">
+                          {formatDate(row.transactionDate, locale)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
             <Pagination
-              page={data.page}
-              pageSize={data.pageSize}
-              totalCount={data.totalCount}
+              page={data!.page}
+              pageSize={data!.pageSize}
+              totalCount={data!.totalCount}
               onChange={setPage}
             />
           </>

@@ -196,12 +196,17 @@ Every inventory transaction must be linked to a business document.
 
 | Rule Code | Rule |
 | --------- | ---- |
-| BR1201 | CostPrice and SellingPrice on SKU are optional (nullable). |
-| BR1202 | CostSource indicates origin: Manual, Erp, Pos, PurchaseSystem. |
-| BR1203 | Valuation fields do not affect stock ledger processing. |
-| BR1204 | ProductCostHistory records time-bounded cost (EffectiveFrom / EffectiveTo). |
+| BR1201 | Legacy `CostPrice` and `SellingPrice` may remain nullable on SKU for backward compatibility. |
+| BR1202 | `CurrentCostPrice`, `CurrentSellingPrice`, VAT-derived selling prices, and `CurrentCostSource` act as current operational cache on SKU. |
+| BR1203 | CostSource indicates origin: Manual, Erp, Pos, PurchaseSystem. |
+| BR1204 | ProductCostHistory records time-bounded cost (EffectiveFrom / EffectiveTo) and the current row is flagged by `IsCurrent`. |
 | BR1205 | ProductCostHistory is readable via `GET /api/reports/cost-history`. |
-| BR1206 | Negative CostPrice or SellingPrice is not allowed on SKU update. |
+| BR1206 | Negative cost or selling price is not allowed on SKU update. |
+| BR1207 | VAT rate must be between 0 and 100. |
+| BR1208 | ProductPrice stores effective-dated selling prices by `PriceType` (Regular, Promotion, Markdown, Clearance, Channel). |
+| BR1209 | Updating a current Regular price refreshes the SKU current selling price cache. |
+| BR1210 | Promotion and Markdown prices keep their own effective history and must not overwrite each other's current rows. |
+| BR1211 | InventoryValuationSnapshot stores valuation by SKU / warehouse / snapshot date for reporting and analytics. |
 
 ---
 

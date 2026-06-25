@@ -213,16 +213,18 @@ Retail inventory use cases for StockLedger Retail.
 
 **Actor:** Merchandising / Finance
 
-**Goal:** Maintain cost and selling price on SKU for future margin and insight features.
+**Goal:** Maintain enterprise pricing and valuation data for current operations, reporting, and future AI/analytics features.
 
 **Current scope:**
 
-1. Set `CostPrice`, `SellingPrice`, `CostSource` on ProductVariant via CRUD API and FE
-2. `ProductCostHistory` table exists for time-series cost (no CRUD API yet)
+1. Maintain SKU current cost cache and VAT-aware current selling cache on `ProductVariant`
+2. Maintain effective-dated `ProductPrice` rows for `Regular`, `Promotion`, and `Markdown`
+3. Maintain `ProductCostHistory` for effective-dated cost changes
+4. Maintain `InventoryValuationSnapshot` for reporting and analytics
 
-**API:** `PUT /api/product-variants/{id}` (cost fields on DTO)
+**API:** `PUT /api/product-variants/{id}`, `GET/POST /api/product-variants/{id}/prices`
 
-**Status:** ⚠️ Partial — master fields on SKU; cost history via `GET /api/reports/cost-history`
+**Status:** ✅ Current cache + ProductPrice history + ProductCostHistory + valuation snapshot implemented
 
 ---
 

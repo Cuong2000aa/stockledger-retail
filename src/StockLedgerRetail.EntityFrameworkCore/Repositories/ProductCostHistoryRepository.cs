@@ -17,7 +17,7 @@ public class ProductCostHistoryRepository : IProductCostHistoryRepository
         Guid productVariantId,
         CancellationToken cancellationToken = default) =>
         _dbContext.ProductCostHistories
-            .Where(x => x.ProductVariantId == productVariantId && x.EffectiveTo == null)
+            .Where(x => x.ProductVariantId == productVariantId && x.IsCurrent)
             .OrderByDescending(x => x.EffectiveFrom)
             .FirstOrDefaultAsync(cancellationToken);
 

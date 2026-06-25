@@ -116,6 +116,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
             Note = input.Note?.Trim(),
             CreatedBy = _auditContext.UserName,
             CreatedAt = now,
+            UpdatedBy = _auditContext.UserName,
+            UpdatedAt = now,
             Lines = await BuildGoodsReceiptLinesAsync(grId, input.Lines, po, cancellationToken)
         };
 
@@ -229,6 +231,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
             gr.InventoryDocumentId = stockInDoc.Id;
             gr.ApprovedBy = _auditContext.UserName;
             gr.ApprovedAt = now;
+            AuditUserStamp.Touch(gr, _auditContext, now);
 
             await _goodsReceiptRepository.UpdateAsync(gr, ct);
         }, cancellationToken);
@@ -250,6 +253,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
 
         var oldDto = MapToDto(gr);
         gr.Status = GoodsReceiptStatus.Cancelled;
+        AuditUserStamp.Touch(gr, _auditContext, DateTime.UtcNow);
 
         await _goodsReceiptRepository.UpdateAsync(gr, cancellationToken);
         await _goodsReceiptRepository.SaveChangesAsync(cancellationToken);
@@ -408,6 +412,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         CreatedAt = gr.CreatedAt,
         ApprovedBy = gr.ApprovedBy,
         ApprovedAt = gr.ApprovedAt,
+        UpdatedBy = gr.UpdatedBy,
+        UpdatedAt = gr.UpdatedAt,
         Lines = gr.Lines.Select(l => new GoodsReceiptLineDto
         {
             Id = l.Id,
@@ -439,6 +445,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         CreatedBy = gr.CreatedBy,
         CreatedAt = gr.CreatedAt,
         ApprovedBy = gr.ApprovedBy,
-        ApprovedAt = gr.ApprovedAt
+        ApprovedAt = gr.ApprovedAt,
+        UpdatedBy = gr.UpdatedBy,
+        UpdatedAt = gr.UpdatedAt
     };
 }

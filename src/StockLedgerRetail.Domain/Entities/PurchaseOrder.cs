@@ -42,6 +42,10 @@ public class PurchaseOrder
 
     public DateTime? CancelledAt { get; set; }
 
+    public string? UpdatedBy { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
     public Supplier? Supplier { get; set; }
 
     public Warehouse? Warehouse { get; set; }

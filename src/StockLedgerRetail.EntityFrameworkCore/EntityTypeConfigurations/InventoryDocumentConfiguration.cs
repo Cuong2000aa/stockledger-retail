@@ -21,6 +21,7 @@ public class InventoryDocumentConfiguration : IEntityTypeConfiguration<Inventory
         builder.Property(x => x.Note).HasMaxLength(500);
         builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
         builder.Property(x => x.CreatedAt).IsRequired();
+        builder.Property(x => x.UpdatedBy).HasMaxLength(100);
         builder.Property(x => x.ApprovedBy).HasMaxLength(100);
 
         builder.Property(x => x.RowVersion).IsRowVersion();

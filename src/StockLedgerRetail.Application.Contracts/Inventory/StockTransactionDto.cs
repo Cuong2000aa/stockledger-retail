@@ -10,13 +10,25 @@ public class StockTransactionDto
 
     public Guid DocumentId { get; set; }
 
+    public string DocumentNo { get; set; } = string.Empty;
+
+    public string? SourceSystem { get; set; }
+
+    public string? ReferenceNo { get; set; }
+
     public Guid ProductVariantId { get; set; }
 
     public string Sku { get; set; } = string.Empty;
 
+    public bool IsBarcode { get; set; }
+
     public Guid WarehouseId { get; set; }
 
     public string WarehouseCode { get; set; } = string.Empty;
+
+    public Guid? CounterpartWarehouseId { get; set; }
+
+    public string? CounterpartWarehouseCode { get; set; }
 
     public StockTransactionType TransactionType { get; set; }
 
@@ -36,4 +48,6 @@ public class StockTransactionDto
     public string CreatedBy { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; }
+
+    public List<string> Barcodes { get; set; } = new();
 }

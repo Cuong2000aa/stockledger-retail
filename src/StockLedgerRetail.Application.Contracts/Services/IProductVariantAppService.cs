@@ -19,5 +19,9 @@ public interface IProductVariantAppService
 
     Task<ProductVariantDto> UpdateAsync(Guid id, UpdateProductVariantDto input, CancellationToken cancellationToken = default);
 
+    Task<List<ProductPriceDto>> GetPricesAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<ProductPriceDto> UpsertPriceAsync(Guid id, UpsertProductPriceDto input, CancellationToken cancellationToken = default);
+
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

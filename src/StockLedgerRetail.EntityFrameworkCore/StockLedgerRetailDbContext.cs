@@ -34,6 +34,10 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<ProductCostHistory> ProductCostHistories => Set<ProductCostHistory>();
 
+    public DbSet<ProductPrice> ProductPrices => Set<ProductPrice>();
+
+    public DbSet<InventoryValuationSnapshot> InventoryValuationSnapshots => Set<InventoryValuationSnapshot>();
+
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
 
     public DbSet<CurrentStock> CurrentStocks => Set<CurrentStock>();
@@ -78,6 +82,8 @@ public class StockLedgerRetailDbContext : DbContext
     public DbSet<PurchaseOrderLineBarcode> PurchaseOrderLineBarcodes => Set<PurchaseOrderLineBarcode>();
 
     public DbSet<GoodsReceiptLineBarcode> GoodsReceiptLineBarcodes => Set<GoodsReceiptLineBarcode>();
+
+    public DbSet<StockTransactionBarcode> StockTransactionBarcodes => Set<StockTransactionBarcode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

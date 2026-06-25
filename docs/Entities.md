@@ -64,9 +64,17 @@ Represents a sellable SKU.
 * Season
 * Unit
 * Status
-* CostPrice
-* SellingPrice
-* CostSource
+* CostPrice (legacy compatibility)
+* SellingPrice (legacy compatibility)
+* CostSource (legacy compatibility)
+* CurrentCostPrice
+* CurrentSellingPrice
+* CurrentSellingPriceBeforeVat
+* CurrentSellingPriceAfterVat
+* VatRate
+* CurrentCostSource
+* CurrentCostEffectiveFrom
+* CurrentPriceEffectiveFrom
 * TrackLotExpiry (bool — enable lot/HSD tracking)
 * CreatedAt
 * UpdatedAt
@@ -78,13 +86,47 @@ Represents a sellable SKU.
 * Pos
 * PurchaseSystem
 
-### Notes
+### Pricing Notes
 
 Inventory is managed at ProductVariant level.
 
 SKU is unique per `(BrandId, Sku)`.
 
-Cost fields support future valuation analytics; they do not drive stock ledger logic.
+ProductVariant now keeps current pricing/cost cache for operational reads, while historical pricing and valuation live in dedicated entities.
+
+---
+
+## ProductPrice
+
+Effective-dated selling price records per SKU.
+
+### Fields
+
+* Id
+* ProductVariantId
+* PriceType
+* PriceBeforeVat
+* VatRate
+* PriceAfterVat
+* Currency
+* EffectiveFrom
+* EffectiveTo
+* IsCurrent
+* ChannelCode
+* ReferenceType
+* ReferenceId
+* CreatedBy
+* CreatedAt
+* UpdatedBy
+* UpdatedAt
+
+### PriceType Values
+
+* Regular
+* Markdown
+* Promotion
+* Clearance
+* Channel
 
 ---
 
@@ -429,10 +471,39 @@ Time-series cost records per SKU.
 * ProductVariantId
 * CostPrice
 * CostSource
+* ValuationMethod
+* Currency
+* ReferenceType
+* ReferenceId
 * EffectiveFrom
 * EffectiveTo (null = current record)
+* IsCurrent
 
 **API:** `GET /api/reports/cost-history`
+
+---
+
+## InventoryValuationSnapshot
+
+Persisted valuation snapshot per SKU / warehouse / date.
+
+### Fields
+
+* Id
+* ProductVariantId
+* WarehouseId
+* QuantityOnHand
+* QuantityReserved
+* QuantityAvailable
+* AverageCost
+* InventoryValue
+* SnapshotDate
+* ValuationMethod
+* Currency
+* CreatedBy
+* CreatedAt
+* UpdatedBy
+* UpdatedAt
 
 ---
 

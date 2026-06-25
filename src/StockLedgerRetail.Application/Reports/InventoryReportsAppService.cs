@@ -146,8 +146,13 @@ public class InventoryReportsAppService : IInventoryReportsAppService
                 Sku = x.ProductVariant?.Sku ?? string.Empty,
                 CostPrice = x.CostPrice,
                 CostSource = x.CostSource,
+                ValuationMethod = x.ValuationMethod,
+                Currency = x.Currency,
+                ReferenceType = x.ReferenceType,
+                ReferenceId = x.ReferenceId,
                 EffectiveFrom = x.EffectiveFrom,
-                EffectiveTo = x.EffectiveTo
+                EffectiveTo = x.EffectiveTo,
+                IsCurrent = x.IsCurrent
             }).ToList(),
             totalCount,
             normalizedPage,

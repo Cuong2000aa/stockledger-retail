@@ -35,6 +35,10 @@ public class InventoryDocument
 
     public DateTime? ApprovedAt { get; set; }
 
+    public string? UpdatedBy { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
     public DateTime? SubmittedAt { get; set; }
 
     public string? SubmittedBy { get; set; }

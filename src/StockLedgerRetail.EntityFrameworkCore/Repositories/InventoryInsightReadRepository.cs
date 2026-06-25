@@ -91,7 +91,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
                 WarehouseName = warehouse.Name,
                 QuantityOnHand = stock.QuantityOnHand,
                 QuantityAvailable = stock.QuantityAvailable,
-                CostPrice = productVariant.CostPrice
+                CostPrice = productVariant.CurrentCostPrice ?? productVariant.CostPrice
             })
             .ToListAsync(cancellationToken);
 
@@ -164,8 +164,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
                 WarehouseName = warehouse.Name,
                 QuantityOnHand = stock.QuantityOnHand,
                 QuantityAvailable = stock.QuantityAvailable,
-                CostPrice = productVariant.CostPrice,
-                SellingPrice = productVariant.SellingPrice
+                CostPrice = productVariant.CurrentCostPrice ?? productVariant.CostPrice,
+                SellingPrice = productVariant.CurrentSellingPrice ?? productVariant.SellingPrice
             })
             .ToListAsync(cancellationToken);
 

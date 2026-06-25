@@ -48,6 +48,17 @@ public class ProductVariantsController : ControllerBase
     public Task<ProductVariantDto> UpdateAsync(Guid id, [FromBody] UpdateProductVariantDto input, CancellationToken cancellationToken) =>
         _productVariantAppService.UpdateAsync(id, input, cancellationToken);
 
+    [HttpGet("{id:guid}/prices")]
+    public Task<List<ProductPriceDto>> GetPricesAsync(Guid id, CancellationToken cancellationToken) =>
+        _productVariantAppService.GetPricesAsync(id, cancellationToken);
+
+    [HttpPost("{id:guid}/prices")]
+    public Task<ProductPriceDto> UpsertPriceAsync(
+        Guid id,
+        [FromBody] UpsertProductPriceDto input,
+        CancellationToken cancellationToken) =>
+        _productVariantAppService.UpsertPriceAsync(id, input, cancellationToken);
+
     /// <summary>Xóa SKU theo Id.</summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken cancellationToken)

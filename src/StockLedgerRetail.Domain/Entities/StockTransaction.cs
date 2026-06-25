@@ -29,6 +29,16 @@ public class StockTransaction
 
     public DateTime TransactionDate { get; set; }
 
+    /// <summary>Denormalized từ phiếu nguồn — tra cứu lịch sử nhanh.</summary>
+    public string DocumentNo { get; set; } = string.Empty;
+
+    public string? SourceSystem { get; set; }
+
+    public string? ReferenceNo { get; set; }
+
+    /// <summary>Kho đối ứng (nguồn khi nhập chuyển, đích khi xuất chuyển).</summary>
+    public Guid? CounterpartWarehouseId { get; set; }
+
     public string CreatedBy { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; }
@@ -41,5 +51,9 @@ public class StockTransaction
 
     public Warehouse Warehouse { get; set; } = null!;
 
+    public Warehouse? CounterpartWarehouse { get; set; }
+
     public ICollection<CurrentStock> CurrentStocks { get; set; } = new List<CurrentStock>();
+
+    public ICollection<StockTransactionBarcode> Barcodes { get; set; } = new List<StockTransactionBarcode>();
 }

@@ -94,6 +94,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
             Note = input.Note?.Trim(),
             CreatedBy = _auditContext.UserName,
             CreatedAt = now,
+            UpdatedBy = _auditContext.UserName,
+            UpdatedAt = now,
             Lines = await BuildPurchaseOrderLinesAsync(poId, input.Lines, cancellationToken)
         };
 
@@ -131,6 +133,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         po.Status = requiredSteps > 1
             ? PurchaseOrderStatus.PendingApproval
             : PurchaseOrderStatus.Submitted;
+        AuditUserStamp.Touch(po, _auditContext, now);
 
         await _purchaseOrderRepository.UpdateAsync(po, cancellationToken);
         await _purchaseOrderRepository.SaveChangesAsync(cancellationToken);
@@ -170,6 +173,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
             po.ApprovedAt = now;
         }
 
+        AuditUserStamp.Touch(po, _auditContext, now);
         await _purchaseOrderRepository.UpdateAsync(po, cancellationToken);
         await _purchaseOrderRepository.SaveChangesAsync(cancellationToken);
 
@@ -196,6 +200,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         var oldDto = MapToDto(po);
         po.Status = PurchaseOrderStatus.Cancelled;
         po.CancelledAt = DateTime.UtcNow;
+        AuditUserStamp.Touch(po, _auditContext, DateTime.UtcNow);
 
         await _purchaseOrderRepository.UpdateAsync(po, cancellationToken);
         await _purchaseOrderRepository.SaveChangesAsync(cancellationToken);
@@ -334,6 +339,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         FirstApprovedAt = po.FirstApprovedAt,
         ApprovedBy = po.ApprovedBy,
         ApprovedAt = po.ApprovedAt,
+        UpdatedBy = po.UpdatedBy,
+        UpdatedAt = po.UpdatedAt,
         Lines = po.Lines.Select(l => new PurchaseOrderLineDto
         {
             Id = l.Id,
@@ -370,6 +377,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         FirstApprovedBy = po.FirstApprovedBy,
         FirstApprovedAt = po.FirstApprovedAt,
         ApprovedBy = po.ApprovedBy,
-        ApprovedAt = po.ApprovedAt
+        ApprovedAt = po.ApprovedAt,
+        UpdatedBy = po.UpdatedBy,
+        UpdatedAt = po.UpdatedAt
     };
 }

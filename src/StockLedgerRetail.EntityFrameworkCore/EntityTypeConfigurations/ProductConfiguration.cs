@@ -19,6 +19,8 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.Status).IsRequired();
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.UpdatedAt).IsRequired();
+        builder.Property(x => x.CreatedBy).IsRequired().HasMaxLength(100);
+        builder.Property(x => x.UpdatedBy).HasMaxLength(100);
 
         builder.HasIndex(x => x.ProductCode).IsUnique();
 

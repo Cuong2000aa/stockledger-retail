@@ -1,3 +1,4 @@
+using StockLedgerRetail.Application.Inventory;
 using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Inventory;
@@ -39,10 +40,16 @@ public class StockTransactionAppService : IStockTransactionAppService
         Id = transaction.Id,
         TransactionNo = transaction.TransactionNo,
         DocumentId = transaction.DocumentId,
+        DocumentNo = ResolveDocumentNo(transaction),
+        SourceSystem = transaction.SourceSystem,
+        ReferenceNo = transaction.ReferenceNo,
         ProductVariantId = transaction.ProductVariantId,
         Sku = transaction.ProductVariant.Sku,
+        IsBarcode = transaction.ProductVariant.IsBarcode,
         WarehouseId = transaction.WarehouseId,
         WarehouseCode = transaction.Warehouse.Code,
+        CounterpartWarehouseId = transaction.CounterpartWarehouseId,
+        CounterpartWarehouseCode = transaction.CounterpartWarehouse?.Code,
         TransactionType = transaction.TransactionType,
         QuantityDelta = transaction.QuantityDelta,
         BeforeQuantity = transaction.BeforeQuantity,
@@ -50,6 +57,19 @@ public class StockTransactionAppService : IStockTransactionAppService
         UnitCost = transaction.UnitCost,
         TransactionDate = transaction.TransactionDate,
         CreatedBy = transaction.CreatedBy,
-        CreatedAt = transaction.CreatedAt
+        CreatedAt = transaction.CreatedAt,
+        Barcodes = ResolveBarcodes(transaction),
     };
+
+    private static List<string> ResolveBarcodes(Domain.Entities.StockTransaction transaction) =>
+        transaction.Barcodes.Count > 0
+            ? transaction.Barcodes.Select(b => b.Barcode).ToList()
+            : transaction.DocumentLine is null
+                ? []
+                : BarcodeNormalization.FromLine(transaction.DocumentLine);
+
+    private static string ResolveDocumentNo(Domain.Entities.StockTransaction transaction) =>
+        string.IsNullOrWhiteSpace(transaction.DocumentNo)
+            ? transaction.Document?.DocumentNo ?? string.Empty
+            : transaction.DocumentNo;
 }

@@ -28,6 +28,15 @@ public class UpdateProductVariantDto
     [Range(0, double.MaxValue)]
     public decimal? SellingPrice { get; set; }
 
+    [Range(0, double.MaxValue)]
+    public decimal? SellingPriceBeforeVat { get; set; }
+
+    [Range(0, double.MaxValue)]
+    public decimal? SellingPriceAfterVat { get; set; }
+
+    [Range(0, 100)]
+    public decimal? VatRate { get; set; }
+
     public CostSource? CostSource { get; set; }
 
     public bool TrackLotExpiry { get; set; }

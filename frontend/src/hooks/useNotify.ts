@@ -4,11 +4,12 @@ import { useAppDialog } from "@/components/AppDialog";
 import { formatApiErrorMessage } from "@/lib/api-errors";
 import { getApiErrorMessage } from "@/lib/api";
 import type { ValidationIssue } from "@/lib/validation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback } from "react";
 
 export function useNotify() {
   const dialog = useAppDialog();
+  const locale = useLocale();
   const tValidation = useTranslations("validation");
   const tApiErrors = useTranslations("apiErrors");
   const tDialog = useTranslations("dialog");
@@ -39,12 +40,14 @@ export function useNotify() {
       dialog.alert({
         variant: "error",
         title: tDialog("errorTitle"),
-        message: formatApiErrorMessage(raw, (key, values) =>
-          tApiErrors(key as never, values)
+        message: formatApiErrorMessage(
+          raw,
+          (key, values) => tApiErrors(key as never, values),
+          locale
         ),
       });
     },
-    [dialog, tApiErrors, tDialog]
+    [dialog, locale, tApiErrors, tDialog]
   );
 
   const notifySuccess = useCallback(

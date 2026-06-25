@@ -16,6 +16,8 @@
 | GoodsReceipt          | Phiếu nhận hàng (GR)    | Nhận hàng theo PO → sinh phiếu nhập   |
 | GoodsReceiptLine      | Chi tiết GR             | Số lượng nhận theo dòng PO            |
 | ProductCostHistory    | Lịch sử giá vốn         | Đọc qua `/api/reports/cost-history` |
+| ProductPrice          | Lịch sử giá bán         | Giá bán theo loại giá và hiệu lực |
+| InventoryValuationSnapshot | Snapshot định giá tồn | Định giá tồn theo SKU / kho / ngày |
 | StockLot              | Lô hàng                 | Mã lô, HSD theo SKU |
 | LotStock              | Tồn theo lô             | Số lượng lô tại từng kho |
 | Brand                 | Thương hiệu             | Master đa brand                      |
@@ -89,13 +91,19 @@ Tồn kho luôn nằm ở ProductVariant.
 
 Không nằm ở Product.
 
-## Trường định giá (tùy chọn)
+## Trường current pricing / cost cache
 
-* CostPrice — giá vốn
-* SellingPrice — giá bán
+* CostPrice — giá vốn cũ để tương thích ngược
+* SellingPrice — giá bán cũ để tương thích ngược
 * CostSource — Manual, Erp, Pos, PurchaseSystem
+* CurrentCostPrice — giá vốn hiện hành
+* CurrentSellingPrice — giá bán hiện hành
+* CurrentSellingPriceBeforeVat — giá trước VAT
+* CurrentSellingPriceAfterVat — giá sau VAT
+* VatRate — VAT mặc định của SKU
+* CurrentCostSource — nguồn giá vốn hiện hành
 
-Các trường này phục vụ phân tích tương lai; không ảnh hưởng sổ tồn kho.
+Các trường này là current cache để đọc nhanh. Lịch sử giá và định giá chi tiết được tách sang entity riêng.
 
 ---
 
@@ -346,7 +354,51 @@ Lưu giá vốn theo khoảng thời gian (EffectiveFrom / EffectiveTo).
 
 ## Ghi chú
 
-Bảng lưu lịch sử giá vốn; đọc qua `GET /api/reports/cost-history`.
+Bảng lưu lịch sử giá vốn, có thêm `ValuationMethod`, `Currency`, `ReferenceType`, `ReferenceId`, `IsCurrent`; đọc qua `GET /api/reports/cost-history`.
+
+---
+
+# ProductPrice (Lịch sử giá bán)
+
+## Mục đích
+
+Lưu giá bán theo từng loại giá và thời gian hiệu lực.
+
+## Trường chính
+
+* PriceType — `Regular`, `Promotion`, `Markdown`, `Clearance`, `Channel`
+* PriceBeforeVat
+* VatRate
+* PriceAfterVat
+* Currency
+* EffectiveFrom
+* EffectiveTo
+* IsCurrent
+
+## Ghi chú
+
+Regular Price đang hiệu lực sẽ cập nhật current selling price cache trên SKU.
+
+Promotion và Markdown có lịch sử riêng, không ghi đè lẫn nhau.
+
+---
+
+# InventoryValuationSnapshot (Snapshot định giá tồn)
+
+## Mục đích
+
+Lưu snapshot định giá tồn kho theo SKU / kho / ngày để phục vụ báo cáo và analytics.
+
+## Trường chính
+
+* QuantityOnHand
+* QuantityReserved
+* QuantityAvailable
+* AverageCost
+* InventoryValue
+* SnapshotDate
+* ValuationMethod
+* Currency
 
 ---
 

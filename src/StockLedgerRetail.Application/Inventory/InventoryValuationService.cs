@@ -2,6 +2,7 @@ using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
 using StockLedgerRetail.Services;
+using StockLedgerRetail.Audit;
 
 namespace StockLedgerRetail.Application.Inventory;
 
@@ -12,13 +13,19 @@ public class InventoryValuationService : IInventoryValuationService
 {
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly IProductCostHistoryRepository _productCostHistoryRepository;
+    private readonly IInventoryValuationSnapshotRepository _inventoryValuationSnapshotRepository;
+    private readonly IAuditContext _auditContext;
 
     public InventoryValuationService(
         IProductVariantRepository productVariantRepository,
-        IProductCostHistoryRepository productCostHistoryRepository)
+        IProductCostHistoryRepository productCostHistoryRepository,
+        IInventoryValuationSnapshotRepository inventoryValuationSnapshotRepository,
+        IAuditContext auditContext)
     {
         _productVariantRepository = productVariantRepository;
         _productCostHistoryRepository = productCostHistoryRepository;
+        _inventoryValuationSnapshotRepository = inventoryValuationSnapshotRepository;
+        _auditContext = auditContext;
     }
 
     public async Task<decimal?> ApplyReceiptCostAsync(
@@ -59,6 +66,7 @@ public class InventoryValuationService : IInventoryValuationService
         if (activeHistory is not null)
         {
             activeHistory.EffectiveTo = effectiveAt;
+            activeHistory.IsCurrent = false;
             await _productCostHistoryRepository.UpdateAsync(activeHistory, cancellationToken);
         }
 
@@ -68,11 +76,18 @@ public class InventoryValuationService : IInventoryValuationService
             ProductVariantId = productVariantId,
             CostPrice = newCost,
             CostSource = costSource,
-            EffectiveFrom = effectiveAt
+            ValuationMethod = ValuationMethod.WeightedAverage,
+            Currency = "VND",
+            ReferenceType = "InventoryReceipt",
+            EffectiveFrom = effectiveAt,
+            IsCurrent = true
         }, cancellationToken);
 
         variant.CostPrice = newCost;
+        variant.CurrentCostPrice = newCost;
         variant.CostSource = costSource;
+        variant.CurrentCostSource = costSource;
+        variant.CurrentCostEffectiveFrom = effectiveAt;
         await _productVariantRepository.UpdateAsync(variant, cancellationToken);
 
         return newCost;
@@ -83,6 +98,58 @@ public class InventoryValuationService : IInventoryValuationService
         CancellationToken cancellationToken = default)
     {
         var variant = await _productVariantRepository.GetByIdAsync(productVariantId, cancellationToken);
-        return variant?.CostPrice;
+        return variant?.CurrentCostPrice ?? variant?.CostPrice;
+    }
+
+    public async Task UpsertSnapshotAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        decimal quantityOnHand,
+        decimal quantityReserved,
+        decimal quantityAvailable,
+        DateTime snapshotAt,
+        CancellationToken cancellationToken = default)
+    {
+        var variant = await _productVariantRepository.GetByIdAsync(productVariantId, cancellationToken)
+            ?? throw new InvalidOperationException($"Product variant '{productVariantId}' was not found.");
+
+        var averageCost = variant.CurrentCostPrice ?? variant.CostPrice;
+        var snapshotDate = snapshotAt.Date;
+        var inventoryValue = Math.Round(quantityOnHand * (averageCost ?? 0m), 4, MidpointRounding.AwayFromZero);
+        var snapshot = await _inventoryValuationSnapshotRepository.GetByVariantWarehouseAndDateAsync(
+            productVariantId,
+            warehouseId,
+            snapshotDate,
+            cancellationToken);
+
+        if (snapshot is null)
+        {
+            snapshot = new InventoryValuationSnapshot
+            {
+                Id = Guid.NewGuid(),
+                ProductVariantId = productVariantId,
+                WarehouseId = warehouseId,
+                QuantityOnHand = quantityOnHand,
+                QuantityReserved = quantityReserved,
+                QuantityAvailable = quantityAvailable,
+                AverageCost = averageCost,
+                InventoryValue = inventoryValue,
+                SnapshotDate = snapshotDate,
+                ValuationMethod = ValuationMethod.WeightedAverage,
+                Currency = "VND"
+            };
+            AuditUserStamp.OnCreate(snapshot, _auditContext, snapshotAt);
+            await _inventoryValuationSnapshotRepository.InsertAsync(snapshot, cancellationToken);
+            return;
+        }
+
+        snapshot.QuantityOnHand = quantityOnHand;
+        snapshot.QuantityReserved = quantityReserved;
+        snapshot.QuantityAvailable = quantityAvailable;
+        snapshot.AverageCost = averageCost;
+        snapshot.InventoryValue = inventoryValue;
+        snapshot.ValuationMethod = ValuationMethod.WeightedAverage;
+        AuditUserStamp.OnUpdate(snapshot, _auditContext, snapshotAt);
+        await _inventoryValuationSnapshotRepository.UpdateAsync(snapshot, cancellationToken);
     }
 }

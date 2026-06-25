@@ -1,7 +1,30 @@
+import { getApiErrorFallback } from "./api-error-fallbacks";
+
 type ApiErrorTranslator = (
   key: string,
   values?: Record<string, string | number>
 ) => string;
+
+function isMissingTranslation(result: string, key: string) {
+  return (
+    result === key ||
+    result === `apiErrors.${key}` ||
+    result.startsWith("MISSING_MESSAGE")
+  );
+}
+
+function safeTranslate(
+  key: string,
+  t: ApiErrorTranslator,
+  locale: string,
+  values?: Record<string, string | number>
+) {
+  const translated = t(key, values);
+  if (!isMissingTranslation(translated, key)) {
+    return translated;
+  }
+  return getApiErrorFallback(locale, key, values);
+}
 
 const API_ERROR_RULES: Array<{
   pattern: RegExp;
@@ -144,22 +167,29 @@ const API_ERROR_RULES: Array<{
 
 export function formatApiErrorMessage(
   message: string,
-  t: ApiErrorTranslator
+  t: ApiErrorTranslator,
+  locale = "vi"
 ): string {
   const normalized = message.trim();
   if (!normalized) {
-    return t("unknown");
+    return safeTranslate("unknown", t, locale);
+  }
+
+  if (normalized.startsWith("apiErrors.")) {
+    const key = normalized.slice("apiErrors.".length);
+    return safeTranslate(key, t, locale);
   }
 
   for (const rule of API_ERROR_RULES) {
     const match = normalized.match(rule.pattern);
     if (match) {
-      return t(rule.key, rule.mapValues?.(match));
+      const values = rule.mapValues?.(match);
+      return safeTranslate(rule.key, t, locale, values);
     }
   }
 
   if (normalized === "Request failed" || normalized.includes("status code")) {
-    return t("requestFailed");
+    return safeTranslate("requestFailed", t, locale);
   }
 
   return normalized;
