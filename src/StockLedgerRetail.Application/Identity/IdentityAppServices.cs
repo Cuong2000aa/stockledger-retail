@@ -14,52 +14,54 @@ public class AuthAppService : IAuthAppService
 {
     private readonly ICurrentUserContext _currentUser;
     private readonly IAppUserRepository _appUserRepository;
-    private readonly StubAuthOptions _stubAuth;
-    private readonly string? _bootstrapAdminEmail;
+    private readonly LoginOptions _loginOptions;
 
     public AuthAppService(
         ICurrentUserContext currentUser,
         IAppUserRepository appUserRepository,
-        IOptions<StubAuthOptions> stubAuth,
-        IConfiguration configuration)
+        IOptions<LoginOptions> loginOptions)
     {
         _currentUser = currentUser;
         _appUserRepository = appUserRepository;
-        _stubAuth = stubAuth.Value;
-        _bootstrapAdminEmail = configuration["Auth:BootstrapAdminEmail"];
+        _loginOptions = loginOptions.Value;
     }
 
     public async Task<LoginResponseDto> LoginAsync(
         LoginRequestDto input,
         CancellationToken cancellationToken = default)
     {
-        if (!_stubAuth.Enabled)
+        if (!_loginOptions.Enabled)
         {
-            throw new InvalidOperationException("Stub login is disabled.");
+            throw new InvalidOperationException("Login is disabled.");
         }
 
-        if (!string.Equals(input.Username?.Trim(), _stubAuth.Username, StringComparison.OrdinalIgnoreCase)
-            || input.Password != _stubAuth.Password)
-        {
-            throw new UnauthorizedAccessException("Invalid username or password.");
-        }
-
-        var email = (_stubAuth.UserEmail ?? _bootstrapAdminEmail)?.Trim().ToLowerInvariant();
+        var email = ResolveLoginEmail(input);
         if (string.IsNullOrWhiteSpace(email))
         {
-            throw new InvalidOperationException("Stub login user email is not configured.");
+            throw new UnauthorizedAccessException("Invalid email or password.");
         }
 
-        var user = await _appUserRepository.GetByEmailWithPermissionsAsync(email, cancellationToken)
-            ?? throw new UnauthorizedAccessException(
-                $"User '{email}' is not registered. Start the API once to bootstrap admin.");
-
-        if (!user.IsActive)
+        var user = await _appUserRepository.GetByEmailWithPermissionsAsync(email, cancellationToken);
+        if (user is null
+            || !user.IsActive
+            || string.IsNullOrWhiteSpace(user.PasswordHash)
+            || !UserPasswordHasher.Verify(input.Password, user.PasswordHash))
         {
-            throw new UnauthorizedAccessException("User is inactive.");
+            throw new UnauthorizedAccessException("Invalid email or password.");
         }
 
         return MapLoginResponse(user);
+    }
+
+    private static string? ResolveLoginEmail(LoginRequestDto input)
+    {
+        var email = !string.IsNullOrWhiteSpace(input.Email)
+            ? input.Email
+            : input.Username;
+
+        return string.IsNullOrWhiteSpace(email)
+            ? null
+            : email.Trim().ToLowerInvariant();
     }
 
     public async Task<CurrentUserDto> GetCurrentUserAsync(CancellationToken cancellationToken = default)
@@ -144,12 +146,18 @@ public class AppUserAppService : IAppUserAppService
             throw new InvalidOperationException($"User '{email}' already exists.");
         }
 
+        if (string.IsNullOrWhiteSpace(input.Password))
+        {
+            throw new InvalidOperationException("Password is required when creating a user.");
+        }
+
         var now = DateTime.UtcNow;
         var user = new AppUser
         {
             Id = Guid.NewGuid(),
             Email = email,
             DisplayName = input.DisplayName.Trim(),
+            PasswordHash = UserPasswordHasher.Hash(input.Password),
             IsActive = true,
             CreatedAt = now,
             UpdatedAt = now
@@ -173,6 +181,11 @@ public class AppUserAppService : IAppUserAppService
         user.DisplayName = input.DisplayName.Trim();
         user.IsActive = input.IsActive;
         user.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrWhiteSpace(input.Password))
+        {
+            user.PasswordHash = UserPasswordHasher.Hash(input.Password);
+        }
 
         await _appUserRepository.UpdateAsync(user, cancellationToken);
         await SyncGroupsAsync(user.Id, input.GroupCodes, cancellationToken);

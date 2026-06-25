@@ -25,4 +25,7 @@ public class GoodsReceiptLine
     public PurchaseOrderLine? PurchaseOrderLine { get; set; }
 
     public ProductVariant? ProductVariant { get; set; }
+
+    public ICollection<GoodsReceiptLineBarcode> UnitBarcodes { get; set; } =
+        new List<GoodsReceiptLineBarcode>();
 }

@@ -18,6 +18,8 @@ public class InventoryDocumentLineDto
 
     public string? LotCode { get; set; }
 
+    public List<string> Barcodes { get; set; } = new();
+
     public DateTime? ExpiryDate { get; set; }
 
     public string? Note { get; set; }

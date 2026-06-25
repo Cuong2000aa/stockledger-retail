@@ -21,6 +21,8 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
         _dbContext.InventoryDocuments
             .Include(x => x.Lines)
                 .ThenInclude(l => l.ProductVariant)
+            .Include(x => x.Lines)
+                .ThenInclude(l => l.UnitBarcodes)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     public Task<InventoryDocument?> GetBySourceReferenceAsync(
@@ -31,6 +33,8 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
         _dbContext.InventoryDocuments
             .Include(x => x.Lines)
                 .ThenInclude(l => l.ProductVariant)
+            .Include(x => x.Lines)
+                .ThenInclude(l => l.UnitBarcodes)
             .FirstOrDefaultAsync(
                 x => x.SourceSystem == sourceSystem
                     && x.ReferenceNo == referenceNo

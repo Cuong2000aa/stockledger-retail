@@ -1,5 +1,7 @@
 import { WarehouseType } from "./types";
 import { formatWarehouseAddress } from "./formatWarehouseAddress";
+import { validateLineBarcodes } from "./variantBarcode";
+import type { ProductVariant } from "./types";
 
 export const MAX_WAREHOUSE_FULL_ADDRESS_LENGTH = 1000;
 
@@ -97,6 +99,7 @@ export type DocumentLineInput = {
   quantity: number;
   adjustmentQuantity: number;
   countedQuantity: number;
+  barcodesText?: string;
 };
 
 export type InventoryDocumentKind =
@@ -106,6 +109,24 @@ export type InventoryDocumentKind =
   | "transfer"
   | "stock-count";
 
+function appendBarcodeIssues(
+  issues: ValidationIssue[],
+  variantById: Map<string, ProductVariant> | undefined,
+  line: DocumentLineInput,
+  lineNo: number,
+  quantity: number
+) {
+  const barcodeIssue = validateLineBarcodes(
+    variantById?.get(line.productVariantId),
+    quantity,
+    line.barcodesText,
+    lineNo
+  );
+  if (barcodeIssue) {
+    issues.push(barcodeIssue);
+  }
+}
+
 export function validateInventoryDocumentForm(input: {
   kind: InventoryDocumentKind;
   warehouseId: string;
@@ -114,6 +135,7 @@ export function validateInventoryDocumentForm(input: {
   reason: string;
   lines: DocumentLineInput[];
   hasVariants: boolean;
+  variantById?: Map<string, ProductVariant>;
 }): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
@@ -158,6 +180,14 @@ export function validateInventoryDocumentForm(input: {
     if (input.kind === "adjustment") {
       if (!line.adjustmentQuantity || line.adjustmentQuantity === 0) {
         issues.push({ key: "lineAdjustmentNonZero", values: { line: lineNo } });
+      } else {
+        appendBarcodeIssues(
+          issues,
+          input.variantById,
+          line,
+          lineNo,
+          line.adjustmentQuantity
+        );
       }
       return;
     }
@@ -165,12 +195,22 @@ export function validateInventoryDocumentForm(input: {
     if (input.kind === "stock-count") {
       if (line.countedQuantity < 0) {
         issues.push({ key: "lineCountedNonNegative", values: { line: lineNo } });
+      } else if (line.countedQuantity > 0) {
+        appendBarcodeIssues(
+          issues,
+          input.variantById,
+          line,
+          lineNo,
+          line.countedQuantity
+        );
       }
       return;
     }
 
     if (!line.quantity || line.quantity <= 0) {
       issues.push({ key: "lineQuantityPositive", values: { line: lineNo } });
+    } else {
+      appendBarcodeIssues(issues, input.variantById, line, lineNo, line.quantity);
     }
   });
 
@@ -181,6 +221,7 @@ export function validateInventoryDocumentDraftLines(input: {
   kind: InventoryDocumentKind;
   lines: DocumentLineInput[];
   hasVariants: boolean;
+  variantById?: Map<string, ProductVariant>;
 }): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
@@ -203,6 +244,14 @@ export function validateInventoryDocumentDraftLines(input: {
     if (input.kind === "adjustment") {
       if (!line.adjustmentQuantity || line.adjustmentQuantity === 0) {
         issues.push({ key: "lineAdjustmentNonZero", values: { line: lineNo } });
+      } else {
+        appendBarcodeIssues(
+          issues,
+          input.variantById,
+          line,
+          lineNo,
+          line.adjustmentQuantity
+        );
       }
       return;
     }
@@ -210,12 +259,22 @@ export function validateInventoryDocumentDraftLines(input: {
     if (input.kind === "stock-count") {
       if (line.countedQuantity < 0) {
         issues.push({ key: "lineCountedNonNegative", values: { line: lineNo } });
+      } else if (line.countedQuantity > 0) {
+        appendBarcodeIssues(
+          issues,
+          input.variantById,
+          line,
+          lineNo,
+          line.countedQuantity
+        );
       }
       return;
     }
 
     if (!line.quantity || line.quantity <= 0) {
       issues.push({ key: "lineQuantityPositive", values: { line: lineNo } });
+    } else {
+      appendBarcodeIssues(issues, input.variantById, line, lineNo, line.quantity);
     }
   });
 
@@ -225,8 +284,13 @@ export function validateInventoryDocumentDraftLines(input: {
 export function validatePurchaseOrderForm(input: {
   supplierId: string;
   warehouseId: string;
-  lines: Array<{ productVariantId: string; orderedQuantity: number }>;
+  lines: Array<{
+    productVariantId: string;
+    orderedQuantity: number;
+    barcodesText?: string;
+  }>;
   hasVariants: boolean;
+  variantById?: Map<string, ProductVariant>;
 }): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
@@ -252,17 +316,50 @@ export function validatePurchaseOrderForm(input: {
     if (!line.orderedQuantity || line.orderedQuantity <= 0) {
       issues.push({ key: "lineQuantityPositive", values: { line: lineNo } });
     }
+    const barcodeIssue = validateLineBarcodes(
+      input.variantById?.get(line.productVariantId),
+      line.orderedQuantity,
+      line.barcodesText,
+      lineNo
+    );
+    if (barcodeIssue) {
+      issues.push(barcodeIssue);
+    }
   });
 
   return issues;
 }
 
 export function validateGoodsReceiptForm(input: {
-  lines: Array<{ receivedQuantity: number }>;
+  lines: Array<{
+    productVariantId: string;
+    receivedQuantity: number;
+    barcodesText?: string;
+  }>;
+  variantById?: Map<string, ProductVariant>;
 }): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
   const hasPositive = input.lines.some((line) => line.receivedQuantity > 0);
   if (!hasPositive) {
     return [{ key: "goodsReceiptQuantityRequired" }];
   }
-  return [];
+
+  input.lines.forEach((line, index) => {
+    if (line.receivedQuantity <= 0) {
+      return;
+    }
+
+    const lineNo = index + 1;
+    const barcodeIssue = validateLineBarcodes(
+      input.variantById?.get(line.productVariantId),
+      line.receivedQuantity,
+      line.barcodesText,
+      lineNo
+    );
+    if (barcodeIssue) {
+      issues.push(barcodeIssue);
+    }
+  });
+
+  return issues;
 }

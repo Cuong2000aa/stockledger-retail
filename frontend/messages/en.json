@@ -20,6 +20,8 @@
     "of": "of",
     "items": "items",
     "noData": "No data",
+    "formGeneralInfo": "General information",
+    "formLinesHint": "Select SKU, quantity, and barcodes when required.",
     "loadError": "Could not load data. Please try again.",
     "error": "An error occurred",
     "success": "Success",
@@ -155,6 +157,9 @@
     "sku": "SKU",
     "product": "Product",
     "barcode": "Barcode",
+    "unitBarcodeTracking": "Barcode",
+    "isBarcode": "Track barcode",
+    "trackLotExpiry": "Track lot / expiry",
     "color": "Color",
     "size": "Size",
     "season": "Season",
@@ -231,6 +236,16 @@
     "adjustmentQuantity": "Adjustment qty (+/-)",
     "addLine": "Add line",
     "selectSku": "— Select SKU —",
+    "barcode": "Barcode",
+    "lineBarcode": "Barcode",
+    "unitBarcodes": "Barcode",
+    "unitBarcodeCount": "codes",
+    "unitBarcodesPlaceholder": "123, 456, 789 (comma-separated)",
+    "unitBarcodesHint": "Barcode count must match quantity.",
+    "unitBarcodesCountMismatch": "You have {actual}, need {expected}.",
+    "skuNoUnitBarcode": "This SKU does not track barcodes.",
+    "poBarcodesHint": "On PO:",
+    "applyPoBarcodes": "Use from PO",
     "approve": "Approve",
     "cancelDoc": "Cancel document",
     "approveConfirm": "Approve this document? Stock will be updated.",
@@ -263,6 +278,16 @@
     "reserved": "Reserved",
     "available": "Available",
     "lastUpdated": "Last updated",
+    "barcode": "Barcode",
+    "viewBarcodes": "Barcode",
+    "unitBarcodesTitle": "Barcode",
+    "searchBarcode": "Search barcode...",
+    "allBarcodeStatuses": "All statuses",
+    "unitBarcodeStatuses": {
+      "InStock": "In stock",
+      "InTransit": "In transit",
+      "OutOfStock": "Out of stock"
+    },
     "stats": {
       "total": "Stock lines"
     }
@@ -335,6 +360,9 @@
     "statusPartiallyReceived": "Partially received",
     "statusReceived": "Received",
     "statusCancelled": "Cancelled",
+    "statusPendingApproval": "Pending approval",
+    "approve": "Approve PO",
+    "approveConfirm": "Approve this purchase order?",
     "stats": {
       "total": "Total POs",
       "open": "Open (page)",
@@ -343,9 +371,13 @@
   },
   "goodsReceipts": {
     "title": "Goods Receipts",
+    "listTitle": "Goods receipts",
+    "listSubtitle": "Receipts linked to purchase orders",
     "grNo": "GR No",
+    "poNo": "PO No",
     "receiptDate": "Receipt date",
     "receivedQty": "Received qty",
+    "prefillFromPoHint": "Prefilled with remaining qty and PO barcodes when available. Edit or scan actual units on receipt.",
     "approve": "Approve receipt",
     "approveConfirm": "Approve this receipt? Stock will be updated.",
     "cancelConfirm": "Cancel this draft receipt?",
@@ -534,7 +566,10 @@
     "lineCountedNonNegative": "Line {line}: counted quantity cannot be negative.",
     "adjustmentReasonRequired": "Adjustment reason is required.",
     "transferSameWarehouse": "Source and destination warehouses must be different.",
-    "goodsReceiptQuantityRequired": "Enter a received quantity for at least one line."
+    "goodsReceiptQuantityRequired": "Enter a received quantity for at least one line.",
+    "lineBarcodeRequired": "Line {line}: barcode is required.",
+    "lineBarcodeCountMismatch": "Line {line}: expected {expected} barcodes, got {actual}.",
+    "lineBarcodeWholeQuantity": "Line {line}: barcode-managed SKUs require whole-number quantities."
   },
   "apiErrors": {
     "unknown": "An unknown error occurred.",
@@ -559,7 +594,13 @@
     "warehouseWardRequired": "Ward is required for DC and store warehouses.",
     "warehouseDistrictRequired": "District is required for DC and store warehouses.",
     "warehouseProvinceRequired": "Province/City is required for DC and store warehouses.",
-    "warehouseFullAddressTooLong": "Full address cannot exceed {max} characters."
+    "warehouseFullAddressTooLong": "Full address cannot exceed {max} characters.",
+    "cannotApproveDocument": "You are not allowed to approve this document. Approve permission or team-leader role is required.",
+    "cannotApproveGoodsReceipt": "You are not allowed to approve this goods receipt.",
+    "cannotManageDocument": "You can only manage your own documents or team members' documents as team leader.",
+    "cannotReceiveTransfer": "You are not allowed to receive this transfer.",
+    "highValueSubmitRequired": "This document exceeds the value threshold — submit it for approval before final approval.",
+    "missingPermission": "Missing permission: {permission}."
   },
   "warehouseTypes": {
     "Dc": "Distribution Center",
@@ -572,22 +613,12 @@
   },
   "auth": {
     "subtitle": "Sign in to continue",
-    "username": "Username",
+    "email": "Email",
     "password": "Password",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "stubHint": "Temporary: admin / 1234 (SSO/API later)",
+    "loginHint": "Use an email registered in the system.",
     "loginTagline": "Smart inventory management — track movements and optimize stock flow."
-  },
-  "goodsReceipts": {
-    "listTitle": "Goods receipts",
-    "listSubtitle": "Receipts linked to purchase orders",
-    "grNo": "GR No.",
-    "poNo": "PO No.",
-    "receiptDate": "Receipt date",
-    "statusDraft": "Draft",
-    "statusApproved": "Approved",
-    "statusCancelled": "Cancelled"
   },
   "reports": {
     "title": "Inventory reports",

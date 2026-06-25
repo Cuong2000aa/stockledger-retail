@@ -104,6 +104,7 @@ export interface ProductVariant {
   sellingPrice?: number;
   costSource?: CostSource;
   trackLotExpiry?: boolean;
+  isBarcode?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -120,6 +121,8 @@ export interface CreateProductVariantInput {
   costPrice?: number;
   sellingPrice?: number;
   costSource?: CostSource;
+  trackLotExpiry?: boolean;
+  isBarcode?: boolean;
 }
 
 export interface UpdateProductVariantInput {
@@ -133,6 +136,7 @@ export interface UpdateProductVariantInput {
   sellingPrice?: number;
   costSource?: CostSource;
   trackLotExpiry?: boolean;
+  isBarcode?: boolean;
 }
 
 export interface Warehouse {
@@ -191,6 +195,7 @@ export interface InventoryDocumentLine {
   unitCost?: number;
   stockLotId?: string;
   lotCode?: string;
+  barcodes?: string[];
   expiryDate?: string;
   note?: string;
 }
@@ -228,6 +233,7 @@ export interface DocumentLineInput {
   quantity: number;
   unitCost?: number;
   lotCode?: string;
+  barcodes?: string[];
   expiryDate?: string;
   note?: string;
 }
@@ -235,6 +241,7 @@ export interface DocumentLineInput {
 export interface AdjustmentLineInput {
   productVariantId: string;
   adjustmentQuantity: number;
+  barcodes?: string[];
   note?: string;
 }
 
@@ -242,6 +249,7 @@ export interface StockCountLineInput {
   productVariantId: string;
   countedQuantity: number;
   note?: string;
+  barcodes?: string[];
 }
 
 export interface UpdateDocumentDraftInput {
@@ -261,7 +269,27 @@ export interface CurrentStock {
   quantityOnHand: number;
   quantityReserved: number;
   quantityAvailable: number;
+  isBarcode?: boolean;
   lastTransactionId?: string;
+  lastUpdatedAt: string;
+}
+
+export enum UnitBarcodeStatus {
+  InStock = 1,
+  InTransit = 2,
+  OutOfStock = 3,
+}
+
+export interface VariantUnitBarcode {
+  id: string;
+  productVariantId: string;
+  sku: string;
+  barcode: string;
+  warehouseId?: string;
+  warehouseCode?: string;
+  warehouseName?: string;
+  status: UnitBarcodeStatus;
+  receivedAt: string;
   lastUpdatedAt: string;
 }
 
@@ -346,6 +374,7 @@ export interface PurchaseOrderLine {
   receivedQuantity: number;
   remainingQuantity: number;
   unitCost?: number;
+  barcodes?: string[];
   note?: string;
 }
 
@@ -379,6 +408,7 @@ export interface CreatePurchaseOrderLineInput {
   productVariantId: string;
   orderedQuantity: number;
   unitCost?: number;
+  barcodes?: string[];
   note?: string;
 }
 
@@ -390,6 +420,7 @@ export interface GoodsReceiptLine {
   receivedQuantity: number;
   unitCost?: number;
   lotCode?: string;
+  barcodes?: string[];
   expiryDate?: string;
   note?: string;
 }

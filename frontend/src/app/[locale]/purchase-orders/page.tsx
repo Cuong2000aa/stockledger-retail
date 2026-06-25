@@ -11,31 +11,12 @@ import { PoStatusBadge } from "@/components/StatusBadge";
 import { useListSearch } from "@/hooks/useListSearch";
 import { fetchPurchaseOrders, fetchSuppliers } from "@/lib/api";
 import { formatDate } from "@/lib/format";
+import { purchaseOrderStatusLabel } from "@/lib/purchaseOrderStatus";
 import { PurchaseOrderStatus } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronRight, ClipboardList, PackageCheck, Plus, ShoppingCart } from "lucide-react";
 import { useMemo, useState } from "react";
-
-function poStatusLabel(
-  status: PurchaseOrderStatus,
-  t: ReturnType<typeof useTranslations<"purchaseOrders">>
-) {
-  switch (status) {
-    case PurchaseOrderStatus.Draft:
-      return t("statusDraft");
-    case PurchaseOrderStatus.Submitted:
-      return t("statusSubmitted");
-    case PurchaseOrderStatus.PartiallyReceived:
-      return t("statusPartiallyReceived");
-    case PurchaseOrderStatus.Received:
-      return t("statusReceived");
-    case PurchaseOrderStatus.Cancelled:
-      return t("statusCancelled");
-    default:
-      return String(status);
-  }
-}
 
 export default function PurchaseOrdersPage() {
   const t = useTranslations("purchaseOrders");
@@ -75,6 +56,7 @@ export default function PurchaseOrdersPage() {
         (po) =>
           po.status === PurchaseOrderStatus.Draft ||
           po.status === PurchaseOrderStatus.Submitted ||
+          po.status === PurchaseOrderStatus.PendingApproval ||
           po.status === PurchaseOrderStatus.PartiallyReceived
       ).length,
       received: items.filter((po) => po.status === PurchaseOrderStatus.Received).length,
@@ -136,7 +118,7 @@ export default function PurchaseOrdersPage() {
               .filter((v) => typeof v === "number")
               .map((s) => (
                 <option key={s} value={s}>
-                  {poStatusLabel(s as PurchaseOrderStatus, t)}
+                  {purchaseOrderStatusLabel(s as PurchaseOrderStatus, t)}
                 </option>
               ))}
           </select>
@@ -196,7 +178,7 @@ export default function PurchaseOrdersPage() {
                       </td>
                       <td className="text-sm">{formatDate(po.orderDate, locale)}</td>
                       <td>
-                        <PoStatusBadge status={po.status} label={poStatusLabel(po.status, t)} />
+                        <PoStatusBadge status={po.status} label={purchaseOrderStatusLabel(po.status, t)} />
                       </td>
                       <td>
                         <Link

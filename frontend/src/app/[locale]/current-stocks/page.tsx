@@ -6,10 +6,12 @@ import { TableSkeleton, StatCardsSkeleton } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
 import { Pagination } from "@/components/Pagination";
 import { StatCard } from "@/components/StatCard";
+import { UnitBarcodesModal } from "@/components/UnitBarcodesModal";
 import { useListSearch } from "@/hooks/useListSearch";
 import { fetchCurrentStocks, fetchWarehouses } from "@/lib/api";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { formatDate, formatNumber } from "@/lib/format";
+import type { CurrentStock } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { Boxes, Lock, Package, Warehouse } from "lucide-react";
@@ -27,6 +29,9 @@ export default function CurrentStocksPage() {
   const [warehouseId, setWarehouseId] = useState("");
   const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
     useListSearch(() => setPage(1));
+  const [barcodeModalStock, setBarcodeModalStock] = useState<CurrentStock | null>(
+    null
+  );
 
   useEffect(() => {
     const initialSearch = searchParams.get("search");
@@ -123,7 +128,7 @@ export default function CurrentStocksPage() {
         countLabel={tCommon("total")}
       >
         {isLoading ? (
-          <TableSkeleton rows={8} cols={6} />
+          <TableSkeleton rows={8} cols={7} />
         ) : !data?.items.length ? (
           <EmptyTableState message={tCommon("noData")} />
         ) : (
@@ -138,6 +143,7 @@ export default function CurrentStocksPage() {
                     <th>{t("reserved")}</th>
                     <th>{t("available")}</th>
                     <th>{t("lastUpdated")}</th>
+                    <th>{tCommon("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -166,6 +172,19 @@ export default function CurrentStocksPage() {
                         <td className="whitespace-nowrap text-xs text-slate-500">
                           {formatDate(s.lastUpdatedAt, locale)}
                         </td>
+                        <td>
+                          {s.isBarcode ? (
+                            <button
+                              type="button"
+                              className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                              onClick={() => setBarcodeModalStock(s)}
+                            >
+                              {t("viewBarcodes")}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -181,6 +200,17 @@ export default function CurrentStocksPage() {
           </>
         )}
       </DataTableCard>
+
+      {barcodeModalStock && (
+        <UnitBarcodesModal
+          open={!!barcodeModalStock}
+          onClose={() => setBarcodeModalStock(null)}
+          productVariantId={barcodeModalStock.productVariantId}
+          warehouseId={barcodeModalStock.warehouseId}
+          sku={barcodeModalStock.sku}
+          warehouseName={barcodeModalStock.warehouseName}
+        />
+      )}
     </div>
   );
 }

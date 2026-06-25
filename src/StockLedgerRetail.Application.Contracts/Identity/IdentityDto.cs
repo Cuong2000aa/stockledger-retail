@@ -17,7 +17,10 @@ public class CurrentUserDto
 
 public class LoginRequestDto
 {
+    /// <summary>Email đăng nhập (field legacy tên Username vẫn dùng được).</summary>
     public string Username { get; set; } = string.Empty;
+
+    public string? Email { get; set; }
 
     public string Password { get; set; } = string.Empty;
 }
@@ -56,6 +59,8 @@ public class CreateAppUserDto
 
     public string DisplayName { get; set; } = string.Empty;
 
+    public string Password { get; set; } = string.Empty;
+
     public List<string> GroupCodes { get; set; } = new();
 }
 
@@ -64,6 +69,8 @@ public class UpdateAppUserDto
     public string DisplayName { get; set; } = string.Empty;
 
     public bool IsActive { get; set; }
+
+    public string? Password { get; set; }
 
     public List<string> GroupCodes { get; set; } = new();
 }

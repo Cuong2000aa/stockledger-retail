@@ -44,6 +44,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -211,12 +215,6 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
 
@@ -308,7 +306,8 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("LotCode")
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Note")
                         .HasMaxLength(500)
@@ -337,6 +336,29 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("PurchaseOrderLineId");
 
                     b.ToTable("goods_receipt_lines", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.GoodsReceiptLineBarcode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("GoodsReceiptLineId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Barcode");
+
+                    b.HasIndex("GoodsReceiptLineId");
+
+                    b.ToTable("goods_receipt_line_barcodes", (string)null);
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.GroupPermission", b =>
@@ -507,7 +529,8 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("LotCode")
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Note")
                         .HasMaxLength(500)
@@ -536,6 +559,29 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("StockLotId");
 
                     b.ToTable("inventory_document_lines", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDocumentLineBarcode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("InventoryDocumentLineId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Barcode");
+
+                    b.HasIndex("InventoryDocumentLineId");
+
+                    b.ToTable("inventory_document_line_barcodes", (string)null);
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.LotStock", b =>
@@ -739,6 +785,9 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsBarcode")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
@@ -905,6 +954,29 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("PurchaseOrderId");
 
                     b.ToTable("purchase_order_lines", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.PurchaseOrderLineBarcode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("PurchaseOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Barcode");
+
+                    b.HasIndex("PurchaseOrderLineId");
+
+                    b.ToTable("purchase_order_line_barcodes", (string)null);
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockLot", b =>
@@ -1292,6 +1364,46 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.ToTable("user_group_assignments", (string)null);
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.VariantUnitBarcode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProductVariantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Barcode")
+                        .IsUnique();
+
+                    b.HasIndex("ProductVariantId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("ProductVariantId", "WarehouseId", "Status");
+
+                    b.ToTable("variant_unit_barcodes", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Warehouse", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1458,6 +1570,17 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("PurchaseOrderLine");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.GoodsReceiptLineBarcode", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.GoodsReceiptLine", "GoodsReceiptLine")
+                        .WithMany("UnitBarcodes")
+                        .HasForeignKey("GoodsReceiptLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GoodsReceiptLine");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.GroupPermission", b =>
                 {
                     b.HasOne("StockLedgerRetail.Domain.Entities.PermissionGroup", "Group")
@@ -1524,6 +1647,17 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("ProductVariant");
 
                     b.Navigation("StockLot");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDocumentLineBarcode", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.InventoryDocumentLine", "Line")
+                        .WithMany("UnitBarcodes")
+                        .HasForeignKey("InventoryDocumentLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Line");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.LotStock", b =>
@@ -1613,6 +1747,17 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("ProductVariant");
 
                     b.Navigation("PurchaseOrder");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.PurchaseOrderLineBarcode", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.PurchaseOrderLine", "PurchaseOrderLine")
+                        .WithMany("UnitBarcodes")
+                        .HasForeignKey("PurchaseOrderLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PurchaseOrderLine");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockLot", b =>
@@ -1757,6 +1902,24 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.VariantUnitBarcode", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.ProductVariant", "ProductVariant")
+                        .WithMany()
+                        .HasForeignKey("ProductVariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ProductVariant");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Warehouse", b =>
                 {
                     b.HasOne("StockLedgerRetail.Domain.Entities.Brand", "Brand")
@@ -1795,6 +1958,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("Lines");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.GoodsReceiptLine", b =>
+                {
+                    b.Navigation("UnitBarcodes");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDocument", b =>
                 {
                     b.Navigation("Lines");
@@ -1805,6 +1973,8 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDocumentLine", b =>
                 {
                     b.Navigation("StockTransactions");
+
+                    b.Navigation("UnitBarcodes");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Permission", b =>
@@ -1840,6 +2010,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("GoodsReceipts");
 
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.PurchaseOrderLine", b =>
+                {
+                    b.Navigation("UnitBarcodes");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockLot", b =>

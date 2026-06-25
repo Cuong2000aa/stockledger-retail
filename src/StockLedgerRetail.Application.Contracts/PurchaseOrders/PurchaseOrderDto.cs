@@ -18,6 +18,8 @@ public class PurchaseOrderLineDto
 
     public decimal? UnitCost { get; set; }
 
+    public List<string> Barcodes { get; set; } = new();
+
     public string? Note { get; set; }
 }
 
@@ -77,6 +79,8 @@ public class CreatePurchaseOrderLineDto
     public decimal OrderedQuantity { get; set; }
 
     public decimal? UnitCost { get; set; }
+
+    public List<string> Barcodes { get; set; } = new();
 
     public string? Note { get; set; }
 }

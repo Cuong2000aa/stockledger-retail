@@ -22,6 +22,7 @@ public class StockLedgerService : IStockLedgerService
     private readonly ILotStockService _lotStockService;
     private readonly IAuditContext _auditContext;
     private readonly IInventoryCacheInvalidator _inventoryCacheInvalidator;
+    private readonly IUnitBarcodeStockService _unitBarcodeStockService;
 
     public StockLedgerService(
         ICurrentStockRepository currentStockRepository,
@@ -32,7 +33,8 @@ public class StockLedgerService : IStockLedgerService
         IInventoryValuationService inventoryValuationService,
         ILotStockService lotStockService,
         IAuditContext auditContext,
-        IInventoryCacheInvalidator inventoryCacheInvalidator)
+        IInventoryCacheInvalidator inventoryCacheInvalidator,
+        IUnitBarcodeStockService unitBarcodeStockService)
     {
         _currentStockRepository = currentStockRepository;
         _stockTransactionRepository = stockTransactionRepository;
@@ -43,6 +45,7 @@ public class StockLedgerService : IStockLedgerService
         _lotStockService = lotStockService;
         _auditContext = auditContext;
         _inventoryCacheInvalidator = inventoryCacheInvalidator;
+        _unitBarcodeStockService = unitBarcodeStockService;
     }
 
     /// <summary>Xử lý phiếu đã duyệt theo loại (StockIn, StockOut, Adjustment).</summary>
@@ -179,6 +182,8 @@ public class StockLedgerService : IStockLedgerService
         await EnsureWarehouseExistsAsync(sourceWarehouseId, cancellationToken);
         await EnsureWarehouseExistsAsync(inTransitWarehouseId, cancellationToken);
 
+        var now = DateTime.UtcNow;
+
         foreach (var line in document.Lines)
         {
             await EnsureProductVariantExistsAsync(line.ProductVariantId, cancellationToken);
@@ -203,6 +208,13 @@ public class StockLedgerService : IStockLedgerService
                 StockTransactionType.TransferIn,
                 line.Quantity,
                 cancellationToken);
+
+            await ApplyTransferUnitBarcodesAsync(
+                line,
+                sourceWarehouseId,
+                inTransitWarehouseId,
+                now,
+                cancellationToken);
         }
     }
 
@@ -216,6 +228,7 @@ public class StockLedgerService : IStockLedgerService
 
         var inTransitWarehouseId = document.InTransitWarehouseId.Value;
         var destinationWarehouseId = document.DestinationWarehouseId.Value;
+        var now = DateTime.UtcNow;
 
         await EnsureWarehouseExistsAsync(inTransitWarehouseId, cancellationToken);
         await EnsureWarehouseExistsAsync(destinationWarehouseId, cancellationToken);
@@ -243,6 +256,13 @@ public class StockLedgerService : IStockLedgerService
                 destinationWarehouseId,
                 StockTransactionType.TransferIn,
                 line.Quantity,
+                cancellationToken);
+
+            await ApplyTransferReceiveUnitBarcodesAsync(
+                line,
+                inTransitWarehouseId,
+                destinationWarehouseId,
+                now,
                 cancellationToken);
         }
     }
@@ -360,9 +380,121 @@ public class StockLedgerService : IStockLedgerService
             await _lotStockService.ApplyStockOutFefoAsync(line, warehouseId, now, cancellationToken);
         }
 
+        await ApplyUnitBarcodeChangeAsync(
+            line,
+            warehouseId,
+            transactionType,
+            quantityDelta,
+            now,
+            cancellationToken);
+
         await _inventoryCacheInvalidator.InvalidateStockAsync(
             warehouseId,
             line.ProductVariantId,
+            cancellationToken);
+    }
+
+    private async Task ApplyUnitBarcodeChangeAsync(
+        InventoryDocumentLine line,
+        Guid warehouseId,
+        StockTransactionType transactionType,
+        decimal quantityDelta,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken);
+        if (variant is null || !variant.IsBarcode)
+        {
+            return;
+        }
+
+        var barcodes = BarcodeNormalization.FromLine(line);
+        if (barcodes.Count == 0)
+        {
+            return;
+        }
+
+        switch (transactionType)
+        {
+            case StockTransactionType.TransferIn:
+            case StockTransactionType.TransferOut:
+                return;
+            case StockTransactionType.In:
+            case StockTransactionType.AdjustmentIn:
+            case StockTransactionType.CountAdjustmentIn:
+                await _unitBarcodeStockService.ApplyInboundAsync(
+                    line.ProductVariantId,
+                    warehouseId,
+                    barcodes,
+                    now,
+                    cancellationToken);
+                break;
+            case StockTransactionType.Out:
+            case StockTransactionType.AdjustmentOut:
+            case StockTransactionType.CountAdjustmentOut:
+                await _unitBarcodeStockService.ApplyOutboundAsync(
+                    line.ProductVariantId,
+                    warehouseId,
+                    barcodes,
+                    now,
+                    cancellationToken);
+                break;
+        }
+    }
+
+    private async Task ApplyTransferUnitBarcodesAsync(
+        InventoryDocumentLine line,
+        Guid sourceWarehouseId,
+        Guid inTransitWarehouseId,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken);
+        if (variant is null || !variant.IsBarcode)
+        {
+            return;
+        }
+
+        var barcodes = BarcodeNormalization.FromLine(line);
+        if (barcodes.Count == 0)
+        {
+            return;
+        }
+
+        await _unitBarcodeStockService.ApplyTransferShipAsync(
+            line.ProductVariantId,
+            sourceWarehouseId,
+            inTransitWarehouseId,
+            barcodes,
+            now,
+            cancellationToken);
+    }
+
+    private async Task ApplyTransferReceiveUnitBarcodesAsync(
+        InventoryDocumentLine line,
+        Guid inTransitWarehouseId,
+        Guid destinationWarehouseId,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var variant = await _productVariantRepository.GetByIdAsync(line.ProductVariantId, cancellationToken);
+        if (variant is null || !variant.IsBarcode)
+        {
+            return;
+        }
+
+        var barcodes = BarcodeNormalization.FromLine(line);
+        if (barcodes.Count == 0)
+        {
+            return;
+        }
+
+        await _unitBarcodeStockService.ApplyTransferReceiveAsync(
+            line.ProductVariantId,
+            inTransitWarehouseId,
+            destinationWarehouseId,
+            barcodes,
+            now,
             cancellationToken);
     }
 

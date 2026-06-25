@@ -50,12 +50,14 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<ITransferPolicyService, TransferPolicyService>();
         services.AddScoped<ITransferPolicyAppService, TransferPolicyAppService>();
         services.AddScoped<ILotStockService, LotStockService>();
+        services.AddScoped<IUnitBarcodeStockService, UnitBarcodeStockService>();
         services.AddScoped<ApprovalWorkflowHelper>();
         services.AddScoped<IInTransitWarehouseService, InTransitWarehouseService>();
         services.AddScoped<IInventoryValuationService, InventoryValuationService>();
         services.AddScoped<IStockReconciliationService, StockReconciliationService>();
         services.AddScoped<IInventoryDocumentAppService, InventoryDocumentAppService>();
         services.AddScoped<ICurrentStockAppService, CurrentStockAppService>();
+        services.AddScoped<IVariantUnitBarcodeAppService, VariantUnitBarcodeAppService>();
         services.AddScoped<IStockTransactionAppService, StockTransactionAppService>();
         services.AddScoped<ISalesIntegrationService, SalesIntegrationService>();
         services.AddScoped<IStockReservationService, StockReservationService>();
@@ -87,8 +89,8 @@ public static class StockLedgerRetailApplicationModule
                 configuration.GetSection(StockReconciliationOptions.SectionName));
             services.Configure<InsightSnapshotOptions>(
                 configuration.GetSection(InsightSnapshotOptions.SectionName));
-            services.Configure<StubAuthOptions>(
-                configuration.GetSection(StubAuthOptions.SectionName));
+            services.Configure<LoginOptions>(
+                configuration.GetSection(LoginOptions.SectionName));
         }
 
         return services;

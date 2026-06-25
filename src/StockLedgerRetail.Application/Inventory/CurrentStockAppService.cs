@@ -54,6 +54,7 @@ public class CurrentStockAppService : ICurrentStockAppService
         QuantityOnHand = stock.QuantityOnHand,
         QuantityReserved = stock.QuantityReserved,
         QuantityAvailable = stock.QuantityAvailable,
+        IsBarcode = stock.ProductVariant.IsBarcode,
         LastTransactionId = stock.LastTransactionId,
         LastUpdatedAt = stock.LastUpdatedAt
     };

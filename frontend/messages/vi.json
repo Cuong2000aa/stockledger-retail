@@ -20,6 +20,8 @@
     "of": "của",
     "items": "mục",
     "noData": "Không có dữ liệu",
+    "formGeneralInfo": "Thông tin chung",
+    "formLinesHint": "Chọn SKU, nhập số lượng và barcode (nếu có).",
     "loadError": "Không tải được dữ liệu. Thử lại sau.",
     "error": "Đã xảy ra lỗi",
     "success": "Thành công",
@@ -166,6 +168,9 @@
     "sku": "Mã SKU",
     "product": "Sản phẩm",
     "barcode": "Barcode",
+    "unitBarcodeTracking": "Barcode",
+    "isBarcode": "Quản lý barcode",
+    "trackLotExpiry": "Theo dõi lô/HSD",
     "color": "Màu",
     "size": "Size",
     "season": "Mùa",
@@ -242,6 +247,16 @@
     "adjustmentQuantity": "SL điều chỉnh (+/-)",
     "addLine": "Thêm dòng",
     "selectSku": "— Chọn SKU —",
+    "barcode": "Barcode",
+    "lineBarcode": "Barcode",
+    "unitBarcodes": "Barcode",
+    "unitBarcodeCount": "mã",
+    "unitBarcodesPlaceholder": "123, 456, 789 (cách nhau bởi dấu phẩy)",
+    "unitBarcodesHint": "Số mã phải bằng số lượng.",
+    "unitBarcodesCountMismatch": "Có {actual} mã, cần {expected} mã.",
+    "skuNoUnitBarcode": "SKU chưa bật quản lý barcode.",
+    "poBarcodesHint": "Trên PO:",
+    "applyPoBarcodes": "Dùng từ PO",
     "approve": "Duyệt phiếu",
     "cancelDoc": "Hủy phiếu",
     "approveConfirm": "Duyệt phiếu này? Tồn kho sẽ được cập nhật.",
@@ -289,6 +304,16 @@
     "reserved": "Giữ chỗ",
     "available": "Khả dụng",
     "lastUpdated": "Cập nhật lúc",
+    "barcode": "Barcode",
+    "viewBarcodes": "Barcode",
+    "unitBarcodesTitle": "Barcode",
+    "searchBarcode": "Tìm barcode...",
+    "allBarcodeStatuses": "Tất cả trạng thái",
+    "unitBarcodeStatuses": {
+      "InStock": "Đang tồn",
+      "InTransit": "Đang chuyển",
+      "OutOfStock": "Đã xuất"
+    },
     "stats": {
       "total": "Tổng dòng tồn"
     }
@@ -361,6 +386,9 @@
     "statusPartiallyReceived": "Nhận một phần",
     "statusReceived": "Đã nhận đủ",
     "statusCancelled": "Đã hủy",
+    "statusPendingApproval": "Chờ duyệt",
+    "approve": "Duyệt PO",
+    "approveConfirm": "Duyệt đơn mua hàng này?",
     "stats": {
       "total": "Tổng PO",
       "open": "Đang mở (trang)",
@@ -369,9 +397,13 @@
   },
   "goodsReceipts": {
     "title": "Phiếu nhận hàng",
+    "listTitle": "Danh sách nhận hàng",
+    "listSubtitle": "Phiếu nhận hàng từ đơn mua",
     "grNo": "Số GR",
+    "poNo": "Số PO",
     "receiptDate": "Ngày nhận",
     "receivedQty": "SL nhận",
+    "prefillFromPoHint": "Đã điền sẵn SL còn lại và barcode từ PO (nếu có). Có thể sửa hoặc quét lại theo hàng thực tế.",
     "approve": "Duyệt nhận hàng",
     "approveConfirm": "Duyệt phiếu nhận? Tồn kho sẽ được cập nhật.",
     "cancelConfirm": "Hủy phiếu nhận nháp này?",
@@ -560,7 +592,10 @@
     "lineCountedNonNegative": "Dòng {line}: số lượng kiểm kê không được âm.",
     "adjustmentReasonRequired": "Vui lòng nhập lý do điều chỉnh.",
     "transferSameWarehouse": "Kho nguồn và kho đích phải khác nhau.",
-    "goodsReceiptQuantityRequired": "Vui lòng nhập số lượng nhận cho ít nhất một dòng."
+    "goodsReceiptQuantityRequired": "Vui lòng nhập số lượng nhận cho ít nhất một dòng.",
+    "lineBarcodeRequired": "Dòng {line}: vui lòng nhập/quét barcode.",
+    "lineBarcodeCountMismatch": "Dòng {line}: cần {expected} mã barcode, hiện có {actual}.",
+    "lineBarcodeWholeQuantity": "Dòng {line}: SKU quản lý barcode chỉ nhận số lượng nguyên."
   },
   "apiErrors": {
     "unknown": "Đã xảy ra lỗi không xác định.",
@@ -585,7 +620,13 @@
     "warehouseWardRequired": "Phường/xã là bắt buộc với DC và cửa hàng.",
     "warehouseDistrictRequired": "Quận/huyện là bắt buộc với DC và cửa hàng.",
     "warehouseProvinceRequired": "Tỉnh/thành phố là bắt buộc với DC và cửa hàng.",
-    "warehouseFullAddressTooLong": "Địa chỉ đầy đủ không được vượt quá {max} ký tự."
+    "warehouseFullAddressTooLong": "Địa chỉ đầy đủ không được vượt quá {max} ký tự.",
+    "cannotApproveDocument": "Bạn không có quyền duyệt phiếu này. Cần quyền duyệt phiếu kho hoặc là trưởng nhóm của người tạo phiếu.",
+    "cannotApproveGoodsReceipt": "Bạn không có quyền duyệt phiếu nhận hàng này.",
+    "cannotManageDocument": "Bạn chỉ được thao tác phiếu do mình tạo, hoặc phiếu của thành viên trong nhóm nếu là trưởng nhóm.",
+    "cannotReceiveTransfer": "Bạn không có quyền nhận phiếu chuyển kho này.",
+    "highValueSubmitRequired": "Phiếu có giá trị cao — cần gửi duyệt trước khi duyệt chính thức.",
+    "missingPermission": "Thiếu quyền: {permission}."
   },
   "warehouseTypes": {
     "Dc": "Kho trung tâm",
@@ -598,22 +639,12 @@
   },
   "auth": {
     "subtitle": "Đăng nhập để tiếp tục",
-    "username": "Tên đăng nhập",
+    "email": "Email",
     "password": "Mật khẩu",
     "signIn": "Đăng nhập",
     "signOut": "Đăng xuất",
-    "stubHint": "Tạm thời: admin / 1234 (sẽ thay bằng SSO/API sau)",
+    "loginHint": "Dùng email đã đăng ký trong hệ thống.",
     "loginTagline": "Quản lý tồn kho thông minh — theo dõi biến động, tối ưu luân chuyển hàng hóa."
-  },
-  "goodsReceipts": {
-    "listTitle": "Danh sách nhận hàng",
-    "listSubtitle": "Phiếu nhận hàng từ đơn mua",
-    "grNo": "Số GR",
-    "poNo": "Số PO",
-    "receiptDate": "Ngày nhận",
-    "statusDraft": "Nháp",
-    "statusApproved": "Đã duyệt",
-    "statusCancelled": "Đã hủy"
   },
   "reports": {
     "title": "Báo cáo tồn kho",

@@ -23,6 +23,8 @@ public class GoodsReceiptRepository : IGoodsReceiptRepository
                 .ThenInclude(l => l.ProductVariant)
             .Include(x => x.Lines)
                 .ThenInclude(l => l.PurchaseOrderLine)
+            .Include(x => x.Lines)
+                .ThenInclude(l => l.UnitBarcodes)
             .Include(x => x.PurchaseOrder)
             .Include(x => x.Warehouse)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

@@ -38,4 +38,8 @@ public class CreateProductVariantDto
     public decimal? SellingPrice { get; set; }
 
     public CostSource? CostSource { get; set; }
+
+    public bool TrackLotExpiry { get; set; }
+
+    public bool IsBarcode { get; set; }
 }

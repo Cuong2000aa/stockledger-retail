@@ -37,6 +37,8 @@ type VariantForm = {
   costPrice: string;
   sellingPrice: string;
   costSource: string;
+  trackLotExpiry: boolean;
+  isBarcode: boolean;
 };
 
 const emptyForm = (productId = ""): VariantForm => ({
@@ -51,6 +53,8 @@ const emptyForm = (productId = ""): VariantForm => ({
   costPrice: "",
   sellingPrice: "",
   costSource: "",
+  trackLotExpiry: false,
+  isBarcode: false,
 });
 
 function toOptionalNumber(value: string): number | undefined {
@@ -112,24 +116,28 @@ export default function ProductVariantsPage() {
       const valuation = valuationPayload();
       if (editing) {
         return updateProductVariant(editing.id, {
-          barcode: form.barcode || undefined,
+          barcode: form.isBarcode ? undefined : form.barcode || undefined,
           color: form.color || undefined,
           size: form.size || undefined,
           season: form.season || undefined,
           unit: form.unit || undefined,
           status: form.status,
+          trackLotExpiry: form.trackLotExpiry,
+          isBarcode: form.isBarcode,
           ...valuation,
         });
       }
       return createProductVariant({
         productId: form.productId,
         sku: form.sku,
-        barcode: form.barcode || undefined,
+        barcode: form.isBarcode ? undefined : form.barcode || undefined,
         color: form.color || undefined,
         size: form.size || undefined,
         season: form.season || undefined,
         unit: form.unit || undefined,
         status: form.status,
+        trackLotExpiry: form.trackLotExpiry,
+        isBarcode: form.isBarcode,
         ...valuation,
       });
     },
@@ -174,6 +182,8 @@ export default function ProductVariantsPage() {
       costPrice: v.costPrice != null ? String(v.costPrice) : "",
       sellingPrice: v.sellingPrice != null ? String(v.sellingPrice) : "",
       costSource: v.costSource != null ? String(v.costSource) : "",
+      trackLotExpiry: v.trackLotExpiry ?? false,
+      isBarcode: v.isBarcode ?? false,
     });
     setModalOpen(true);
   }
@@ -219,7 +229,7 @@ export default function ProductVariantsPage() {
         countLabel={tCommon("total")}
       >
         {isLoading ? (
-          <TableSkeleton rows={8} cols={7} />
+          <TableSkeleton rows={8} cols={8} />
         ) : !data?.items.length ? (
           <EmptyTableState message={tCommon("noData")} />
         ) : (
@@ -230,6 +240,7 @@ export default function ProductVariantsPage() {
                   <tr>
                     <th>{t("sku")}</th>
                     <th>{t("product")}</th>
+                    <th>{t("barcode")}</th>
                     <th>{t("costPrice")}</th>
                     <th>{t("sellingPrice")}</th>
                     <th>{t("costSource")}</th>
@@ -243,6 +254,15 @@ export default function ProductVariantsPage() {
                       <td><CodePill>{v.sku}</CodePill></td>
                       <td className="font-medium text-slate-900">
                         {productMap.get(v.productId) ?? v.productId}
+                      </td>
+                      <td className="text-sm">
+                        {v.isBarcode ? (
+                          <span className="font-medium text-emerald-700">
+                            {tCommon("yes")}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">{tCommon("no")}</span>
+                        )}
                       </td>
                       <td className="tabular-nums">
                         {v.costPrice != null ? formatNumber(v.costPrice, locale) : "—"}
@@ -347,7 +367,7 @@ export default function ProductVariantsPage() {
                   </div>
                 </>
               )}
-              {["barcode", "color", "size", "season", "unit"].map((field) => (
+              {["color", "size", "season", "unit"].map((field) => (
                 <div key={field}>
                   <label className="mb-1 block text-sm">
                     {t(field as "barcode")}
@@ -361,6 +381,33 @@ export default function ProductVariantsPage() {
                   />
                 </div>
               ))}
+
+              <div className="flex flex-wrap gap-4 border-t border-slate-100 pt-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.trackLotExpiry}
+                    onChange={(e) =>
+                      setForm({ ...form, trackLotExpiry: e.target.checked })
+                    }
+                  />
+                  {t("trackLotExpiry")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.isBarcode}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        isBarcode: e.target.checked,
+                        barcode: e.target.checked ? "" : form.barcode,
+                      })
+                    }
+                  />
+                  {t("isBarcode")}
+                </label>
+              </div>
 
               <div className="border-t border-slate-100 pt-3">
                 <p className="mb-2 text-xs font-semibold uppercase text-slate-500">

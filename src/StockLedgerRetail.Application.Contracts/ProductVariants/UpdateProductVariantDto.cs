@@ -31,4 +31,6 @@ public class UpdateProductVariantDto
     public CostSource? CostSource { get; set; }
 
     public bool TrackLotExpiry { get; set; }
+
+    public bool IsBarcode { get; set; }
 }

@@ -1,20 +1,30 @@
 "use client";
 
 import { Link, useRouter } from "@/i18n/routing";
+import { LineBarcodeSection } from "@/components/LineBarcodeSection";
+import {
+  DocumentFormShell,
+  DocumentLineCard,
+  FormField,
+  FormSection,
+} from "@/components/document-form";
 import { PageHeader } from "@/components/PageHeader";
 import { useNotify } from "@/hooks/useNotify";
+import { useVariantCache } from "@/hooks/useVariantCache";
 import {
   createPurchaseOrder,
-  fetchProductVariants,
   fetchSuppliers,
   fetchWarehouses,
 } from "@/lib/api";
+import { formatVariantOptionLabel } from "@/lib/formatVariantLabel";
 import { validatePurchaseOrderForm } from "@/lib/validation";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
+import { parseUnitBarcodes } from "@/lib/unitBarcode";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useInsightPrefill } from "@/features/insights/useInsightPrefill";
+import { FileText, ListOrdered, Plus } from "lucide-react";
 
 export default function NewPurchaseOrderPage() {
   const t = useTranslations("purchaseOrders");
@@ -28,7 +38,12 @@ export default function NewPurchaseOrderPage() {
   const [referenceNo, setReferenceNo] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState([
-    { productVariantId: "", orderedQuantity: 1, unitCost: undefined as number | undefined },
+    {
+      productVariantId: "",
+      orderedQuantity: 1,
+      unitCost: undefined as number | undefined,
+      barcodesText: "",
+    },
   ]);
 
   const applyPrefill = useCallback(
@@ -39,21 +54,16 @@ export default function NewPurchaseOrderPage() {
       note: string;
       referenceNo: string;
     }>) => {
-      if (values.warehouseId) {
-        setWarehouseId(values.warehouseId);
-      }
-      if (values.note) {
-        setNote(values.note);
-      }
-      if (values.referenceNo) {
-        setReferenceNo(values.referenceNo);
-      }
+      if (values.warehouseId) setWarehouseId(values.warehouseId);
+      if (values.note) setNote(values.note);
+      if (values.referenceNo) setReferenceNo(values.referenceNo);
       if (values.productVariantId || values.orderedQuantity) {
         setLines([
           {
             productVariantId: values.productVariantId ?? "",
             orderedQuantity: values.orderedQuantity ?? 1,
             unitCost: undefined,
+            barcodesText: "",
           },
         ]);
       }
@@ -71,10 +81,12 @@ export default function NewPurchaseOrderPage() {
     queryKey: ["warehouses-all"],
     queryFn: () => fetchWarehouses(1, 100),
   });
-  const { data: variants } = useQuery({
-    queryKey: ["variants-all"],
-    queryFn: () => fetchProductVariants(1, 200),
-  });
+
+  const lineVariantIds = useMemo(
+    () => lines.map((line) => line.productVariantId),
+    [lines]
+  );
+  const { variantById, variants } = useVariantCache(lineVariantIds);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -88,13 +100,37 @@ export default function NewPurchaseOrderPage() {
           productVariantId: l.productVariantId,
           orderedQuantity: l.orderedQuantity,
           unitCost: l.unitCost,
+          barcodes: parseUnitBarcodes(l.barcodesText),
         })),
       }),
     onSuccess: (po) => router.push(`/purchase-orders/${po.id}`),
     onError: notifyError,
   });
 
-  const hasVariants = (variants?.items.length ?? 0) > 0;
+  const updateLine = (
+    idx: number,
+    patch: Partial<(typeof lines)[number]>
+  ) => {
+    const next = [...lines];
+    const merged = { ...next[idx], ...patch };
+    if (patch.productVariantId !== undefined) {
+      merged.barcodesText = "";
+    }
+    next[idx] = merged;
+    setLines(next);
+  };
+
+  const addLine = () => {
+    setLines([
+      ...lines,
+      {
+        productVariantId: variants[0]?.id ?? "",
+        orderedQuantity: 1,
+        unitCost: undefined,
+        barcodesText: "",
+      },
+    ]);
+  };
 
   const handleSave = () => {
     if (
@@ -103,7 +139,8 @@ export default function NewPurchaseOrderPage() {
           supplierId,
           warehouseId,
           lines,
-          hasVariants,
+          hasVariants: variants.length > 0,
+          variantById,
         })
       )
     ) {
@@ -123,111 +160,166 @@ export default function NewPurchaseOrderPage() {
         }
       />
 
-      <div className="card max-w-3xl p-6">
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium">{t("supplier")} *</label>
-            <select className="input" value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-              <option value="">—</option>
-              {suppliers?.items.map((s) => (
-                <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">{tDoc("warehouse")} *</label>
-            <select className="input" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
-              <option value="">—</option>
-              {warehouses?.items.map((w) => (
-                <option key={w.id} value={w.id}>{formatWarehouseOptionLabel(w)}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm">{tDoc("referenceNo")}</label>
-            <input className="input" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm">{tDoc("note")}</label>
-            <textarea className="input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
-          </div>
-          <div>
-            <div className="mb-2 flex justify-between">
-              <span className="text-sm font-medium">{tDoc("lines")}</span>
-              <button
-                type="button"
-                className="text-sm text-brand-600 hover:underline"
-                onClick={() =>
-                  setLines([
-                    ...lines,
-                    { productVariantId: variants?.items[0]?.id ?? "", orderedQuantity: 1, unitCost: undefined },
-                  ])
-                }
-              >
-                + {tDoc("addLine")}
-              </button>
-            </div>
-            {lines.map((line, idx) => (
-              <div key={idx} className="mb-3 flex flex-wrap gap-2 rounded-lg border border-slate-200 p-3">
-                <select
-                  className="input min-w-[200px] flex-1"
-                  value={line.productVariantId}
-                  onChange={(e) => {
-                    const next = [...lines];
-                    next[idx].productVariantId = e.target.value;
-                    setLines(next);
-                  }}
-                >
-                  <option value="">{tDoc("selectSku")}</option>
-                  {variants?.items.map((v) => (
-                    <option key={v.id} value={v.id}>{v.sku}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  className="input w-28"
-                  placeholder={t("orderedQty")}
-                  value={line.orderedQuantity}
-                  onChange={(e) => {
-                    const next = [...lines];
-                    next[idx].orderedQuantity = Number(e.target.value);
-                    setLines(next);
-                  }}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  className="input w-28"
-                  placeholder={t("unitCost")}
-                  value={line.unitCost ?? ""}
-                  onChange={(e) => {
-                    const next = [...lines];
-                    next[idx].unitCost = e.target.value ? Number(e.target.value) : undefined;
-                    setLines(next);
-                  }}
-                />
-                {lines.length > 1 && (
-                  <button
-                    type="button"
-                    className="text-sm text-red-600"
-                    onClick={() => setLines(lines.filter((_, i) => i !== idx))}
+      <DocumentFormShell
+        footer={
+          <>
+            <Link href="/purchase-orders" className="btn-secondary">
+              {tCommon("cancel")}
+            </Link>
+            <button
+              className="btn-primary"
+              disabled={mutation.isPending}
+              onClick={handleSave}
+            >
+              {tCommon("save")}
+            </button>
+          </>
+        }
+      >
+        <div className="grid gap-6 lg:grid-cols-5">
+          <div className="space-y-6 lg:col-span-2">
+            <FormSection title={tCommon("formGeneralInfo")} icon={FileText}>
+              <div className="space-y-4">
+                <FormField label={t("supplier")} required>
+                  <select
+                    className="input"
+                    value={supplierId}
+                    onChange={(e) => setSupplierId(e.target.value)}
                   >
-                    {tCommon("delete")}
-                  </button>
-                )}
+                    <option value="">—</option>
+                    {suppliers?.items.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.code} — {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label={tDoc("warehouse")} required>
+                  <select
+                    className="input"
+                    value={warehouseId}
+                    onChange={(e) => setWarehouseId(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {warehouses?.items.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {formatWarehouseOptionLabel(w)}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label={tDoc("referenceNo")}>
+                  <input
+                    className="input"
+                    value={referenceNo}
+                    onChange={(e) => setReferenceNo(e.target.value)}
+                  />
+                </FormField>
+                <FormField label={tDoc("note")}>
+                  <textarea
+                    className="input min-h-[88px] resize-y"
+                    rows={3}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </FormField>
               </div>
-            ))}
+            </FormSection>
           </div>
-          <button
-            className="btn-primary"
-            disabled={mutation.isPending}
-            onClick={handleSave}
-          >
-            {tCommon("save")}
-          </button>
+
+          <div className="lg:col-span-3">
+            <FormSection
+              title={`${tDoc("lines")} *`}
+              description={tCommon("formLinesHint")}
+              icon={ListOrdered}
+              action={
+                <button
+                  type="button"
+                  className="btn-secondary !px-3 !py-1.5 !text-xs"
+                  onClick={addLine}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {tDoc("addLine")}
+                </button>
+              }
+            >
+              <div className="space-y-3">
+                {lines.map((line, idx) => (
+                  <DocumentLineCard
+                    key={idx}
+                    index={idx + 1}
+                    canRemove={lines.length > 1}
+                    onRemove={() => setLines(lines.filter((_, i) => i !== idx))}
+                  >
+                    <div className="grid gap-3 sm:grid-cols-12">
+                      <FormField
+                        label={tDoc("selectSku")}
+                        required
+                        className="sm:col-span-6"
+                      >
+                        <select
+                          className="input"
+                          value={line.productVariantId}
+                          onChange={(e) =>
+                            updateLine(idx, { productVariantId: e.target.value })
+                          }
+                        >
+                          <option value="">{tDoc("selectSku")}</option>
+                          {variants.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {formatVariantOptionLabel(v)}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                      <FormField
+                        label={t("orderedQty")}
+                        required
+                        className="sm:col-span-3"
+                      >
+                        <input
+                          type="number"
+                          min={1}
+                          className="input"
+                          value={line.orderedQuantity}
+                          onChange={(e) =>
+                            updateLine(idx, {
+                              orderedQuantity: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </FormField>
+                      <FormField label={t("unitCost")} className="sm:col-span-3">
+                        <input
+                          type="number"
+                          min={0}
+                          className="input"
+                          placeholder="—"
+                          value={line.unitCost ?? ""}
+                          onChange={(e) =>
+                            updateLine(idx, {
+                              unitCost: e.target.value
+                                ? Number(e.target.value)
+                                : undefined,
+                            })
+                          }
+                        />
+                      </FormField>
+                    </div>
+                    <LineBarcodeSection
+                      productVariantId={line.productVariantId}
+                      variant={variantById.get(line.productVariantId)}
+                      quantity={line.orderedQuantity}
+                      value={line.barcodesText}
+                      onChange={(text) => updateLine(idx, { barcodesText: text })}
+                    />
+                  </DocumentLineCard>
+                ))}
+              </div>
+            </FormSection>
+          </div>
         </div>
-      </div>
+      </DocumentFormShell>
     </div>
   );
 }

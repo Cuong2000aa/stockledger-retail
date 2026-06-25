@@ -261,12 +261,14 @@ public class FbDataSeedService : IFbDataSeedService
                 ProductId = item.ProductId,
                 BrandId = item.BrandId,
                 Sku = item.Sku,
+                Barcode = null,
                 Unit = item.Unit,
                 Status = ProductStatus.Active,
                 CostPrice = item.Cost,
                 SellingPrice = item.Price > 0 ? item.Price : null,
                 CostSource = CostSource.Manual,
                 TrackLotExpiry = true,
+                IsBarcode = item.Sku == "DOM-DOUGH-12",
                 CreatedAt = now,
                 UpdatedAt = now
             }, cancellationToken);

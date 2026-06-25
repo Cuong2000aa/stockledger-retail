@@ -19,7 +19,7 @@ import {
 } from "@/lib/auth-session";
 import { apiClient } from "@/lib/api";
 
-type LoginInput = { username: string; password: string };
+type LoginInput = { email: string; password: string };
 
 type AuthContextValue = {
   session: AuthSession | null;
@@ -81,7 +81,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (input: LoginInput) => {
-      const { data } = await apiClient.post<AuthSession>("/api/auth/login", input);
+      const { data } = await apiClient.post<AuthSession>("/api/auth/login", {
+        email: input.email,
+        password: input.password,
+      });
       const nextSession: AuthSession = {
         email: data.email,
         displayName: data.displayName,

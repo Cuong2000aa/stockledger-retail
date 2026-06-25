@@ -1,4 +1,5 @@
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Application.Inventory;
 using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
@@ -91,6 +92,8 @@ public class ProductVariantAppService : IProductVariantAppService
             CostPrice = costPrice,
             SellingPrice = input.SellingPrice,
             CostSource = costSource,
+            TrackLotExpiry = input.TrackLotExpiry,
+            IsBarcode = input.IsBarcode,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -125,6 +128,7 @@ public class ProductVariantAppService : IProductVariantAppService
         variant.SellingPrice = input.SellingPrice;
         variant.CostSource = costSource;
         variant.TrackLotExpiry = input.TrackLotExpiry;
+        variant.IsBarcode = input.IsBarcode;
         variant.UpdatedAt = DateTime.UtcNow;
 
         await _productVariantRepository.UpdateAsync(variant, cancellationToken);
@@ -167,6 +171,7 @@ public class ProductVariantAppService : IProductVariantAppService
         SellingPrice = variant.SellingPrice,
         CostSource = variant.CostSource,
         TrackLotExpiry = variant.TrackLotExpiry,
+        IsBarcode = variant.IsBarcode,
         CreatedAt = variant.CreatedAt,
         UpdatedAt = variant.UpdatedAt
     };

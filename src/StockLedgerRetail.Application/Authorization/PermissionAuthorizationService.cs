@@ -3,6 +3,7 @@ using StockLedgerRetail.Authorization;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
 using StockLedgerRetail.Services;
+using static StockLedgerRetail.BusinessErrorCodes;
 
 namespace StockLedgerRetail.Application.Authorization;
 
@@ -33,7 +34,7 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
 
         if (!_currentUser.HasPermission(permissionCode))
         {
-            throw new UnauthorizedAccessException($"Missing permission '{permissionCode}'.");
+            throw new UnauthorizedAccessException(MissingPermission(permissionCode));
         }
     }
 
@@ -91,7 +92,7 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
             return;
         }
 
-        throw new UnauthorizedAccessException("You are not allowed to approve this document.");
+        throw new UnauthorizedAccessException(CannotApproveDocument);
     }
 
     public async Task EnsureCanReceiveTransferAsync(
@@ -118,7 +119,7 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
             }
         }
 
-        throw new UnauthorizedAccessException("You are not allowed to receive this transfer.");
+        throw new UnauthorizedAccessException(CannotReceiveTransfer);
     }
 
     public void EnsureAdminUsersManage() => EnsurePermission(PermissionCodes.AdminUsersManage);
@@ -160,7 +161,7 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
     {
         if (!_currentUser.HasPermission(permissionCode))
         {
-            throw new UnauthorizedAccessException($"Missing permission '{permissionCode}'.");
+            throw new UnauthorizedAccessException(MissingPermission(permissionCode));
         }
 
         if (string.Equals(documentCreatedBy, _currentUser.Email, StringComparison.OrdinalIgnoreCase))
@@ -178,7 +179,6 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
             return;
         }
 
-        throw new UnauthorizedAccessException(
-            "You can only manage your own documents or team members' documents as team leader.");
+        throw new UnauthorizedAccessException(CannotManageDocument);
     }
 }
