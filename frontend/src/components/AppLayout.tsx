@@ -52,6 +52,7 @@ const navItems = [
 
 const adminNavItems = [
   { href: "/admin/operations", icon: ServerCog, key: "operations" },
+  { href: "/admin/audit-logs", icon: History, key: "auditLogs" },
   { href: "/admin/brands", icon: Store, key: "brands" },
   { href: "/admin/users", icon: Users, key: "users" },
   { href: "/admin/teams", icon: UsersRound, key: "teams" },

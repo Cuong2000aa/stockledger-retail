@@ -1,8 +1,8 @@
-import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { Inter } from "next/font/google";
 import { routing } from "@/i18n/routing";
+import { IntlClientProvider } from "@/i18n/IntlClientProvider";
 import { AppDialogProvider } from "@/components/AppDialog";
 import { QueryProvider } from "@/components/QueryProvider";
 import { AuthProvider, AuthShell } from "@/features/auth/AuthProvider";
@@ -46,7 +46,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className={inter.variable}>
       <body className="font-sans antialiased">
-        <NextIntlClientProvider messages={messages}>
+        <IntlClientProvider locale={locale} messages={messages}>
           <QueryProvider>
             <AppDialogProvider>
               <AuthProvider>
@@ -54,7 +54,7 @@ export default async function LocaleLayout({
               </AuthProvider>
             </AppDialogProvider>
           </QueryProvider>
-        </NextIntlClientProvider>
+        </IntlClientProvider>
       </body>
     </html>
   );

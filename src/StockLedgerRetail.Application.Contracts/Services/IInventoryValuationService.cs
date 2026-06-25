@@ -21,4 +21,13 @@ public interface IInventoryValuationService
     Task<decimal?> ResolveIssueUnitCostAsync(
         Guid productVariantId,
         CancellationToken cancellationToken = default);
+
+    Task UpsertSnapshotAsync(
+        Guid productVariantId,
+        Guid warehouseId,
+        decimal quantityOnHand,
+        decimal quantityReserved,
+        decimal quantityAvailable,
+        DateTime snapshotAt,
+        CancellationToken cancellationToken = default);
 }

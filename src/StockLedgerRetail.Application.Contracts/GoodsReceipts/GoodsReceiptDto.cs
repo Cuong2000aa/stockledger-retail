@@ -59,6 +59,10 @@ public class GoodsReceiptDto
 
     public DateTime? ApprovedAt { get; set; }
 
+    public string? UpdatedBy { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
     public List<GoodsReceiptLineDto> Lines { get; set; } = new();
 }
 

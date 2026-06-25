@@ -1,4 +1,5 @@
 import {
+  GoodsReceiptStatus,
   InventoryDocumentStatus,
   InventoryDocumentType,
   ProductStatus,
@@ -25,6 +26,12 @@ const poStatusStyles: Record<PurchaseOrderStatus, string> = {
   [PurchaseOrderStatus.Received]: "bg-emerald-50 text-emerald-800 ring-emerald-200",
   [PurchaseOrderStatus.Cancelled]: "bg-red-50 text-red-800 ring-red-200",
   [PurchaseOrderStatus.PendingApproval]: "bg-violet-50 text-violet-800 ring-violet-200",
+};
+
+const grStatusStyles: Record<GoodsReceiptStatus, string> = {
+  [GoodsReceiptStatus.Draft]: "bg-slate-50 text-slate-700 ring-slate-200",
+  [GoodsReceiptStatus.Approved]: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  [GoodsReceiptStatus.Cancelled]: "bg-red-50 text-red-800 ring-red-200",
 };
 
 const transactionTypeStyles: Partial<Record<StockTransactionType, string>> = {
@@ -68,6 +75,18 @@ export function PoStatusBadge({
 }) {
   return (
     <span className={clsx("badge", poStatusStyles[status])}>{label}</span>
+  );
+}
+
+export function GrStatusBadge({
+  status,
+  label,
+}: {
+  status: GoodsReceiptStatus;
+  label: string;
+}) {
+  return (
+    <span className={clsx("badge", grStatusStyles[status])}>{label}</span>
   );
 }
 

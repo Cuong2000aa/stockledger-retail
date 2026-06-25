@@ -16,10 +16,20 @@ public class ProductCostHistory
 
     public CostSource CostSource { get; set; }
 
+    public ValuationMethod ValuationMethod { get; set; } = ValuationMethod.WeightedAverage;
+
+    public string Currency { get; set; } = "VND";
+
+    public string? ReferenceType { get; set; }
+
+    public Guid? ReferenceId { get; set; }
+
     public DateTime EffectiveFrom { get; set; }
 
     /// <summary>Null nghĩa là bản ghi đang hiệu lực (chưa có ngày kết thúc).</summary>
     public DateTime? EffectiveTo { get; set; }
+
+    public bool IsCurrent { get; set; } = true;
 
     public ProductVariant? ProductVariant { get; set; }
 }

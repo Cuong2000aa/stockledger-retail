@@ -19,10 +19,14 @@ public class ProductCostHistoryConfiguration : IEntityTypeConfiguration<ProductC
 
         builder.Property(x => x.CostPrice).HasPrecision(18, 4).IsRequired();
         builder.Property(x => x.CostSource).IsRequired();
+        builder.Property(x => x.Currency).IsRequired().HasMaxLength(10);
+        builder.Property(x => x.ReferenceType).HasMaxLength(50);
         builder.Property(x => x.EffectiveFrom).IsRequired();
+        builder.Property(x => x.IsCurrent).IsRequired();
 
         builder.HasIndex(x => x.ProductVariantId);
         builder.HasIndex(x => new { x.ProductVariantId, x.EffectiveFrom });
+        builder.HasIndex(x => new { x.ProductVariantId, x.IsCurrent });
 
         builder.HasOne(x => x.ProductVariant)
             .WithMany(x => x.CostHistory)

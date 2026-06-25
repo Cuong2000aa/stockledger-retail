@@ -67,6 +67,10 @@ public class InventoryDocumentDto
 
     public DateTime? FirstApprovedAt { get; set; }
 
+    public string? UpdatedBy { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
     public TransferLifecycleStatus TransferLifecycleStatus { get; set; }
 
     public Guid? InTransitWarehouseId { get; set; }

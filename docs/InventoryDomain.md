@@ -22,11 +22,19 @@ Overview of the retail inventory domain as implemented in StockLedger Retail.
 - **Product** — parent master data (code, name, brand text, optional `BrandId`, category).
 - **ProductVariant** — the actual inventory unit. All stock is tracked at SKU level. Optional `BrandId`.
 - **TrackLotExpiry** — when `true`, SKU uses `StockLot` / `LotStock` and FEFO for outbound allocation.
-- **Valuation fields** on SKU (optional, for analytics):
-  - `CostPrice` — cost price (may come from ERP, POS, Purchase System, or Manual entry)
-  - `SellingPrice` — retail selling price
-  - `CostSource` — `Manual`, `Erp`, `Pos`, `PurchaseSystem`
-- **ProductCostHistory** — time-series cost records (`EffectiveFrom` / `EffectiveTo`); read via `GET /api/reports/cost-history`.
+- **Current cache fields** on SKU:
+  - `CurrentCostPrice` — current operational cost cache
+  - `CurrentSellingPrice` — current operational selling price cache
+  - `CurrentSellingPriceBeforeVat` / `CurrentSellingPriceAfterVat`
+  - `VatRate`
+  - `CurrentCostSource`
+- **Legacy compatibility fields** remain on SKU:
+  - `CostPrice`
+  - `SellingPrice`
+  - `CostSource`
+- **ProductPrice** — effective-dated selling price rows by `PriceType` (`Regular`, `Promotion`, `Markdown`, `Clearance`, `Channel`)
+- **ProductCostHistory** — effective-dated cost records with source, valuation method, reference metadata
+- **InventoryValuationSnapshot** — persisted valuation snapshot by SKU / warehouse / date for reporting and analytics
 
 ### StockLot & LotStock
 
@@ -121,8 +129,8 @@ Rule-based APIs: dead stock, sales velocity, transfer suggestions. Filterable by
 
 ## Inventory Reports (Read-Only)
 
-- Inventory value — `CurrentStock` × SKU `CostPrice`
-- NXT — movements from `StockTransaction` in date range
+- Inventory value — latest `InventoryValuationSnapshot`, fallback to `CurrentStock × CurrentCostPrice`
+- NXT — movements from `StockTransaction` in date range, valued with snapshot/current cost fallback
 - Near-expiry lots — `StockLot` / `LotStock` where `ExpiryDate` within threshold
 - Cost history — `ProductCostHistory` rows
 
@@ -192,3 +200,4 @@ StockTransaction (OUT) → CurrentStock decreased
 4. Inventory cannot become negative.
 5. Cost price is not assumed to be manually entered — domain supports external sources via `CostSource`.
 6. Business documents must be traceable (document no, transaction no, audit log).
+7. Pricing is a dedicated domain stream: regular price, promotion price, markdown history, cost history, valuation snapshots, and margin read models must stay traceable by effective date.

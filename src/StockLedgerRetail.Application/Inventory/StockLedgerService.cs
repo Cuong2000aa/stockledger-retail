@@ -351,12 +351,19 @@ public class StockLedgerService : IStockLedgerService
             6,
             cancellationToken);
 
+        var lineBarcodes = BarcodeNormalization.FromLine(line);
+        var counterpartWarehouseId = ResolveCounterpartWarehouse(document, warehouseId, transactionType);
+
         var transaction = new StockTransaction
         {
             Id = transactionId,
             TransactionNo = transactionNo,
             DocumentId = document.Id,
             DocumentLineId = line.Id,
+            DocumentNo = document.DocumentNo,
+            SourceSystem = document.SourceSystem,
+            ReferenceNo = document.ReferenceNo,
+            CounterpartWarehouseId = counterpartWarehouseId,
             ProductVariantId = line.ProductVariantId,
             WarehouseId = warehouseId,
             TransactionType = transactionType,
@@ -366,7 +373,15 @@ public class StockLedgerService : IStockLedgerService
             UnitCost = unitCost,
             TransactionDate = document.DocumentDate,
             CreatedBy = _auditContext.UserName,
-            CreatedAt = now
+            CreatedAt = now,
+            Barcodes = lineBarcodes
+                .Select(bc => new StockTransactionBarcode
+                {
+                    Id = Guid.NewGuid(),
+                    StockTransactionId = transactionId,
+                    Barcode = bc
+                })
+                .ToList()
         };
 
         await _stockTransactionRepository.InsertAsync(transaction, cancellationToken);
@@ -385,6 +400,15 @@ public class StockLedgerService : IStockLedgerService
             warehouseId,
             transactionType,
             quantityDelta,
+            now,
+            cancellationToken);
+
+        await _inventoryValuationService.UpsertSnapshotAsync(
+            line.ProductVariantId,
+            warehouseId,
+            change.AfterOnHand,
+            change.QuantityReserved,
+            change.QuantityAvailable,
             now,
             cancellationToken);
 
@@ -544,6 +568,23 @@ public class StockLedgerService : IStockLedgerService
             "POS" or "OMS" or "ECOM" => CostSource.Pos,
             "ERP" => CostSource.Erp,
             _ => CostSource.Manual
+        };
+
+    private static Guid? ResolveCounterpartWarehouse(
+        InventoryDocument document,
+        Guid warehouseId,
+        StockTransactionType transactionType) =>
+        transactionType switch
+        {
+            StockTransactionType.In or StockTransactionType.AdjustmentIn or StockTransactionType.CountAdjustmentIn
+                => document.SourceWarehouseId,
+            StockTransactionType.Out or StockTransactionType.AdjustmentOut or StockTransactionType.CountAdjustmentOut
+                => document.DestinationWarehouseId,
+            StockTransactionType.TransferIn
+                => document.SourceWarehouseId ?? document.InTransitWarehouseId,
+            StockTransactionType.TransferOut
+                => document.DestinationWarehouseId ?? document.InTransitWarehouseId,
+            _ => null
         };
 
     private async Task EnsureWarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken)

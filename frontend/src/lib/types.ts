@@ -17,6 +17,21 @@ export enum CostSource {
   PurchaseSystem = 4,
 }
 
+export enum PriceType {
+  Regular = 1,
+  Markdown = 2,
+  Promotion = 3,
+  Clearance = 4,
+  Channel = 5,
+}
+
+export enum ValuationMethod {
+  WeightedAverage = 1,
+  StandardCost = 2,
+  LastPurchase = 3,
+  Manual = 4,
+}
+
 export enum WarehouseType {
   Dc = 1,
   Store = 2,
@@ -93,6 +108,7 @@ export interface UpdateProductInput {
 export interface ProductVariant {
   id: string;
   productId: string;
+  brandId?: string;
   sku: string;
   barcode?: string;
   color?: string;
@@ -102,7 +118,13 @@ export interface ProductVariant {
   status: ProductStatus;
   costPrice?: number;
   sellingPrice?: number;
+  currentCostPrice?: number;
+  currentSellingPrice?: number;
+  sellingPriceBeforeVat?: number;
+  sellingPriceAfterVat?: number;
+  vatRate?: number;
   costSource?: CostSource;
+  currentCostSource?: CostSource;
   trackLotExpiry?: boolean;
   isBarcode?: boolean;
   createdAt: string;
@@ -120,6 +142,9 @@ export interface CreateProductVariantInput {
   status: ProductStatus;
   costPrice?: number;
   sellingPrice?: number;
+  sellingPriceBeforeVat?: number;
+  sellingPriceAfterVat?: number;
+  vatRate?: number;
   costSource?: CostSource;
   trackLotExpiry?: boolean;
   isBarcode?: boolean;
@@ -134,9 +159,39 @@ export interface UpdateProductVariantInput {
   status: ProductStatus;
   costPrice?: number;
   sellingPrice?: number;
+  sellingPriceBeforeVat?: number;
+  sellingPriceAfterVat?: number;
+  vatRate?: number;
   costSource?: CostSource;
   trackLotExpiry?: boolean;
   isBarcode?: boolean;
+}
+
+export interface ProductPrice {
+  id: string;
+  productVariantId: string;
+  priceType: PriceType;
+  priceBeforeVat: number;
+  vatRate: number;
+  priceAfterVat: number;
+  currency: string;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  isCurrent: boolean;
+  channelCode?: string;
+  referenceType?: string;
+}
+
+export interface UpsertProductPriceInput {
+  priceType: PriceType;
+  priceBeforeVat: number;
+  vatRate: number;
+  priceAfterVat?: number;
+  currency?: string;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  channelCode?: string;
+  referenceType?: string;
 }
 
 export interface Warehouse {
@@ -221,6 +276,8 @@ export interface InventoryDocument {
   completedApprovalSteps?: number;
   firstApprovedBy?: string;
   firstApprovedAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
   transferLifecycleStatus?: TransferLifecycleStatus;
   inTransitWarehouseId?: string;
   shippedAt?: string;
@@ -297,10 +354,16 @@ export interface StockTransaction {
   id: string;
   transactionNo: string;
   documentId: string;
+  documentNo: string;
+  sourceSystem?: string;
+  referenceNo?: string;
   productVariantId: string;
   sku: string;
+  isBarcode?: boolean;
   warehouseId: string;
   warehouseCode: string;
+  counterpartWarehouseId?: string;
+  counterpartWarehouseCode?: string;
   transactionType: StockTransactionType;
   quantityDelta: number;
   beforeQuantity: number;
@@ -308,6 +371,7 @@ export interface StockTransaction {
   transactionDate: string;
   createdBy?: string;
   createdAt: string;
+  barcodes?: string[];
 }
 
 export interface ApiError {
@@ -442,6 +506,8 @@ export interface GoodsReceipt {
   createdAt: string;
   approvedBy?: string;
   approvedAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
   lines: GoodsReceiptLine[];
 }
 

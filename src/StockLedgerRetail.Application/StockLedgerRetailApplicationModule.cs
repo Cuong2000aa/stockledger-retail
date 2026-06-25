@@ -13,6 +13,7 @@ using StockLedgerRetail.Application.Suppliers;
 using StockLedgerRetail.Application.PurchaseOrders;
 using StockLedgerRetail.Application.GoodsReceipts;
 using StockLedgerRetail.Application.Analytics;
+using StockLedgerRetail.Application.Audit;
 using StockLedgerRetail.Application.Insights;
 using StockLedgerRetail.Application.Operations;
 using StockLedgerRetail.Application.Reports;
@@ -38,6 +39,7 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IBrandScopeContext, BrandScopeContext>();
         services.AddScoped<IPermissionAuthorizationService, PermissionAuthorizationService>();
         services.AddScoped<ITransactionAuditService, TransactionAuditService>();
+        services.AddScoped<ITransactionLogAppService, TransactionLogAppService>();
         services.AddScoped<IAuthAppService, AuthAppService>();
         services.AddScoped<IAppUserAppService, AppUserAppService>();
         services.AddScoped<IPermissionAdminAppService, PermissionAdminAppService>();

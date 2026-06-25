@@ -31,6 +31,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -50,6 +55,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -169,6 +178,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -179,6 +193,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -275,6 +293,13 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
@@ -498,6 +523,13 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<int>("TransferLifecycleStatus")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DestinationWarehouseId");
@@ -584,6 +616,83 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.ToTable("inventory_document_line_barcodes", (string)null);
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryValuationSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("AverageCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<decimal>("InventoryValue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("ProductVariantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("QuantityAvailable")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("QuantityOnHand")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("QuantityReserved")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTime>("SnapshotDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ValuationMethod")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WarehouseId", "SnapshotDate");
+
+                    b.HasIndex("ProductVariantId", "WarehouseId", "SnapshotDate")
+                        .IsUnique();
+
+                    b.ToTable("inventory_valuation_snapshots", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_inventory_valuation_snapshots_available_non_negative", "\"QuantityAvailable\" >= 0");
+
+                            t.HasCheckConstraint("CK_inventory_valuation_snapshots_on_hand_non_negative", "\"QuantityOnHand\" >= 0");
+
+                            t.HasCheckConstraint("CK_inventory_valuation_snapshots_reserved_non_negative", "\"QuantityReserved\" >= 0");
+
+                            t.HasCheckConstraint("CK_inventory_valuation_snapshots_value_non_negative", "\"InventoryValue\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.LotStock", b =>
                 {
                     b.Property<Guid>("Id")
@@ -655,6 +764,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -669,6 +783,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -698,6 +816,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -713,6 +836,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -737,14 +864,32 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<int>("CostSource")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<DateTime>("EffectiveFrom")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("EffectiveTo")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("ProductVariantId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferenceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("ValuationMethod")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -752,9 +897,93 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasIndex("ProductVariantId", "EffectiveFrom");
 
+                    b.HasIndex("ProductVariantId", "IsCurrent");
+
                     b.ToTable("product_cost_histories", null, t =>
                         {
                             t.HasCheckConstraint("CK_product_cost_history_cost_price_non_negative", "\"CostPrice\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.ProductPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChannelCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EffectiveTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("PriceAfterVat")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("PriceBeforeVat")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("PriceType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProductVariantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferenceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("VatRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductVariantId");
+
+                    b.HasIndex("ProductVariantId", "EffectiveFrom");
+
+                    b.HasIndex("ProductVariantId", "IsCurrent");
+
+                    b.ToTable("product_prices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_product_prices_after_vat_non_negative", "\"PriceAfterVat\" >= 0");
+
+                            t.HasCheckConstraint("CK_product_prices_before_vat_non_negative", "\"PriceBeforeVat\" >= 0");
+
+                            t.HasCheckConstraint("CK_product_prices_vat_rate_non_negative", "\"VatRate\" >= 0");
                         });
                 });
 
@@ -784,6 +1013,36 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("CurrentCostEffectiveFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("CurrentCostPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int?>("CurrentCostSource")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CurrentPriceEffectiveFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("CurrentSellingPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal?>("CurrentSellingPriceAfterVat")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal?>("CurrentSellingPriceBeforeVat")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<bool>("IsBarcode")
                         .HasColumnType("boolean");
@@ -821,6 +1080,14 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("VatRate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Barcode")
@@ -835,7 +1102,13 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         {
                             t.HasCheckConstraint("CK_product_variants_cost_price_non_negative", "\"CostPrice\" IS NULL OR \"CostPrice\" >= 0");
 
+                            t.HasCheckConstraint("CK_product_variants_current_cost_price_non_negative", "\"CurrentCostPrice\" IS NULL OR \"CurrentCostPrice\" >= 0");
+
+                            t.HasCheckConstraint("CK_product_variants_current_selling_price_non_negative", "\"CurrentSellingPrice\" IS NULL OR \"CurrentSellingPrice\" >= 0");
+
                             t.HasCheckConstraint("CK_product_variants_selling_price_non_negative", "\"SellingPrice\" IS NULL OR \"SellingPrice\" >= 0");
+
+                            t.HasCheckConstraint("CK_product_variants_vat_rate_non_negative", "\"VatRate\" IS NULL OR \"VatRate\" >= 0");
                         });
                 });
 
@@ -901,6 +1174,13 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<Guid>("SupplierId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
@@ -1107,6 +1387,9 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
+                    b.Property<Guid?>("CounterpartWarehouseId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1121,12 +1404,25 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<Guid>("DocumentLineId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("DocumentNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<Guid>("ProductVariantId")
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("QuantityDelta")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("ReferenceNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceSystem")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<DateTime>("TransactionDate")
                         .HasColumnType("timestamp with time zone");
@@ -1148,9 +1444,13 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CounterpartWarehouseId");
+
                     b.HasIndex("DocumentId");
 
                     b.HasIndex("DocumentLineId");
+
+                    b.HasIndex("DocumentNo");
 
                     b.HasIndex("ProductVariantId");
 
@@ -1162,6 +1462,29 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("stock_transactions", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockTransactionBarcode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("StockTransactionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Barcode");
+
+                    b.HasIndex("StockTransactionId");
+
+                    b.ToTable("stock_transaction_barcodes", (string)null);
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Supplier", b =>
@@ -1186,6 +1509,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Email")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -1204,6 +1532,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -1227,6 +1559,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1240,6 +1577,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -1429,6 +1770,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("District")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1472,6 +1818,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Ward")
                         .HasMaxLength(100)
@@ -1660,6 +2010,25 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("Line");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryValuationSnapshot", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.ProductVariant", "ProductVariant")
+                        .WithMany("ValuationSnapshots")
+                        .HasForeignKey("ProductVariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ProductVariant");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.LotStock", b =>
                 {
                     b.HasOne("StockLedgerRetail.Domain.Entities.StockLot", "StockLot")
@@ -1693,6 +2062,17 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                 {
                     b.HasOne("StockLedgerRetail.Domain.Entities.ProductVariant", "ProductVariant")
                         .WithMany("CostHistory")
+                        .HasForeignKey("ProductVariantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ProductVariant");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.ProductPrice", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.ProductVariant", "ProductVariant")
+                        .WithMany("PriceHistory")
                         .HasForeignKey("ProductVariantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -1803,6 +2183,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockTransaction", b =>
                 {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Warehouse", "CounterpartWarehouse")
+                        .WithMany()
+                        .HasForeignKey("CounterpartWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("StockLedgerRetail.Domain.Entities.InventoryDocument", "Document")
                         .WithMany("StockTransactions")
                         .HasForeignKey("DocumentId")
@@ -1827,6 +2212,8 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("CounterpartWarehouse");
+
                     b.Navigation("Document");
 
                     b.Navigation("DocumentLine");
@@ -1834,6 +2221,17 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("ProductVariant");
 
                     b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockTransactionBarcode", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.StockTransaction", "StockTransaction")
+                        .WithMany("Barcodes")
+                        .HasForeignKey("StockTransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StockTransaction");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Team", b =>
@@ -2002,7 +2400,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.Navigation("InventoryDocumentLines");
 
+                    b.Navigation("PriceHistory");
+
                     b.Navigation("StockTransactions");
+
+                    b.Navigation("ValuationSnapshots");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.PurchaseOrder", b =>
@@ -2029,6 +2431,8 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.StockTransaction", b =>
                 {
+                    b.Navigation("Barcodes");
+
                     b.Navigation("CurrentStocks");
                 });
 

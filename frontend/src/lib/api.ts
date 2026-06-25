@@ -1,5 +1,6 @@
 import axios from "axios";
 import { clearAuthSession, getAuthSession } from "./auth-session";
+import { GoodsReceiptStatus } from "./types";
 import type {
   AdjustmentLineInput,
   CreateProductInput,
@@ -10,7 +11,6 @@ import type {
   CurrentStock,
   DocumentLineInput,
   GoodsReceipt,
-  GoodsReceiptStatus,
   InventoryDocument,
   InventoryDocumentStatus,
   InventoryDocumentType,
@@ -19,6 +19,7 @@ import type {
   MovementSummary,
   PagedResult,
   Product,
+  ProductPrice,
   ProductVariant,
   PurchaseOrder,
   PurchaseOrderStatus,
@@ -31,6 +32,7 @@ import type {
   VariantUnitBarcode,
   UpdateProductInput,
   UpdateProductVariantInput,
+  UpsertProductPriceInput,
   UpdateSupplierInput,
   UpdateWarehouseInput,
   Warehouse,
@@ -65,8 +67,11 @@ api.interceptors.response.use(
       }
     }
 
+    const apiBase = api.defaults.baseURL ?? "http://localhost:5270";
     const message =
-      err.response?.data?.error ?? err.message ?? "Request failed";
+      !err.response && (err.code === "ERR_NETWORK" || err.message === "Network Error")
+        ? `Không kết nối được API (${apiBase}). Hãy chạy backend: dotnet run trong host/StockLedgerRetail.HttpApi.Host`
+        : err.response?.data?.error ?? err.message ?? "Request failed";
     return Promise.reject(new Error(message));
   }
 );
@@ -130,6 +135,19 @@ export const updateProductVariant = (
 
 export const deleteProductVariant = (id: string) =>
   api.delete(`/api/product-variants/${id}`);
+
+export const fetchProductPrices = (productVariantId: string) =>
+  api
+    .get<ProductPrice[]>(`/api/product-variants/${productVariantId}/prices`)
+    .then((r) => r.data);
+
+export const upsertProductPrice = (
+  productVariantId: string,
+  input: UpsertProductPriceInput
+) =>
+  api
+    .post<ProductPrice>(`/api/product-variants/${productVariantId}/prices`, input)
+    .then((r) => r.data);
 
 // Warehouses
 export const fetchWarehouses = (page = 1, pageSize = 50, search?: string) =>
@@ -317,6 +335,30 @@ export const fetchStockTransactions = (
         pageSize,
         search: search || undefined,
       },
+    })
+    .then((r) => r.data);
+
+export interface TransactionLogItem {
+  id: string;
+  entityName: string;
+  entityId: string;
+  action: number;
+  oldValue?: string;
+  newValue?: string;
+  createdBy: string;
+  createdAt: string;
+  ipAddress?: string;
+}
+
+export const fetchAuditLogs = (
+  entityName?: string,
+  entityId?: string,
+  page = 1,
+  pageSize = 20
+) =>
+  api
+    .get<PagedResult<TransactionLogItem>>("/api/audit-logs", {
+      params: { entityName, entityId, page, pageSize },
     })
     .then((r) => r.data);
 

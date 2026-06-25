@@ -13,6 +13,9 @@ public class StockTransactionConfiguration : IEntityTypeConfiguration<StockTrans
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.TransactionNo).IsRequired().HasMaxLength(50);
+        builder.Property(x => x.DocumentNo).IsRequired().HasMaxLength(50);
+        builder.Property(x => x.SourceSystem).HasMaxLength(50);
+        builder.Property(x => x.ReferenceNo).HasMaxLength(100);
         builder.Property(x => x.TransactionType).IsRequired();
         builder.Property(x => x.QuantityDelta).HasPrecision(18, 4);
         builder.Property(x => x.BeforeQuantity).HasPrecision(18, 4);
@@ -23,6 +26,7 @@ public class StockTransactionConfiguration : IEntityTypeConfiguration<StockTrans
         builder.Property(x => x.CreatedAt).IsRequired();
 
         builder.HasIndex(x => x.TransactionNo).IsUnique();
+        builder.HasIndex(x => x.DocumentNo);
         builder.HasIndex(x => x.ProductVariantId);
         builder.HasIndex(x => x.WarehouseId);
         builder.HasIndex(x => x.TransactionDate);
@@ -47,6 +51,11 @@ public class StockTransactionConfiguration : IEntityTypeConfiguration<StockTrans
         builder.HasOne(x => x.Warehouse)
             .WithMany()
             .HasForeignKey(x => x.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.CounterpartWarehouse)
+            .WithMany()
+            .HasForeignKey(x => x.CounterpartWarehouseId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

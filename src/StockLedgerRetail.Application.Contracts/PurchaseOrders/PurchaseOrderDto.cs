@@ -69,6 +69,10 @@ public class PurchaseOrderDto
 
     public DateTime? ApprovedAt { get; set; }
 
+    public string? UpdatedBy { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
     public List<PurchaseOrderLineDto> Lines { get; set; } = new();
 }
 

@@ -11,11 +11,23 @@ internal static class InventoryReportSqlQueries
     /// Params: warehouseId (nullable), brandId (nullable).
     /// </summary>
     public const string InventoryValueTotals = """
+        WITH latest_snapshots AS (
+            SELECT DISTINCT ON (ivs."ProductVariantId", ivs."WarehouseId")
+                ivs."ProductVariantId",
+                ivs."WarehouseId",
+                ivs."AverageCost",
+                ivs."InventoryValue"
+            FROM inventory_valuation_snapshots ivs
+            ORDER BY ivs."ProductVariantId", ivs."WarehouseId", ivs."SnapshotDate" DESC, ivs."UpdatedAt" DESC
+        )
         SELECT
-            COALESCE(SUM(cs."QuantityOnHand" * COALESCE(pv."CostPrice", 0)), 0) AS "TotalValue",
+            COALESCE(SUM(COALESCE(ls."InventoryValue", cs."QuantityOnHand" * COALESCE(pv."CurrentCostPrice", pv."CostPrice", 0))), 0) AS "TotalValue",
             COUNT(*)::int AS "TotalLineCount"
         FROM current_stocks cs
         INNER JOIN product_variants pv ON pv."Id" = cs."ProductVariantId"
+        LEFT JOIN latest_snapshots ls
+            ON ls."ProductVariantId" = cs."ProductVariantId"
+           AND ls."WarehouseId" = cs."WarehouseId"
         WHERE cs."QuantityOnHand" > 0
           AND (COALESCE({0}::uuid, cs."WarehouseId") = cs."WarehouseId")
           AND (COALESCE({1}::uuid, pv."BrandId") = pv."BrandId")
@@ -26,17 +38,29 @@ internal static class InventoryReportSqlQueries
     /// Params: warehouseId, brandId, skip, take.
     /// </summary>
     public const string InventoryValueLines = """
+        WITH latest_snapshots AS (
+            SELECT DISTINCT ON (ivs."ProductVariantId", ivs."WarehouseId")
+                ivs."ProductVariantId",
+                ivs."WarehouseId",
+                ivs."AverageCost",
+                ivs."InventoryValue"
+            FROM inventory_valuation_snapshots ivs
+            ORDER BY ivs."ProductVariantId", ivs."WarehouseId", ivs."SnapshotDate" DESC, ivs."UpdatedAt" DESC
+        )
         SELECT
             cs."ProductVariantId" AS "ProductVariantId",
             pv."Sku" AS "Sku",
             cs."WarehouseId" AS "WarehouseId",
             w."Code" AS "WarehouseCode",
             cs."QuantityOnHand" AS "QuantityOnHand",
-            pv."CostPrice" AS "UnitCost",
-            cs."QuantityOnHand" * COALESCE(pv."CostPrice", 0) AS "InventoryValue"
+            COALESCE(ls."AverageCost", pv."CurrentCostPrice", pv."CostPrice") AS "UnitCost",
+            COALESCE(ls."InventoryValue", cs."QuantityOnHand" * COALESCE(pv."CurrentCostPrice", pv."CostPrice", 0)) AS "InventoryValue"
         FROM current_stocks cs
         INNER JOIN product_variants pv ON pv."Id" = cs."ProductVariantId"
         INNER JOIN warehouses w ON w."Id" = cs."WarehouseId"
+        LEFT JOIN latest_snapshots ls
+            ON ls."ProductVariantId" = cs."ProductVariantId"
+           AND ls."WarehouseId" = cs."WarehouseId"
         WHERE cs."QuantityOnHand" > 0
           AND (COALESCE({0}::uuid, cs."WarehouseId") = cs."WarehouseId")
           AND (COALESCE({1}::uuid, pv."BrandId") = pv."BrandId")
@@ -67,7 +91,14 @@ internal static class InventoryReportSqlQueries
                 cs."ProductVariantId",
                 cs."WarehouseId",
                 cs."QuantityOnHand" AS closing_qty,
-                pv."CostPrice" AS unit_cost
+                COALESCE((
+                    SELECT ivs."AverageCost"
+                    FROM inventory_valuation_snapshots ivs
+                    WHERE ivs."ProductVariantId" = cs."ProductVariantId"
+                      AND ivs."WarehouseId" = cs."WarehouseId"
+                    ORDER BY ivs."SnapshotDate" DESC, ivs."UpdatedAt" DESC
+                    LIMIT 1
+                ), pv."CurrentCostPrice", pv."CostPrice") AS unit_cost
             FROM current_stocks cs
             INNER JOIN product_variants pv ON pv."Id" = cs."ProductVariantId"
             WHERE (COALESCE({2}::uuid, cs."WarehouseId") = cs."WarehouseId")
@@ -125,7 +156,14 @@ internal static class InventoryReportSqlQueries
                 cs."QuantityOnHand" AS closing_qty,
                 pv."Sku" AS sku,
                 w."Code" AS warehouse_code,
-                pv."CostPrice" AS unit_cost
+                COALESCE((
+                    SELECT ivs."AverageCost"
+                    FROM inventory_valuation_snapshots ivs
+                    WHERE ivs."ProductVariantId" = cs."ProductVariantId"
+                      AND ivs."WarehouseId" = cs."WarehouseId"
+                    ORDER BY ivs."SnapshotDate" DESC, ivs."UpdatedAt" DESC
+                    LIMIT 1
+                ), pv."CurrentCostPrice", pv."CostPrice") AS unit_cost
             FROM current_stocks cs
             INNER JOIN product_variants pv ON pv."Id" = cs."ProductVariantId"
             INNER JOIN warehouses w ON w."Id" = cs."WarehouseId"

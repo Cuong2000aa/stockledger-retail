@@ -30,6 +30,10 @@ public class GoodsReceipt
 
     public DateTime? ApprovedAt { get; set; }
 
+    public string? UpdatedBy { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
     public PurchaseOrder? PurchaseOrder { get; set; }
 
     public Warehouse? Warehouse { get; set; }

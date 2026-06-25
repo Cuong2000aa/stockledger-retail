@@ -360,6 +360,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             document.Lines = await BuildDocumentLinesAsync(document.Id, input.Lines, cancellationToken);
         }
 
+        AuditUserStamp.Touch(document, _auditContext, DateTime.UtcNow);
         await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
         await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
 
@@ -396,6 +397,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         document.Status = InventoryDocumentStatus.Pending;
         document.SubmittedAt = now;
         document.SubmittedBy = _auditContext.UserName;
+        AuditUserStamp.Touch(document, _auditContext, now);
 
         await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
         await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
@@ -449,6 +451,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             document.CompletedApprovalSteps++;
             document.FirstApprovedBy = _auditContext.UserName;
             document.FirstApprovedAt = now;
+            AuditUserStamp.Touch(document, _auditContext, now);
 
             await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
             await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
@@ -608,6 +611,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
 
         var oldDto = MapToDto(document);
         document.Status = InventoryDocumentStatus.Cancelled;
+        AuditUserStamp.Touch(document, _auditContext, DateTime.UtcNow);
 
         await _inventoryDocumentRepository.UpdateAsync(document, cancellationToken);
         await _inventoryDocumentRepository.SaveChangesAsync(cancellationToken);
@@ -1003,6 +1007,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CompletedApprovalSteps = document.CompletedApprovalSteps,
         FirstApprovedBy = document.FirstApprovedBy,
         FirstApprovedAt = document.FirstApprovedAt,
+        UpdatedBy = document.UpdatedBy,
+        UpdatedAt = document.UpdatedAt,
         TransferLifecycleStatus = document.TransferLifecycleStatus,
         InTransitWarehouseId = document.InTransitWarehouseId,
         ShippedAt = document.ShippedAt,
@@ -1045,6 +1051,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         CompletedApprovalSteps = document.CompletedApprovalSteps,
         FirstApprovedBy = document.FirstApprovedBy,
         FirstApprovedAt = document.FirstApprovedAt,
+        UpdatedBy = document.UpdatedBy,
+        UpdatedAt = document.UpdatedAt,
         TransferLifecycleStatus = document.TransferLifecycleStatus,
         InTransitWarehouseId = document.InTransitWarehouseId,
         ShippedAt = document.ShippedAt,

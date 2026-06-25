@@ -55,9 +55,14 @@ public class StockTransactionRepository : IStockTransactionRepository
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.StockTransactions
+            .Include(x => x.Document)
+            .Include(x => x.DocumentLine)
+                .ThenInclude(l => l.UnitBarcodes)
             .Include(x => x.ProductVariant)
                 .ThenInclude(v => v.Product)
             .Include(x => x.Warehouse)
+            .Include(x => x.CounterpartWarehouse)
+            .Include(x => x.Barcodes)
             .AsQueryable();
 
         if (warehouseId.HasValue)
@@ -76,11 +81,14 @@ public class StockTransactionRepository : IStockTransactionRepository
             var pattern = TextSearchHelper.ToLikePattern(term);
             query = query.Where(x =>
                 EF.Functions.ILike(x.TransactionNo, pattern) ||
+                EF.Functions.ILike(x.DocumentNo, pattern) ||
+                (x.Document != null && EF.Functions.ILike(x.Document.DocumentNo, pattern)) ||
                 EF.Functions.ILike(x.ProductVariant.Sku, pattern) ||
                 (x.ProductVariant.Barcode != null &&
                  EF.Functions.ILike(x.ProductVariant.Barcode, pattern)) ||
                 EF.Functions.ILike(x.ProductVariant.Product.ProductCode, pattern) ||
-                EF.Functions.ILike(x.ProductVariant.Product.Name, pattern));
+                EF.Functions.ILike(x.ProductVariant.Product.Name, pattern) ||
+                x.Barcodes.Any(b => EF.Functions.ILike(b.Barcode, pattern)));
         }
 
         query = query

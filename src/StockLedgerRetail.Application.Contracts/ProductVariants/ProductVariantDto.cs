@@ -28,7 +28,19 @@ public class ProductVariantDto
 
     public decimal? SellingPrice { get; set; }
 
+    public decimal? CurrentCostPrice { get; set; }
+
+    public decimal? CurrentSellingPrice { get; set; }
+
+    public decimal? SellingPriceBeforeVat { get; set; }
+
+    public decimal? SellingPriceAfterVat { get; set; }
+
+    public decimal? VatRate { get; set; }
+
     public CostSource? CostSource { get; set; }
+
+    public CostSource? CurrentCostSource { get; set; }
 
     public bool TrackLotExpiry { get; set; }
 

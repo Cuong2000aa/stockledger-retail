@@ -262,12 +262,17 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 
 | Rule Code | English | Tiếng Việt |
 | --------- | ------- | ---------- |
-| BR1201 | CostPrice, SellingPrice optional on SKU. | Giá vốn, giá bán trên SKU là tùy chọn. |
-| BR1202 | CostSource: Manual, Erp, Pos, PurchaseSystem. | Nguồn giá vốn theo enum CostSource. |
-| BR1203 | Valuation does not affect stock ledger. | Định giá không ảnh hưởng sổ tồn kho. |
-| BR1204 | ProductCostHistory has EffectiveFrom/To. | Lịch sử giá có khoảng hiệu lực. |
-| BR1205 | ProductCostHistory readable via reports API. | Đọc lịch sử giá qua `GET /api/reports/cost-history`. |
+| BR1201 | Legacy CostPrice, SellingPrice optional on SKU. | CostPrice, SellingPrice cũ trên SKU vẫn có thể để trống để tương thích ngược. |
+| BR1202 | CurrentCostPrice, CurrentSellingPrice, VAT selling fields, and CurrentCostSource are SKU current cache fields. | CurrentCostPrice, CurrentSellingPrice, giá trước/sau VAT và CurrentCostSource là cache hiện hành trên SKU. |
+| BR1203 | CostSource: Manual, Erp, Pos, PurchaseSystem. | Nguồn giá vốn theo enum CostSource. |
+| BR1204 | ProductCostHistory has EffectiveFrom/To and IsCurrent. | ProductCostHistory có EffectiveFrom/To và cờ IsCurrent. |
+| BR1205 | ProductCostHistory readable via reports API. | Đọc lịch sử giá vốn qua `GET /api/reports/cost-history`. |
 | BR1206 | Negative prices not allowed. | Không cho giá âm. |
+| BR1207 | VAT rate must be between 0 and 100. | Thuế VAT phải nằm trong khoảng 0 đến 100. |
+| BR1208 | ProductPrice stores effective-dated selling prices by PriceType. | ProductPrice lưu giá bán theo thời gian hiệu lực và theo PriceType. |
+| BR1209 | Updating current Regular price refreshes SKU current selling cache. | Cập nhật Regular price đang hiệu lực sẽ làm mới cache giá bán hiện hành trên SKU. |
+| BR1210 | Promotion and Markdown keep separate effective histories. | Promotion và Markdown giữ lịch sử hiệu lực riêng, không ghi đè current của nhau. |
+| BR1211 | InventoryValuationSnapshot stores valuation per SKU / warehouse / date. | InventoryValuationSnapshot lưu định giá theo SKU / kho / ngày snapshot. |
 
 ---
 

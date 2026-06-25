@@ -96,9 +96,19 @@ public class ProductCostHistoryDto
 
     public CostSource CostSource { get; set; }
 
+    public ValuationMethod ValuationMethod { get; set; }
+
+    public string Currency { get; set; } = "VND";
+
+    public string? ReferenceType { get; set; }
+
+    public Guid? ReferenceId { get; set; }
+
     public DateTime EffectiveFrom { get; set; }
 
     public DateTime? EffectiveTo { get; set; }
+
+    public bool IsCurrent { get; set; }
 }
 
 public class NearExpiryLotDto
