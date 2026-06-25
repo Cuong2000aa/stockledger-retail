@@ -5,6 +5,10 @@ using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Controllers;
 
+/// <summary>
+/// API báo cáo tồn kho chỉ đọc cho quản trị vận hành và tài chính.
+/// Bao gồm định giá tồn, NXT, lịch sử giá vốn và báo cáo lô/hạn dùng.
+/// </summary>
 [ApiController]
 [Route("api/reports")]
 public class InventoryReportsController : ControllerBase
@@ -16,6 +20,7 @@ public class InventoryReportsController : ControllerBase
         _inventoryReportsAppService = inventoryReportsAppService;
     }
 
+    /// <summary>Lấy báo cáo giá trị tồn theo SKU/kho, có thể lọc theo `warehouseId` và `brandId`.</summary>
     [HttpGet("inventory-value")]
     public Task<InventoryValueReportDto> GetInventoryValueAsync(
         [FromQuery] Guid? warehouseId,
@@ -26,6 +31,7 @@ public class InventoryReportsController : ControllerBase
         _inventoryReportsAppService.GetInventoryValueAsync(
             warehouseId, brandId, page, pageSize, cancellationToken);
 
+    /// <summary>Lấy báo cáo NXT (nhập - xuất - tồn) trong khoảng `fromDate` đến `toDate`.</summary>
     [HttpGet("nxt")]
     public Task<NxtReportDto> GetNxtReportAsync(
         [FromQuery] DateTime fromDate,
@@ -37,6 +43,7 @@ public class InventoryReportsController : ControllerBase
         _inventoryReportsAppService.GetNxtReportAsync(
             fromDate, toDate, warehouseId, page, pageSize, cancellationToken);
 
+    /// <summary>Lấy lịch sử giá vốn của SKU theo thời gian hiệu lực.</summary>
     [HttpGet("cost-history")]
     public Task<PagedResultDto<ProductCostHistoryDto>> GetCostHistoryAsync(
         [FromQuery] Guid? productVariantId,
@@ -45,6 +52,7 @@ public class InventoryReportsController : ControllerBase
         CancellationToken cancellationToken) =>
         _inventoryReportsAppService.GetCostHistoryAsync(productVariantId, page, pageSize, cancellationToken);
 
+    /// <summary>Lấy danh sách lô sắp hết hạn trong số ngày tới (`daysAhead`).</summary>
     [HttpGet("near-expiry-lots")]
     public Task<List<NearExpiryLotDto>> GetNearExpiryLotsAsync(
         [FromQuery] int daysAhead = 30,
@@ -53,6 +61,7 @@ public class InventoryReportsController : ControllerBase
         CancellationToken cancellationToken = default) =>
         _inventoryReportsAppService.GetNearExpiryLotsAsync(daysAhead, warehouseId, brandId, cancellationToken);
 
+    /// <summary>Lấy tồn kho theo lô (lot) có phân trang, lọc theo kho và SKU.</summary>
     [HttpGet("lot-stocks")]
     public Task<PagedResultDto<LotStockDto>> GetLotStocksAsync(
         [FromQuery] Guid? warehouseId,

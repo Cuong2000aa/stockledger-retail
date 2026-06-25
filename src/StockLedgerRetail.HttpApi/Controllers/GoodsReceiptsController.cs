@@ -18,6 +18,7 @@ public class GoodsReceiptsController : ControllerBase
         _goodsReceiptAppService = goodsReceiptAppService;
     }
 
+    /// <summary>Lấy danh sách phiếu nhận hàng có phân trang, lọc theo PO và trạng thái.</summary>
     [HttpGet]
     public Task<PagedResultDto<GoodsReceiptDto>> GetListAsync(
         [FromQuery] Guid? purchaseOrderId,
@@ -27,6 +28,7 @@ public class GoodsReceiptsController : ControllerBase
         CancellationToken cancellationToken) =>
         _goodsReceiptAppService.GetListAsync(purchaseOrderId, status, page, pageSize, cancellationToken);
 
+    /// <summary>Lấy chi tiết một phiếu nhận hàng theo Id.</summary>
     [HttpGet("{id:guid}")]
     public Task<GoodsReceiptDto> GetAsync(Guid id, CancellationToken cancellationToken) =>
         _goodsReceiptAppService.GetAsync(id, cancellationToken);
@@ -41,6 +43,7 @@ public class GoodsReceiptsController : ControllerBase
     public Task<GoodsReceiptDto> ApproveAsync(Guid id, CancellationToken cancellationToken) =>
         _goodsReceiptAppService.ApproveAsync(id, cancellationToken);
 
+    /// <summary>Hủy phiếu nhận hàng khi chưa duyệt nhập kho.</summary>
     [HttpPost("{id:guid}/cancel")]
     public Task<GoodsReceiptDto> CancelAsync(Guid id, CancellationToken cancellationToken) =>
         _goodsReceiptAppService.CancelAsync(id, cancellationToken);

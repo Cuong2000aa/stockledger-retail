@@ -48,10 +48,12 @@ public class ProductVariantsController : ControllerBase
     public Task<ProductVariantDto> UpdateAsync(Guid id, [FromBody] UpdateProductVariantDto input, CancellationToken cancellationToken) =>
         _productVariantAppService.UpdateAsync(id, input, cancellationToken);
 
+    /// <summary>Lấy danh sách giá của một SKU theo các loại giá và thời gian hiệu lực.</summary>
     [HttpGet("{id:guid}/prices")]
     public Task<List<ProductPriceDto>> GetPricesAsync(Guid id, CancellationToken cancellationToken) =>
         _productVariantAppService.GetPricesAsync(id, cancellationToken);
 
+    /// <summary>Tạo mới hoặc cập nhật một mức giá cho SKU theo `PriceType` và ngày hiệu lực.</summary>
     [HttpPost("{id:guid}/prices")]
     public Task<ProductPriceDto> UpsertPriceAsync(
         Guid id,

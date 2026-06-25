@@ -29,6 +29,7 @@ public class PurchaseOrdersController : ControllerBase
         CancellationToken cancellationToken) =>
         _purchaseOrderAppService.GetListAsync(status, supplierId, page, pageSize, search, cancellationToken);
 
+    /// <summary>Lấy chi tiết một PO theo Id, gồm dòng hàng và trạng thái nhận hàng.</summary>
     [HttpGet("{id:guid}")]
     public Task<PurchaseOrderDto> GetAsync(Guid id, CancellationToken cancellationToken) =>
         _purchaseOrderAppService.GetAsync(id, cancellationToken);
@@ -43,6 +44,7 @@ public class PurchaseOrdersController : ControllerBase
     public Task<PurchaseOrderDto> SubmitAsync(Guid id, CancellationToken cancellationToken) =>
         _purchaseOrderAppService.SubmitAsync(id, cancellationToken);
 
+    /// <summary>Duyệt PO đang chờ duyệt, chuyển về trạng thái sẵn sàng nhận hàng.</summary>
     [HttpPost("{id:guid}/approve")]
     public Task<PurchaseOrderDto> ApproveAsync(Guid id, CancellationToken cancellationToken) =>
         _purchaseOrderAppService.ApproveAsync(id, cancellationToken);
