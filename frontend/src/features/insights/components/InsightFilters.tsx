@@ -46,8 +46,13 @@ export function InsightFilters({
     staleTime: 5 * 60_000,
   });
 
-  const showDeadDays = activeTab === "deadStock";
-  const showLookback = activeTab === "velocity" || activeTab === "transfer";
+  const showDeadDays = activeTab === "deadStock" || activeTab === "markdown";
+  const showLookback =
+    activeTab === "velocity" ||
+    activeTab === "transfer" ||
+    activeTab === "promotionRisk" ||
+    activeTab === "reorderRisk" ||
+    activeTab === "trend";
 
   return (
     <div className="border-b border-slate-100 bg-gradient-to-br from-slate-50 via-white to-violet-50/30 px-5 py-4">

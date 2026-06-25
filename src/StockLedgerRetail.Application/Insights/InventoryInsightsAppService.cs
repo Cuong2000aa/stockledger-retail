@@ -125,6 +125,16 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     DaysWithoutOutbound = days,
                     CostPrice = x.CostPrice,
                     EstimatedCostValue = x.CostPrice.HasValue ? x.CostPrice.Value * x.QuantityOnHand : null,
+                    CurrentSellingPriceBeforeVat = x.CurrentSellingPriceBeforeVat,
+                    CurrentSellingPriceAfterVat = x.CurrentSellingPriceAfterVat,
+                    VatRate = x.VatRate,
+                    EstimatedRevenueValue = x.CurrentSellingPriceAfterVat.HasValue ? x.CurrentSellingPriceAfterVat.Value * x.QuantityOnHand : null,
+                    EstimatedMarginValue = x.CurrentSellingPriceBeforeVat.HasValue && x.CostPrice.HasValue
+                        ? (x.CurrentSellingPriceBeforeVat.Value - x.CostPrice.Value) * x.QuantityOnHand
+                        : null,
+                    MarginRate = x.CurrentSellingPriceBeforeVat.HasValue && x.CostPrice.HasValue && x.CurrentSellingPriceBeforeVat.Value > 0
+                        ? ((x.CurrentSellingPriceBeforeVat.Value - x.CostPrice.Value) / x.CurrentSellingPriceBeforeVat.Value) * 100
+                        : null,
                     Severity = days >= 120 ? "critical" : "warning",
                     RuleCode = "dead_stock"
                 };
@@ -218,6 +228,15 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     EstimatedDaysOfCover = estimatedDaysOfCover,
                     LastOutboundAt = x.LastOutboundAt,
                     LookbackDays = normalizedLookbackDays,
+                    CostPrice = x.CostPrice,
+                    CurrentSellingPriceBeforeVat = x.CurrentSellingPriceBeforeVat,
+                    CurrentSellingPriceAfterVat = x.CurrentSellingPriceAfterVat,
+                    VatRate = x.VatRate,
+                    RevenueOpportunity = x.CurrentSellingPriceAfterVat.HasValue ? x.CurrentSellingPriceAfterVat.Value * x.OutboundQuantity : null,
+                    MarginPerUnit = x.CurrentSellingPriceBeforeVat.HasValue && x.CostPrice.HasValue
+                        ? x.CurrentSellingPriceBeforeVat.Value - x.CostPrice.Value
+                        : null,
+                    InventoryValue = x.InventoryValue,
                     Severity = GetVelocitySeverity(averageDailyOutbound, estimatedDaysOfCover),
                     RuleCode = "sales_velocity"
                 };
@@ -296,6 +315,457 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
 
         await SaveSnapshotAsync(snapshotKey, InsightSnapshotKeyBuilder.KindTransfer, result, cancellationToken);
         return result;
+    }
+
+    public async Task<List<MarkdownCandidateInsightDto>> GetMarkdownCandidatesAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int daysWithoutOutbound = 60,
+        decimal minOnHand = 1,
+        int maxResults = 50,
+        CancellationToken cancellationToken = default,
+        bool forceRefresh = false)
+    {
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var snapshotKey = InsightSnapshotKeyBuilder.BuildMarkdownCandidatesKey(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            daysWithoutOutbound,
+            minOnHand,
+            maxResults);
+
+        if (!forceRefresh)
+        {
+            var cached = await TryReadSnapshotAsync<List<MarkdownCandidateInsightDto>>(
+                snapshotKey,
+                InsightSnapshotKeyBuilder.KindMarkdownCandidates,
+                cancellationToken);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
+        var normalizedDays = NormalizePositive(daysWithoutOutbound, 60);
+        var normalizedMinOnHand = minOnHand <= 0 ? 1 : minOnHand;
+        var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
+        var referenceDateUtc = DateTime.UtcNow;
+        var context = await BuildRecommendationContextAsync(
+            null,
+            null,
+            scopedBrandId,
+            scopedRegionCode,
+            30,
+            14,
+            7,
+            cancellationToken);
+
+        var facts = await _inventoryInsightReadRepository.GetMarkdownCandidateFactsAsync(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            referenceDateUtc,
+            normalizedDays,
+            normalizedMinOnHand,
+            normalizedMaxResults,
+            cancellationToken);
+
+        var result = facts.Select(x =>
+        {
+            var days = x.LastOutboundAt.HasValue
+                ? Math.Max(normalizedDays, (referenceDateUtc.Date - x.LastOutboundAt.Value.Date).Days)
+                : normalizedDays;
+            var markdownDepth = days >= 120 ? 25m : 15m;
+            var markdownBeforeVat = x.CurrentSellingPriceBeforeVat.HasValue
+                ? RoundMoney(x.CurrentSellingPriceBeforeVat.Value * (1 - markdownDepth / 100m))
+                : (decimal?)null;
+            var markdownAfterVat = markdownBeforeVat.HasValue && x.VatRate.HasValue
+                ? RoundMoney(markdownBeforeVat.Value * (1 + x.VatRate.Value / 100m))
+                : markdownBeforeVat;
+
+            var insight = new MarkdownCandidateInsightDto
+            {
+                ProductVariantId = x.ProductVariantId,
+                Sku = x.Sku,
+                WarehouseId = x.WarehouseId,
+                WarehouseCode = x.WarehouseCode,
+                WarehouseName = x.WarehouseName,
+                BrandId = x.BrandId,
+                QuantityOnHand = x.QuantityOnHand,
+                DaysWithoutOutbound = days,
+                CostPrice = x.CostPrice,
+                CurrentSellingPriceBeforeVat = x.CurrentSellingPriceBeforeVat,
+                CurrentSellingPriceAfterVat = x.CurrentSellingPriceAfterVat,
+                VatRate = x.VatRate,
+                SuggestedMarkdownPriceBeforeVat = markdownBeforeVat,
+                SuggestedMarkdownPriceAfterVat = markdownAfterVat,
+                MarkdownDepthPercent = markdownDepth,
+                EstimatedInventoryValue = x.InventoryValue,
+                EstimatedRecoveryValue = markdownAfterVat.HasValue ? markdownAfterVat.Value * x.QuantityOnHand : null,
+                Severity = days >= 120 ? "critical" : "warning",
+                RuleCode = "markdown_candidate"
+            };
+
+            ApplyRecommendation(insight, context);
+            return insight;
+        })
+        .OrderByDescending(x => x.Recommendation.Priority)
+        .ThenByDescending(x => x.EstimatedInventoryValue ?? 0)
+        .ToList();
+
+        await SaveSnapshotAsync(snapshotKey, InsightSnapshotKeyBuilder.KindMarkdownCandidates, result, cancellationToken);
+        return result;
+    }
+
+    public async Task<List<PromotionRiskInsightDto>> GetPromotionRiskAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int lookbackDays = 30,
+        int maxResults = 50,
+        CancellationToken cancellationToken = default,
+        bool forceRefresh = false)
+    {
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var snapshotKey = InsightSnapshotKeyBuilder.BuildPromotionRiskKey(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            lookbackDays,
+            maxResults);
+
+        if (!forceRefresh)
+        {
+            var cached = await TryReadSnapshotAsync<List<PromotionRiskInsightDto>>(
+                snapshotKey,
+                InsightSnapshotKeyBuilder.KindPromotionRisk,
+                cancellationToken);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
+        var normalizedLookbackDays = NormalizePositive(lookbackDays, 30);
+        var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
+        var toDateUtc = DateTime.UtcNow;
+        var fromDateUtc = toDateUtc.Date.AddDays(-normalizedLookbackDays);
+        var context = await BuildRecommendationContextAsync(
+            null,
+            null,
+            scopedBrandId,
+            scopedRegionCode,
+            normalizedLookbackDays,
+            14,
+            7,
+            cancellationToken);
+
+        var facts = await _inventoryInsightReadRepository.GetPromotionRiskFactsAsync(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            fromDateUtc,
+            toDateUtc,
+            normalizedMaxResults,
+            cancellationToken);
+
+        var result = facts.Select(x =>
+        {
+            var averageDailyOutbound = x.OutboundQuantity / normalizedLookbackDays;
+            var coverDays = averageDailyOutbound > 0 ? x.QuantityAvailable / averageDailyOutbound : (decimal?)null;
+            var discountPercent = x.RegularPriceAfterVat.HasValue && x.PromotionPriceAfterVat.HasValue && x.RegularPriceAfterVat.Value > 0
+                ? ((x.RegularPriceAfterVat.Value - x.PromotionPriceAfterVat.Value) / x.RegularPriceAfterVat.Value) * 100
+                : (decimal?)null;
+            var marginRate = x.PromotionPriceBeforeVat.HasValue && x.CostPrice.HasValue && x.PromotionPriceBeforeVat.Value > 0
+                ? ((x.PromotionPriceBeforeVat.Value - x.CostPrice.Value) / x.PromotionPriceBeforeVat.Value) * 100
+                : (decimal?)null;
+
+            var insight = new PromotionRiskInsightDto
+            {
+                ProductVariantId = x.ProductVariantId,
+                Sku = x.Sku,
+                WarehouseId = x.WarehouseId,
+                WarehouseCode = x.WarehouseCode,
+                WarehouseName = x.WarehouseName,
+                BrandId = x.BrandId,
+                QuantityAvailable = x.QuantityAvailable,
+                OutboundQuantity = x.OutboundQuantity,
+                AverageDailyOutbound = averageDailyOutbound,
+                EstimatedDaysOfCover = coverDays,
+                CostPrice = x.CostPrice,
+                RegularPriceBeforeVat = x.RegularPriceBeforeVat,
+                RegularPriceAfterVat = x.RegularPriceAfterVat,
+                PromotionPriceBeforeVat = x.PromotionPriceBeforeVat,
+                PromotionPriceAfterVat = x.PromotionPriceAfterVat,
+                VatRate = x.VatRate,
+                PromotionDiscountPercent = discountPercent,
+                MarginRateAfterPromotion = marginRate,
+                Severity = coverDays.HasValue && coverDays.Value < 7 ? "critical" : "warning",
+                RuleCode = "promotion_risk"
+            };
+
+            ApplyRecommendation(insight, context);
+            return insight;
+        })
+        .OrderByDescending(x => x.Recommendation.Priority)
+        .ThenBy(x => x.EstimatedDaysOfCover ?? decimal.MaxValue)
+        .ToList();
+
+        await SaveSnapshotAsync(snapshotKey, InsightSnapshotKeyBuilder.KindPromotionRisk, result, cancellationToken);
+        return result;
+    }
+
+    public async Task<List<ReorderRiskInsightDto>> GetReorderRiskAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int lookbackDays = 30,
+        int maxResults = 50,
+        CancellationToken cancellationToken = default,
+        bool forceRefresh = false)
+    {
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var snapshotKey = InsightSnapshotKeyBuilder.BuildReorderRiskKey(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            lookbackDays,
+            maxResults);
+
+        if (!forceRefresh)
+        {
+            var cached = await TryReadSnapshotAsync<List<ReorderRiskInsightDto>>(
+                snapshotKey,
+                InsightSnapshotKeyBuilder.KindReorderRisk,
+                cancellationToken);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
+        var normalizedLookbackDays = NormalizePositive(lookbackDays, 30);
+        var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
+        var toDateUtc = DateTime.UtcNow;
+        var fromDateUtc = toDateUtc.Date.AddDays(-normalizedLookbackDays);
+        var context = await BuildRecommendationContextAsync(
+            null,
+            null,
+            scopedBrandId,
+            scopedRegionCode,
+            normalizedLookbackDays,
+            14,
+            7,
+            cancellationToken);
+
+        var facts = await _inventoryInsightReadRepository.GetReorderRiskFactsAsync(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            fromDateUtc,
+            toDateUtc,
+            normalizedMaxResults,
+            cancellationToken);
+
+        var result = facts.Select(x =>
+        {
+            var averageDailyOutbound = x.OutboundQuantity / normalizedLookbackDays;
+            var coverDays = averageDailyOutbound > 0 ? x.QuantityAvailable / averageDailyOutbound : (decimal?)null;
+            var reorderPoint = averageDailyOutbound * 14;
+            var suggestedReorderQty = Math.Max(0, reorderPoint + averageDailyOutbound * 7 - x.QuantityAvailable - x.QuantityOnOrder - x.QuantityInReceiving);
+
+            var insight = new ReorderRiskInsightDto
+            {
+                ProductVariantId = x.ProductVariantId,
+                Sku = x.Sku,
+                WarehouseId = x.WarehouseId,
+                WarehouseCode = x.WarehouseCode,
+                WarehouseName = x.WarehouseName,
+                BrandId = x.BrandId,
+                QuantityAvailable = x.QuantityAvailable,
+                QuantityOnOrder = x.QuantityOnOrder,
+                QuantityInReceiving = x.QuantityInReceiving,
+                AverageDailyOutbound = averageDailyOutbound,
+                EstimatedDaysOfCover = coverDays,
+                ReorderPoint = reorderPoint,
+                SuggestedReorderQuantity = suggestedReorderQty,
+                CostPrice = x.CostPrice,
+                CurrentSellingPriceAfterVat = x.CurrentSellingPriceAfterVat,
+                Severity = coverDays.HasValue && coverDays.Value < 7 ? "critical" : coverDays.HasValue && coverDays.Value < 14 ? "warning" : "info",
+                RuleCode = "reorder_risk"
+            };
+
+            ApplyRecommendation(insight, context);
+            return insight;
+        })
+        .Where(x => x.AverageDailyOutbound > 0)
+        .OrderByDescending(x => x.Recommendation.Priority)
+        .ThenBy(x => x.EstimatedDaysOfCover ?? decimal.MaxValue)
+        .ToList();
+
+        await SaveSnapshotAsync(snapshotKey, InsightSnapshotKeyBuilder.KindReorderRisk, result, cancellationToken);
+        return result;
+    }
+
+    public async Task<List<TrendSummaryInsightDto>> GetTrendSummaryAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int lookbackDays = 30,
+        int maxResults = 50,
+        CancellationToken cancellationToken = default,
+        bool forceRefresh = false)
+    {
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var snapshotKey = InsightSnapshotKeyBuilder.BuildTrendSummaryKey(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            lookbackDays,
+            maxResults);
+
+        if (!forceRefresh)
+        {
+            var cached = await TryReadSnapshotAsync<List<TrendSummaryInsightDto>>(
+                snapshotKey,
+                InsightSnapshotKeyBuilder.KindTrendSummary,
+                cancellationToken);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
+        var normalizedLookbackDays = NormalizePositive(lookbackDays, 30);
+        var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
+        var currentToDateUtc = DateTime.UtcNow;
+        var currentFromDateUtc = currentToDateUtc.Date.AddDays(-normalizedLookbackDays);
+        var previousToDateUtc = currentFromDateUtc.AddDays(-1);
+        var previousFromDateUtc = previousToDateUtc.Date.AddDays(-normalizedLookbackDays);
+        var context = await BuildRecommendationContextAsync(
+            null,
+            null,
+            scopedBrandId,
+            scopedRegionCode,
+            normalizedLookbackDays,
+            14,
+            7,
+            cancellationToken);
+
+        var facts = await _inventoryInsightReadRepository.GetTrendSummaryFactsAsync(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            currentFromDateUtc,
+            currentToDateUtc,
+            previousFromDateUtc,
+            previousToDateUtc,
+            normalizedMaxResults,
+            cancellationToken);
+
+        var result = facts.Select(x =>
+        {
+            var currentAverage = x.CurrentOutboundQuantity / normalizedLookbackDays;
+            var previousAverage = x.PreviousOutboundQuantity / normalizedLookbackDays;
+            var outboundTrend = previousAverage > 0
+                ? ((currentAverage - previousAverage) / previousAverage) * 100
+                : currentAverage > 0 ? 100 : 0;
+            var inventoryDelta = x.CurrentInventoryValue - x.PreviousInventoryValue;
+            var priceTrend = x.PreviousSellingPriceAfterVat.HasValue && x.PreviousSellingPriceAfterVat.Value > 0 && x.CurrentSellingPriceAfterVat.HasValue
+                ? ((x.CurrentSellingPriceAfterVat.Value - x.PreviousSellingPriceAfterVat.Value) / x.PreviousSellingPriceAfterVat.Value) * 100
+                : 0;
+
+            var insight = new TrendSummaryInsightDto
+            {
+                ProductVariantId = x.ProductVariantId,
+                Sku = x.Sku,
+                WarehouseId = x.WarehouseId,
+                WarehouseCode = x.WarehouseCode,
+                WarehouseName = x.WarehouseName,
+                BrandId = x.BrandId,
+                CurrentQuantityOnHand = x.CurrentQuantityOnHand,
+                CurrentInventoryValue = x.CurrentInventoryValue,
+                PreviousInventoryValue = x.PreviousInventoryValue,
+                InventoryValueDelta = inventoryDelta,
+                CurrentAverageDailyOutbound = currentAverage,
+                PreviousAverageDailyOutbound = previousAverage,
+                OutboundTrendPercent = outboundTrend,
+                CurrentSellingPriceAfterVat = x.CurrentSellingPriceAfterVat,
+                PreviousSellingPriceAfterVat = x.PreviousSellingPriceAfterVat,
+                PriceTrendPercent = x.CurrentSellingPriceAfterVat.HasValue && x.PreviousSellingPriceAfterVat.HasValue ? priceTrend : null,
+                Severity = Math.Abs(outboundTrend) >= 40 || Math.Abs(inventoryDelta) >= 1_000_000 ? "warning" : "info",
+                RuleCode = "trend_summary"
+            };
+
+            ApplyRecommendation(insight, context);
+            return insight;
+        })
+        .OrderByDescending(x => x.Recommendation.Priority)
+        .ThenByDescending(x => Math.Abs(x.InventoryValueDelta))
+        .ToList();
+
+        await SaveSnapshotAsync(snapshotKey, InsightSnapshotKeyBuilder.KindTrendSummary, result, cancellationToken);
+        return result;
+    }
+
+    public async Task<InsightsExecutiveSummaryDto> GetExecutiveSummaryAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int lookbackDays = 30,
+        int daysWithoutOutbound = 60,
+        CancellationToken cancellationToken = default,
+        bool forceRefresh = false)
+    {
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var snapshotKey = InsightSnapshotKeyBuilder.BuildExecutiveSummaryKey(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            lookbackDays,
+            daysWithoutOutbound);
+
+        if (!forceRefresh)
+        {
+            var cached = await TryReadSnapshotAsync<InsightsExecutiveSummaryDto>(
+                snapshotKey,
+                InsightSnapshotKeyBuilder.KindExecutiveSummary,
+                cancellationToken);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
+        var deadStock = await GetDeadStockAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, forceRefresh: true);
+        var promotionRisk = await GetPromotionRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, forceRefresh: true);
+        var reorderRisk = await GetReorderRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, forceRefresh: true);
+        var transfer = await GetTransferSuggestionsAsync(null, warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 14, 7, 200, cancellationToken, forceRefresh: true);
+        var markdown = await GetMarkdownCandidatesAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, forceRefresh: true);
+
+        var summary = new InsightsExecutiveSummaryDto
+        {
+            DeadStockCount = deadStock.Count,
+            TiedCapital = deadStock.Sum(x => x.EstimatedCostValue ?? 0),
+            InventoryValueAtRisk = deadStock.Sum(x => x.EstimatedRevenueValue ?? 0),
+            MarginAtRisk = deadStock.Sum(x => x.EstimatedMarginValue ?? 0),
+            PromotionRiskCount = promotionRisk.Count(x => x.Severity is "critical" or "warning"),
+            ReorderRiskCount = reorderRisk.Count(x => x.Severity is "critical" or "warning"),
+            TransferOpportunityCount = transfer.Count,
+            TransferOpportunityValue = transfer.Sum(x => x.TransferValue ?? 0),
+            MarkdownCandidateCount = markdown.Count,
+            MarkdownRecoveryValue = markdown.Sum(x => x.EstimatedRecoveryValue ?? 0)
+        };
+
+        await SaveSnapshotAsync(snapshotKey, InsightSnapshotKeyBuilder.KindExecutiveSummary, summary, cancellationToken);
+        return summary;
     }
 
     private async Task<List<TransferSuggestionDto>> ComputeTransferSuggestionsAsync(
@@ -411,6 +881,14 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     DestinationAvailable = destination.Fact.QuantityAvailable,
                     DestinationAverageDailyOutbound = destination.AverageDailyOutbound,
                     DestinationDaysOfCover = destination.CoverDays,
+                    SourceCostPrice = source.Fact.CostPrice,
+                    CurrentSellingPriceBeforeVat = destination.Fact.CurrentSellingPriceBeforeVat,
+                    CurrentSellingPriceAfterVat = destination.Fact.CurrentSellingPriceAfterVat,
+                    VatRate = destination.Fact.VatRate,
+                    TransferValue = source.Fact.CostPrice.HasValue ? source.Fact.CostPrice.Value * suggestedQuantity : null,
+                    MarginOpportunity = destination.Fact.CurrentSellingPriceBeforeVat.HasValue && source.Fact.CostPrice.HasValue
+                        ? (destination.Fact.CurrentSellingPriceBeforeVat.Value - source.Fact.CostPrice.Value) * suggestedQuantity
+                        : null,
                     Severity = destination.CoverDays.HasValue && destination.CoverDays.Value < 7 ? "critical" : "warning",
                     RuleCode = "transfer_rebalance"
                 };
@@ -490,6 +968,38 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     private void ApplyRecommendation(TransferSuggestionDto insight, InsightRecommendationContext context)
     {
         var recommendation = _recommendationEngine.BuildTransfer(insight, context);
+        insight.Recommendation = recommendation;
+        insight.RecommendedActionCode = recommendation.ActionCode;
+        insight.RecommendationParams = recommendation.Params;
+    }
+
+    private void ApplyRecommendation(MarkdownCandidateInsightDto insight, InsightRecommendationContext context)
+    {
+        var recommendation = _recommendationEngine.BuildMarkdownCandidate(insight, context);
+        insight.Recommendation = recommendation;
+        insight.RecommendedActionCode = recommendation.ActionCode;
+        insight.RecommendationParams = recommendation.Params;
+    }
+
+    private void ApplyRecommendation(PromotionRiskInsightDto insight, InsightRecommendationContext context)
+    {
+        var recommendation = _recommendationEngine.BuildPromotionRisk(insight, context);
+        insight.Recommendation = recommendation;
+        insight.RecommendedActionCode = recommendation.ActionCode;
+        insight.RecommendationParams = recommendation.Params;
+    }
+
+    private void ApplyRecommendation(ReorderRiskInsightDto insight, InsightRecommendationContext context)
+    {
+        var recommendation = _recommendationEngine.BuildReorderRisk(insight, context);
+        insight.Recommendation = recommendation;
+        insight.RecommendedActionCode = recommendation.ActionCode;
+        insight.RecommendationParams = recommendation.Params;
+    }
+
+    private void ApplyRecommendation(TrendSummaryInsightDto insight, InsightRecommendationContext context)
+    {
+        var recommendation = _recommendationEngine.BuildTrendSummary(insight, context);
         insight.Recommendation = recommendation;
         insight.RecommendedActionCode = recommendation.ActionCode;
         insight.RecommendationParams = recommendation.Params;
@@ -580,6 +1090,9 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
 
         return "info";
     }
+
+    private static decimal RoundMoney(decimal value) =>
+        Math.Round(value, 4, MidpointRounding.AwayFromZero);
 
     private sealed class TransferCandidate
     {

@@ -145,7 +145,11 @@ public class ProductVariantAppService : IProductVariantAppService
         variant.Unit = input.Unit?.Trim();
         variant.Status = input.Status;
         var (costPrice, costSource) = NormalizeCost(input.CostPrice, input.CostSource);
-        var priceInput = NormalizeSellingPrice(input.SellingPrice, input.SellingPriceBeforeVat, input.SellingPriceAfterVat, input.VatRate);
+        var priceInput = NormalizeSellingPrice(
+            input.SellingPrice ?? variant.CurrentSellingPrice,
+            input.SellingPriceBeforeVat ?? variant.CurrentSellingPriceBeforeVat,
+            input.SellingPriceAfterVat ?? variant.CurrentSellingPriceAfterVat,
+            input.VatRate ?? variant.VatRate);
         variant.CostPrice = costPrice;
         variant.CurrentCostPrice = costPrice;
         variant.CurrentCostSource = costSource;
@@ -198,7 +202,7 @@ public class ProductVariantAppService : IProductVariantAppService
         }
 
         var now = DateTime.UtcNow;
-        var priceAfterVat = input.PriceAfterVat ?? RoundCurrency(input.PriceBeforeVat * (1 + input.VatRate / 100m));
+        var priceAfterVat = RoundCurrency(input.PriceBeforeVat * (1 + input.VatRate / 100m));
         var currentPrice = await _productPriceRepository.GetCurrentByVariantAndTypeAsync(id, input.PriceType, cancellationToken);
         if (currentPrice is not null)
         {

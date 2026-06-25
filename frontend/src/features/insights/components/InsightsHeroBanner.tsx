@@ -20,6 +20,10 @@ export function InsightsHeroBanner({
     deadStock: "from-rose-500/15 via-amber-500/10 to-violet-500/15 ring-rose-200/60",
     velocity: "from-indigo-500/15 via-violet-500/10 to-sky-500/15 ring-indigo-200/60",
     transfer: "from-sky-500/15 via-cyan-500/10 to-violet-500/15 ring-sky-200/60",
+    markdown: "from-amber-500/15 via-orange-500/10 to-rose-500/15 ring-amber-200/60",
+    promotionRisk: "from-fuchsia-500/15 via-pink-500/10 to-rose-500/15 ring-fuchsia-200/60",
+    reorderRisk: "from-emerald-500/15 via-green-500/10 to-lime-500/15 ring-emerald-200/60",
+    trend: "from-slate-500/15 via-slate-400/10 to-indigo-500/15 ring-slate-200/60",
   };
 
   return (

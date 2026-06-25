@@ -487,17 +487,31 @@
       "deadSkus": "SKU tồn chết",
       "tiedCapital": "Vốn bị chiếm",
       "lowCover": "Cảnh báo cover thấp",
-      "transfers": "Gợi ý chuyển kho"
+      "transfers": "Gợi ý chuyển kho",
+      "markdownCandidates": "Ứng viên markdown",
+      "promotionRisk": "Rủi ro khuyến mãi",
+      "reorderRisk": "Rủi ro nhập hàng",
+      "trend": "Theo dõi xu hướng",
+      "marginAtRisk": "Biên lợi nhuận rủi ro",
+      "transferValue": "Giá trị điều chuyển"
     },
     "tabs": {
       "deadStock": "Tồn chết",
       "velocity": "Tốc độ bán",
-      "transfer": "Chuyển kho"
+      "transfer": "Chuyển kho",
+      "markdown": "Markdown",
+      "promotionRisk": "Rủi ro khuyến mãi",
+      "reorderRisk": "Rủi ro nhập hàng",
+      "trend": "Xu hướng"
     },
     "charts": {
       "deadStockValue": "Top SKU theo giá trị vốn",
       "lowCover": "Cover tồn thấp nhất",
-      "transferQty": "SL chuyển kho lớn nhất"
+      "transferQty": "SL chuyển kho lớn nhất",
+      "markdownValue": "Top giá trị thu hồi markdown",
+      "promotionRisk": "Cover thấp nhất khi khuyến mãi",
+      "reorderRisk": "SL đề xuất nhập lớn nhất",
+      "trendDelta": "Biến động giá trị tồn lớn nhất"
     },
     "severity": {
       "label": "Mức độ",
@@ -518,7 +532,11 @@
     "tabHints": {
       "deadStock": "SKU còn tồn nhưng không bán — chiếm vốn và rủi ro lỗi thời",
       "velocity": "Cover thấp hoặc không có nhu cầu — cần bổ sung hoặc rà soát",
-      "transfer": "Cân bằng tồn giữa kho dư và kho thiếu hàng"
+      "transfer": "Cân bằng tồn giữa kho dư và kho thiếu hàng",
+      "markdown": "SKU đứng lâu cần giảm giá hoặc chuyển clearance",
+      "promotionRisk": "SKU đang khuyến mãi nhưng cover thấp hoặc margin yếu",
+      "reorderRisk": "Cảnh báo nhập hàng dựa trên nhu cầu và pipeline đang mở",
+      "trend": "Biến động giá trị tồn, giá bán và tốc độ outbound"
     },
     "copilot": {
       "bannerTitle": "Tóm tắt Insights",
@@ -533,6 +551,14 @@
       "summaryVelocityEmpty": "Tốc độ bán ổn định — chưa có cảnh báo cover thấp.",
       "summaryTransfer": "{count} gợi ý chuyển kho có thể cân bằng tồn giữa các kho.",
       "summaryTransferEmpty": "Chưa có gợi ý chuyển kho phù hợp với bộ lọc hiện tại.",
+      "summaryMarkdown": "Có {count} SKU nên markdown, đang giữ ~{capital} giá trị chậm luân chuyển.",
+      "summaryMarkdownEmpty": "Chưa có SKU phù hợp để markdown với bộ lọc hiện tại.",
+      "summaryPromotionRisk": "Có {alerts} SKU khuyến mãi đang rủi ro về cover hoặc biên lợi nhuận.",
+      "summaryPromotionRiskEmpty": "Chưa có rủi ro khuyến mãi nổi bật với bộ lọc hiện tại.",
+      "summaryReorderRisk": "Có {alerts} SKU cần chú ý nhập hàng theo nhu cầu và pipeline.",
+      "summaryReorderRiskEmpty": "Rủi ro nhập hàng đang ổn định với bộ lọc hiện tại.",
+      "summaryTrend": "Có {count} cặp SKU/kho đang biến động đáng chú ý về tồn, giá hoặc outbound.",
+      "summaryTrendEmpty": "Chưa phát hiện biến động xu hướng lớn với bộ lọc hiện tại.",
       "explainIntro": "Hệ thống đánh giá {location} với mức ưu tiên P{priority}.",
       "locationSkuWarehouse": "{sku} tại kho {warehouse}",
       "locationTransfer": "{sku}: {from} → {to}",
@@ -545,7 +571,11 @@
         "velocityPlan": "Nên lên kế hoạch nhập hoặc chuyển kho trong vài ngày tới.",
         "velocityNoDemand": "Không có outbound trong kỳ — rà soát tồn chết hoặc ngừng kinh doanh.",
         "velocityMonitor": "Nhu cầu ổn định — tiếp tục theo dõi, chưa cần hành động khẩn.",
-        "transfer": "Cân bằng tồn giữa kho dư và kho thiếu cover — giảm tồn chết tại nguồn."
+        "transfer": "Cân bằng tồn giữa kho dư và kho thiếu cover — giảm tồn chết tại nguồn.",
+        "markdownCandidate": "Hàng đứng lâu có thể thu hồi dòng tiền nhanh hơn bằng markdown hoặc clearance.",
+        "promotionRisk": "Giá khuyến mãi cộng với cover thấp có thể làm hụt biên lợi nhuận hoặc gây thiếu hàng.",
+        "reorderRisk": "Nhu cầu đang vượt tồn gần hạn và pipeline inbound — cần bổ sung trước khi ảnh hưởng phục vụ.",
+        "trend": "Giá trị tồn, outbound hoặc giá bán đã thay đổi đáng kể so với kỳ trước."
       }
     },
     "deadStock": {
@@ -573,6 +603,32 @@
       "createTransfer": "Tạo chuyển kho",
       "creating": "Đang tạo..."
     },
+    "markdown": {
+      "title": "Ứng viên markdown",
+      "subtitle": "Tồn lâu nên giảm giá hoặc đẩy sang clearance",
+      "depth": "Mức giảm giá",
+      "recovery": "Giá trị thu hồi"
+    },
+    "promotionRisk": {
+      "title": "Rủi ro khuyến mãi",
+      "subtitle": "SKU đang khuyến mãi nhưng cover thấp hoặc biên sau giảm giá yếu",
+      "regularPrice": "Giá thường",
+      "promoPrice": "Giá KM",
+      "discount": "Mức giảm"
+    },
+    "reorderRisk": {
+      "title": "Rủi ro nhập hàng",
+      "subtitle": "Tín hiệu nhu cầu kèm PO/receiving đang mở và đề xuất nhập",
+      "onOrder": "Đang đặt",
+      "suggestedQty": "SL đề xuất"
+    },
+    "trend": {
+      "title": "Tóm tắt xu hướng",
+      "subtitle": "Thay đổi giá trị tồn, outbound và giá bán so với kỳ trước",
+      "inventoryDelta": "Biến động giá trị tồn",
+      "outboundTrend": "Xu hướng outbound",
+      "priceTrend": "Xu hướng giá"
+    },
     "recommendation": {
       "label": "Hướng xử lý",
       "titles": {
@@ -583,7 +639,14 @@
         "velocity_replenish_plan": "Lên kế hoạch nhập",
         "velocity_monitor": "Nhu cầu ổn định",
         "velocity_no_demand_review": "Rà soát không bán",
-        "transfer_execute": "Cân bằng tồn kho"
+        "transfer_execute": "Cân bằng tồn kho",
+        "markdown_candidate_review": "Rà soát markdown",
+        "markdown_candidate_execute": "Xử lý markdown",
+        "promotion_risk_review": "Rà soát khuyến mãi",
+        "promotion_risk_tight_stock": "Khuyến mãi đang căng tồn",
+        "reorder_risk_urgent": "Nhập hàng gấp",
+        "reorder_risk_plan": "Lên kế hoạch nhập",
+        "trend_review": "Rà soát biến động xu hướng"
       },
       "evidence": {
         "daysIdle": "Đứng yên",
@@ -595,7 +658,17 @@
         "destCoverDays": "Cover đích",
         "quantity": "SL",
         "transferBlocked": "Không chuyển được",
-        "warehouseType": "Loại kho"
+        "warehouseType": "Loại kho",
+        "inventoryValue": "Giá trị tồn",
+        "discountPercent": "Mức giảm",
+        "marginRate": "Biên lợi nhuận",
+        "markdownDepth": "Markdown",
+        "onOrder": "Đang đặt",
+        "inReceiving": "Đang nhận",
+        "suggestedQty": "SL đề xuất",
+        "inventoryDelta": "Biến động giá trị tồn",
+        "outboundTrend": "Xu hướng outbound",
+        "priceTrend": "Xu hướng giá"
       },
       "ctas": {
         "view_stock": "Xem tồn",
@@ -604,7 +677,10 @@
         "draft_po": "Tạo PO",
         "review_dead_stock": "Xem tồn chết",
         "preview_transfer": "Xem trước",
-        "create_transfer": "Tạo chuyển kho"
+        "create_transfer": "Tạo chuyển kho",
+        "view_history": "Xem lịch sử",
+        "review_sku": "Xem SKU",
+        "open_reports": "Mở báo cáo"
       },
       "blocked": {
         "no_clearance_destination": "Không có kho clearance cùng brand/vùng",
@@ -619,7 +695,14 @@
       "velocity_replenish_plan": "Lên kế hoạch nhập/chuyển kho — {sku} tại {warehouseCode} (~{coverDays} ngày cover).",
       "velocity_monitor": "Tiếp tục theo dõi — {sku} tại {warehouseCode} đang ổn định.",
       "velocity_no_demand_review": "Không có outbound gần đây — rà soát tồn chết hoặc ngừng nhập {sku} tại {warehouseCode}.",
-      "transfer_execute": "Điều chuyển {quantity} từ {sourceWarehouseCode} sang {destinationWarehouseCode} cho {sku}."
+      "transfer_execute": "Điều chuyển {quantity} từ {sourceWarehouseCode} sang {destinationWarehouseCode} cho {sku}.",
+      "markdown_candidate_review": "Rà soát kế hoạch markdown cho {sku} tại {warehouseCode}; đứng yên {days} ngày.",
+      "markdown_candidate_execute": "Xử lý markdown/clearance cho {sku} tại {warehouseCode}.",
+      "promotion_risk_review": "Rà soát setup khuyến mãi cho {sku} tại {warehouseCode}.",
+      "promotion_risk_tight_stock": "Khuyến mãi có thể gây căng cover tồn cho {sku} tại {warehouseCode}.",
+      "reorder_risk_urgent": "Cần nhập gấp cho {sku} tại {warehouseCode}; đề xuất {suggestedQty}.",
+      "reorder_risk_plan": "Lên kế hoạch nhập cho {sku} tại {warehouseCode}; đề xuất {suggestedQty}.",
+      "trend_review": "Rà soát biến động gần đây của {sku} tại {warehouseCode}."
     }
   },
   "dialog": {

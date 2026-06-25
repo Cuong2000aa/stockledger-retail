@@ -15,9 +15,11 @@ import {
   Loader2,
   MessageCircle,
   PackageSearch,
-  ShoppingCart,
   Sparkles,
   TrendingUp,
+  Percent,
+  ShoppingCart,
+  LineChart,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { LucideIcon } from "lucide-react";
@@ -52,6 +54,24 @@ const actionTypeStyles = {
     ring: "ring-violet-200",
     bg: "bg-gradient-to-br from-violet-50 to-white",
     accent: "text-violet-700",
+  },
+  promote: {
+    icon: Percent,
+    ring: "ring-fuchsia-200",
+    bg: "bg-gradient-to-br from-fuchsia-50 to-white",
+    accent: "text-fuchsia-700",
+  },
+  risk: {
+    icon: ShoppingCart,
+    ring: "ring-emerald-200",
+    bg: "bg-gradient-to-br from-emerald-50 to-white",
+    accent: "text-emerald-700",
+  },
+  trend: {
+    icon: LineChart,
+    ring: "ring-slate-200",
+    bg: "bg-gradient-to-br from-slate-50 to-white",
+    accent: "text-slate-700",
   },
 } as const;
 
@@ -216,6 +236,9 @@ function CtaIcon({ labelKey }: { labelKey: string }) {
     review_dead_stock: PackageSearch,
     preview_transfer: ArrowRightLeft,
     create_transfer: Sparkles,
+    view_history: Eye,
+    review_sku: PackageSearch,
+    open_reports: LineChart,
   };
   const Icon = icons[labelKey] ?? ArrowRightLeft;
   return <Icon className="h-3.5 w-3.5" />;
@@ -271,10 +294,10 @@ function formatEvidenceValue(
       return value;
     }
   }
-  if (key === "costValue" || key === "onHand" || key === "outboundQty" || key === "quantity") {
+  if (key === "costValue" || key === "onHand" || key === "outboundQty" || key === "quantity" || key === "inventoryValue" || key === "suggestedQty" || key === "inReceiving" || key === "onOrder") {
     return formatNumber(Number(value), locale);
   }
-  if (key === "avgDaily" || key === "coverDays" || key === "destCoverDays") {
+  if (key === "avgDaily" || key === "coverDays" || key === "destCoverDays" || key === "discountPercent" || key === "marginRate" || key === "outboundTrend" || key === "priceTrend" || key === "markdownDepth") {
     return formatNumber(Number(value), locale);
   }
   if (key === "daysIdle") {

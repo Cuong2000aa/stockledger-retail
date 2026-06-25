@@ -558,7 +558,7 @@ export interface InsightRecommendationCta {
 
 export interface InsightRecommendation {
   actionCode: string;
-  actionType: "monitor" | "review" | "markdown" | "replenish" | "transfer";
+  actionType: "monitor" | "review" | "markdown" | "replenish" | "transfer" | "promote" | "risk" | "trend";
   titleKey: string;
   priority: number;
   params: Record<string, string>;
@@ -578,6 +578,12 @@ export interface DeadStockInsight {
   daysWithoutOutbound: number;
   costPrice?: number;
   estimatedCostValue?: number;
+  currentSellingPriceBeforeVat?: number;
+  currentSellingPriceAfterVat?: number;
+  vatRate?: number;
+  estimatedRevenueValue?: number;
+  estimatedMarginValue?: number;
+  marginRate?: number;
   severity: string;
   ruleCode: string;
   recommendedActionCode: string;
@@ -598,6 +604,13 @@ export interface SalesVelocityInsight {
   estimatedDaysOfCover?: number;
   lastOutboundAt?: string;
   lookbackDays: number;
+  costPrice?: number;
+  currentSellingPriceBeforeVat?: number;
+  currentSellingPriceAfterVat?: number;
+  vatRate?: number;
+  revenueOpportunity?: number;
+  marginPerUnit?: number;
+  inventoryValue?: number;
   severity: string;
   ruleCode: string;
   recommendedActionCode: string;
@@ -619,11 +632,128 @@ export interface TransferSuggestion {
   destinationAvailable: number;
   destinationAverageDailyOutbound: number;
   destinationDaysOfCover?: number;
+  sourceCostPrice?: number;
+  currentSellingPriceBeforeVat?: number;
+  currentSellingPriceAfterVat?: number;
+  vatRate?: number;
+  transferValue?: number;
+  marginOpportunity?: number;
   severity: string;
   ruleCode: string;
   recommendedActionCode: string;
   recommendationParams: Record<string, string>;
   recommendation?: InsightRecommendation;
+}
+
+export interface MarkdownCandidateInsight {
+  productVariantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  brandId?: string;
+  quantityOnHand: number;
+  daysWithoutOutbound: number;
+  costPrice?: number;
+  currentSellingPriceBeforeVat?: number;
+  currentSellingPriceAfterVat?: number;
+  vatRate?: number;
+  suggestedMarkdownPriceBeforeVat?: number;
+  suggestedMarkdownPriceAfterVat?: number;
+  markdownDepthPercent?: number;
+  estimatedInventoryValue?: number;
+  estimatedRecoveryValue?: number;
+  severity: string;
+  ruleCode: string;
+  recommendedActionCode: string;
+  recommendationParams: Record<string, string>;
+  recommendation?: InsightRecommendation;
+}
+
+export interface PromotionRiskInsight {
+  productVariantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  brandId?: string;
+  quantityAvailable: number;
+  outboundQuantity: number;
+  averageDailyOutbound: number;
+  estimatedDaysOfCover?: number;
+  costPrice?: number;
+  regularPriceBeforeVat?: number;
+  regularPriceAfterVat?: number;
+  promotionPriceBeforeVat?: number;
+  promotionPriceAfterVat?: number;
+  vatRate?: number;
+  promotionDiscountPercent?: number;
+  marginRateAfterPromotion?: number;
+  severity: string;
+  ruleCode: string;
+  recommendedActionCode: string;
+  recommendationParams: Record<string, string>;
+  recommendation?: InsightRecommendation;
+}
+
+export interface ReorderRiskInsight {
+  productVariantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  brandId?: string;
+  quantityAvailable: number;
+  quantityOnOrder: number;
+  quantityInReceiving: number;
+  averageDailyOutbound: number;
+  estimatedDaysOfCover?: number;
+  reorderPoint?: number;
+  suggestedReorderQuantity?: number;
+  costPrice?: number;
+  currentSellingPriceAfterVat?: number;
+  severity: string;
+  ruleCode: string;
+  recommendedActionCode: string;
+  recommendationParams: Record<string, string>;
+  recommendation?: InsightRecommendation;
+}
+
+export interface TrendSummaryInsight {
+  productVariantId: string;
+  sku: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  brandId?: string;
+  currentQuantityOnHand: number;
+  currentInventoryValue: number;
+  previousInventoryValue: number;
+  inventoryValueDelta: number;
+  currentAverageDailyOutbound: number;
+  previousAverageDailyOutbound: number;
+  outboundTrendPercent: number;
+  currentSellingPriceAfterVat?: number;
+  previousSellingPriceAfterVat?: number;
+  priceTrendPercent?: number;
+  severity: string;
+  ruleCode: string;
+  recommendedActionCode: string;
+  recommendationParams: Record<string, string>;
+  recommendation?: InsightRecommendation;
+}
+
+export interface InsightsExecutiveSummary {
+  deadStockCount: number;
+  tiedCapital: number;
+  inventoryValueAtRisk: number;
+  marginAtRisk: number;
+  promotionRiskCount: number;
+  reorderRiskCount: number;
+  transferOpportunityCount: number;
+  transferOpportunityValue: number;
+  markdownCandidateCount: number;
+  markdownRecoveryValue: number;
 }
 
 export enum BrandStatus {

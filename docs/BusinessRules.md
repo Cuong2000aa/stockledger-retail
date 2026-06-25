@@ -241,3 +241,20 @@ Every inventory transaction must be linked to a business document.
 | BR1501 | `TrackLotExpiry` on SKU enables lot master and lot stock balances. |
 | BR1502 | Outbound deduction for lot-tracked SKUs follows FEFO (earliest expiry first). |
 | BR1503 | Near-expiry report lists lots with `ExpiryDate` within configured days ahead. |
+
+---
+
+# Inventory Insights Rules
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1601 | Insights APIs are read-only; they never create documents or post `StockTransaction`. |
+| BR1602 | Insight rows respect `warehouseId`, `brandId`, and `regionCode` filters; scope headers apply when query params are omitted. |
+| BR1603 | Dead stock and markdown candidates require `QuantityOnHand ≥ minOnHand` and no outbound within `daysWithoutOutbound`. |
+| BR1604 | Transfer suggestions pair source/destination warehouses with compatible brand and region; quantity derived from surplus vs target cover. |
+| BR1605 | Pricing fields on insight DTOs come from SKU cache, `ProductPrice`, or `InventoryValuationSnapshot` — insights do not mutate prices. |
+| BR1606 | Promotion-risk rows consider active or recent `ProductPrice` rows with `PriceType` Promotion or Markdown. |
+| BR1607 | Reorder-risk combines low cover days with open purchase-order and goods-receipt pipeline quantities. |
+| BR1608 | Trend summary compares current lookback window to the immediately prior period of equal length. |
+| BR1609 | `InsightRecommendationEngine` may attach zero or more CTAs per row; actions deep-link to existing UI routes only. |
+| BR1610 | Heavy insight queries may be served from `InsightSnapshot`; admin operations can trigger snapshot refresh. |

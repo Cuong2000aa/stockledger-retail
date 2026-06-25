@@ -14,6 +14,7 @@ import {
   InsightWarehouseCell,
   LoadingRow,
 } from "@/features/insights/components/InsightSection";
+import { InsightsExecutiveSummaryStrip } from "@/features/insights/components/InsightsExecutiveSummaryStrip";
 import { InsightsHeroBanner } from "@/features/insights/components/InsightsHeroBanner";
 import { InsightTabBar } from "@/features/insights/components/InsightTabBar";
 import { RecommendationCard } from "@/features/insights/components/RecommendationCard";
@@ -35,8 +36,12 @@ import clsx from "clsx";
 import {
   AlertTriangle,
   ArrowRightLeft,
+  BadgeDollarSign,
   PackageX,
+  Percent,
+  ShoppingCart,
   Sparkles,
+  TrendingUpDown,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -46,13 +51,22 @@ import {
   createTransferFromCtaPayload,
   createTransferFromSuggestion,
   fetchDeadStockInsights,
+  fetchInsightsExecutiveSummary,
+  fetchMarkdownCandidates,
+  fetchPromotionRiskInsights,
+  fetchReorderRiskInsights,
   fetchSalesVelocityInsights,
+  fetchTrendSummaryInsights,
   fetchTransferSuggestions,
 } from "@/features/insights/api";
 import { insightQueryKeys } from "@/features/insights/queries";
 import type {
   DeadStockInsight,
+  MarkdownCandidateInsight,
+  PromotionRiskInsight,
+  ReorderRiskInsight,
   SalesVelocityInsight,
+  TrendSummaryInsight,
   TransferSuggestion,
 } from "@/lib/types";
 
@@ -86,12 +100,29 @@ export default function InsightsPage() {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "deadStock" || tab === "velocity" || tab === "transfer") {
+    if (
+      tab === "deadStock" ||
+      tab === "velocity" ||
+      tab === "transfer" ||
+      tab === "markdown" ||
+      tab === "promotionRisk" ||
+      tab === "reorderRisk" ||
+      tab === "trend"
+    ) {
       setActiveTab(tab);
     }
   }, [searchParams]);
 
   const activeWarehouseId = warehouseId || undefined;
+
+  const {
+    data: executiveSummary,
+    isLoading: executiveSummaryLoading,
+  } = useQuery({
+    queryKey: insightQueryKeys.executiveSummary(activeWarehouseId, lookbackDays, daysWithoutOutbound),
+    queryFn: () => fetchInsightsExecutiveSummary(activeWarehouseId, lookbackDays, daysWithoutOutbound),
+    staleTime: 2 * 60_000,
+  });
 
   const {
     data: deadStock,
@@ -127,6 +158,50 @@ export default function InsightsPage() {
     staleTime: 2 * 60_000,
   });
 
+  const {
+    data: markdownCandidates,
+    isLoading: markdownCandidatesLoading,
+    isFetched: markdownCandidatesFetched,
+  } = useQuery({
+    queryKey: insightQueryKeys.markdownCandidates(activeWarehouseId, daysWithoutOutbound),
+    queryFn: () => fetchMarkdownCandidates(activeWarehouseId, daysWithoutOutbound, 1, 20),
+    enabled: activeTab === "markdown",
+    staleTime: 2 * 60_000,
+  });
+
+  const {
+    data: promotionRisk,
+    isLoading: promotionRiskLoading,
+    isFetched: promotionRiskFetched,
+  } = useQuery({
+    queryKey: insightQueryKeys.promotionRisk(activeWarehouseId, lookbackDays),
+    queryFn: () => fetchPromotionRiskInsights(activeWarehouseId, lookbackDays, 20),
+    enabled: activeTab === "promotionRisk",
+    staleTime: 2 * 60_000,
+  });
+
+  const {
+    data: reorderRisk,
+    isLoading: reorderRiskLoading,
+    isFetched: reorderRiskFetched,
+  } = useQuery({
+    queryKey: insightQueryKeys.reorderRisk(activeWarehouseId, lookbackDays),
+    queryFn: () => fetchReorderRiskInsights(activeWarehouseId, lookbackDays, 20),
+    enabled: activeTab === "reorderRisk",
+    staleTime: 2 * 60_000,
+  });
+
+  const {
+    data: trendSummary,
+    isLoading: trendSummaryLoading,
+    isFetched: trendSummaryFetched,
+  } = useQuery({
+    queryKey: insightQueryKeys.trendSummary(activeWarehouseId, lookbackDays),
+    queryFn: () => fetchTrendSummaryInsights(activeWarehouseId, lookbackDays, 20),
+    enabled: activeTab === "trend",
+    staleTime: 2 * 60_000,
+  });
+
   const createTransferMutation = useMutation({
     mutationFn: createTransferFromSuggestion,
     onSuccess: (doc) => {
@@ -157,10 +232,16 @@ export default function InsightsPage() {
     const deadItems = deadStock ?? [];
     const velocityItems = salesVelocity ?? [];
     const transferItems = transferSuggestions ?? [];
+    const markdownItems = markdownCandidates ?? [];
+    const promotionItems = promotionRisk ?? [];
+    const reorderItems = reorderRisk ?? [];
+    const trendItems = trendSummary ?? [];
 
     return {
-      deadCount: deadStockFetched ? deadItems.length : null,
-      tiedCapital: deadStockFetched
+      deadCount: executiveSummary ? executiveSummary.deadStockCount : deadStockFetched ? deadItems.length : null,
+      tiedCapital: executiveSummary
+        ? executiveSummary.tiedCapital
+        : deadStockFetched
         ? deadItems.reduce((sum, item) => sum + (item.estimatedCostValue ?? 0), 0)
         : null,
       urgentVelocity: salesVelocityFetched
@@ -171,21 +252,38 @@ export default function InsightsPage() {
       criticalDead: deadStockFetched
         ? deadItems.filter((item) => item.severity === "critical").length
         : null,
-      transferCount: transferSuggestionsFetched ? transferItems.length : null,
+      transferCount: executiveSummary ? executiveSummary.transferOpportunityCount : transferSuggestionsFetched ? transferItems.length : null,
+      markdownCount: executiveSummary ? executiveSummary.markdownCandidateCount : markdownCandidatesFetched ? markdownItems.length : null,
+      promotionRiskCount: executiveSummary ? executiveSummary.promotionRiskCount : promotionRiskFetched ? promotionItems.length : null,
+      reorderRiskCount: executiveSummary ? executiveSummary.reorderRiskCount : reorderRiskFetched ? reorderItems.length : null,
+      trendCount: trendSummaryFetched ? trendItems.length : null,
     };
   }, [
+    executiveSummary,
     deadStock,
     salesVelocity,
     transferSuggestions,
+    markdownCandidates,
+    promotionRisk,
+    reorderRisk,
+    trendSummary,
     deadStockFetched,
     salesVelocityFetched,
     transferSuggestionsFetched,
+    markdownCandidatesFetched,
+    promotionRiskFetched,
+    reorderRiskFetched,
+    trendSummaryFetched,
   ]);
 
   const activeTabLoading =
     (activeTab === "deadStock" && deadStockLoading) ||
     (activeTab === "velocity" && salesVelocityLoading) ||
-    (activeTab === "transfer" && transferSuggestionsLoading);
+    (activeTab === "transfer" && transferSuggestionsLoading) ||
+    (activeTab === "markdown" && markdownCandidatesLoading) ||
+    (activeTab === "promotionRisk" && promotionRiskLoading) ||
+    (activeTab === "reorderRisk" && reorderRiskLoading) ||
+    (activeTab === "trend" && trendSummaryLoading);
 
   const summaryMeta = getInsightSummaryKey(activeTab, stats);
   let summaryText = "";
@@ -201,6 +299,10 @@ export default function InsightsPage() {
     () => buildTransferChart(transferSuggestions),
     [transferSuggestions]
   );
+  const markdownChart = useMemo(() => buildMarkdownChart(markdownCandidates), [markdownCandidates]);
+  const promotionChart = useMemo(() => buildPromotionChart(promotionRisk), [promotionRisk]);
+  const reorderChart = useMemo(() => buildReorderChart(reorderRisk), [reorderRisk]);
+  const trendChart = useMemo(() => buildTrendChart(trendSummary), [trendSummary]);
 
   const tabs = useMemo(
     () => [
@@ -225,8 +327,45 @@ export default function InsightsPage() {
         count: stats.transferCount,
         description: t("tabHints.transfer"),
       },
+      {
+        id: "markdown" as const,
+        label: t("tabs.markdown"),
+        icon: BadgeDollarSign,
+        count: stats.markdownCount,
+        description: t("tabHints.markdown"),
+      },
+      {
+        id: "promotionRisk" as const,
+        label: t("tabs.promotionRisk"),
+        icon: Percent,
+        count: stats.promotionRiskCount,
+        description: t("tabHints.promotionRisk"),
+      },
+      {
+        id: "reorderRisk" as const,
+        label: t("tabs.reorderRisk"),
+        icon: ShoppingCart,
+        count: stats.reorderRiskCount,
+        description: t("tabHints.reorderRisk"),
+      },
+      {
+        id: "trend" as const,
+        label: t("tabs.trend"),
+        icon: TrendingUpDown,
+        count: stats.trendCount,
+        description: t("tabHints.trend"),
+      },
     ],
-    [t, stats.deadCount, stats.urgentVelocity, stats.transferCount]
+    [
+      t,
+      stats.deadCount,
+      stats.urgentVelocity,
+      stats.transferCount,
+      stats.markdownCount,
+      stats.promotionRiskCount,
+      stats.reorderRiskCount,
+      stats.trendCount,
+    ]
   );
 
   const handleTabChange = (tab: InsightTab) => {
@@ -309,7 +448,12 @@ export default function InsightsPage() {
         loading={activeTabLoading}
       />
 
-      {activeTabLoading && !deadStockFetched && !salesVelocityFetched && !transferSuggestionsFetched ? (
+      <InsightsExecutiveSummaryStrip
+        summary={executiveSummary}
+        locale={locale}
+      />
+
+      {activeTabLoading && !deadStockFetched && !salesVelocityFetched && !transferSuggestionsFetched && executiveSummaryLoading ? (
         <StatCardsSkeleton />
       ) : (
         <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -621,6 +765,276 @@ export default function InsightsPage() {
             </table>
           </InsightSection>
         )}
+
+        {activeTab === "markdown" && (
+          <InsightSection
+            title={t("markdown.title")}
+            subtitle={t("markdown.subtitle")}
+            chartTitle={t("charts.markdownValue")}
+            accent="rose"
+            icon={BadgeDollarSign}
+            loading={markdownCandidatesLoading}
+            chart={
+              <MiniBarChart
+                items={markdownChart}
+                locale={locale}
+                emptyLabel={tCommon("noData")}
+                valueLabel={(value) => formatNumber(value, locale)}
+              />
+            }
+          >
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{tStocks("sku")}</th>
+                  <th>{tStocks("warehouse")}</th>
+                  <th>{t("deadStock.days")}</th>
+                  <th>{t("deadStock.costValue")}</th>
+                  <th>{t("markdown.depth")}</th>
+                  <th>{t("markdown.recovery")}</th>
+                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {markdownCandidatesLoading ? (
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
+                ) : markdownCandidates?.length ? (
+                  markdownCandidates.map((item) => {
+                    const recommendation = resolveRecommendation(item);
+                    return (
+                      <tr key={`${item.productVariantId}-${item.warehouseId}`}>
+                        <td><InsightSkuCell sku={item.sku} severity={item.severity} /></td>
+                        <td><InsightWarehouseCell code={item.warehouseCode} name={item.warehouseName} /></td>
+                        <td className="tabular-nums">{formatNumber(item.daysWithoutOutbound, locale)}</td>
+                        <td className="tabular-nums">{formatNumber(item.estimatedInventoryValue ?? 0, locale)}</td>
+                        <td className="tabular-nums">{formatNumber(item.markdownDepthPercent ?? 0, locale)}%</td>
+                        <td className="tabular-nums">{formatNumber(item.estimatedRecoveryValue ?? 0, locale)}</td>
+                        <td>
+                          <RecommendationCard
+                            recommendation={recommendation}
+                            severity={item.severity}
+                            locale={locale}
+                            onExplain={() =>
+                              openExplain(recommendation, item.severity, {
+                                sku: item.sku,
+                                warehouseCode: item.warehouseCode,
+                                warehouseName: item.warehouseName,
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
+                )}
+              </tbody>
+            </table>
+          </InsightSection>
+        )}
+
+        {activeTab === "promotionRisk" && (
+          <InsightSection
+            title={t("promotionRisk.title")}
+            subtitle={t("promotionRisk.subtitle")}
+            chartTitle={t("charts.promotionRisk")}
+            accent="indigo"
+            icon={Percent}
+            loading={promotionRiskLoading}
+            chart={
+              <MiniBarChart
+                items={promotionChart}
+                locale={locale}
+                emptyLabel={tCommon("noData")}
+                valueLabel={(value) => formatNumber(value, locale)}
+              />
+            }
+          >
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{tStocks("sku")}</th>
+                  <th>{tStocks("warehouse")}</th>
+                  <th>{t("salesVelocity.coverDays")}</th>
+                  <th>{t("promotionRisk.regularPrice")}</th>
+                  <th>{t("promotionRisk.promoPrice")}</th>
+                  <th>{t("promotionRisk.discount")}</th>
+                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promotionRiskLoading ? (
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
+                ) : promotionRisk?.length ? (
+                  promotionRisk.map((item) => {
+                    const recommendation = resolveRecommendation(item);
+                    return (
+                      <tr key={`${item.productVariantId}-${item.warehouseId}`}>
+                        <td><InsightSkuCell sku={item.sku} severity={item.severity} /></td>
+                        <td><InsightWarehouseCell code={item.warehouseCode} name={item.warehouseName} /></td>
+                        <td className="tabular-nums">{item.estimatedDaysOfCover != null ? formatNumber(item.estimatedDaysOfCover, locale) : "—"}</td>
+                        <td className="tabular-nums">{item.regularPriceAfterVat != null ? formatNumber(item.regularPriceAfterVat, locale) : "—"}</td>
+                        <td className="tabular-nums">{item.promotionPriceAfterVat != null ? formatNumber(item.promotionPriceAfterVat, locale) : "—"}</td>
+                        <td className="tabular-nums">{item.promotionDiscountPercent != null ? `${formatNumber(item.promotionDiscountPercent, locale)}%` : "—"}</td>
+                        <td>
+                          <RecommendationCard
+                            recommendation={recommendation}
+                            severity={item.severity}
+                            locale={locale}
+                            onExplain={() =>
+                              openExplain(recommendation, item.severity, {
+                                sku: item.sku,
+                                warehouseCode: item.warehouseCode,
+                                warehouseName: item.warehouseName,
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
+                )}
+              </tbody>
+            </table>
+          </InsightSection>
+        )}
+
+        {activeTab === "reorderRisk" && (
+          <InsightSection
+            title={t("reorderRisk.title")}
+            subtitle={t("reorderRisk.subtitle")}
+            chartTitle={t("charts.reorderRisk")}
+            accent="sky"
+            icon={ShoppingCart}
+            loading={reorderRiskLoading}
+            chart={
+              <MiniBarChart
+                items={reorderChart}
+                locale={locale}
+                emptyLabel={tCommon("noData")}
+                valueLabel={(value) => formatNumber(value, locale)}
+              />
+            }
+          >
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{tStocks("sku")}</th>
+                  <th>{tStocks("warehouse")}</th>
+                  <th>{t("salesVelocity.avgDaily")}</th>
+                  <th>{t("salesVelocity.coverDays")}</th>
+                  <th>{t("reorderRisk.onOrder")}</th>
+                  <th>{t("reorderRisk.suggestedQty")}</th>
+                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reorderRiskLoading ? (
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
+                ) : reorderRisk?.length ? (
+                  reorderRisk.map((item) => {
+                    const recommendation = resolveRecommendation(item);
+                    return (
+                      <tr key={`${item.productVariantId}-${item.warehouseId}`}>
+                        <td><InsightSkuCell sku={item.sku} severity={item.severity} /></td>
+                        <td><InsightWarehouseCell code={item.warehouseCode} name={item.warehouseName} /></td>
+                        <td className="tabular-nums">{formatNumber(item.averageDailyOutbound, locale)}</td>
+                        <td className="tabular-nums">{item.estimatedDaysOfCover != null ? formatNumber(item.estimatedDaysOfCover, locale) : "—"}</td>
+                        <td className="tabular-nums">{formatNumber(item.quantityOnOrder, locale)}</td>
+                        <td className="tabular-nums">{item.suggestedReorderQuantity != null ? formatNumber(item.suggestedReorderQuantity, locale) : "—"}</td>
+                        <td>
+                          <RecommendationCard
+                            recommendation={recommendation}
+                            severity={item.severity}
+                            locale={locale}
+                            onExplain={() =>
+                              openExplain(recommendation, item.severity, {
+                                sku: item.sku,
+                                warehouseCode: item.warehouseCode,
+                                warehouseName: item.warehouseName,
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
+                )}
+              </tbody>
+            </table>
+          </InsightSection>
+        )}
+
+        {activeTab === "trend" && (
+          <InsightSection
+            title={t("trend.title")}
+            subtitle={t("trend.subtitle")}
+            chartTitle={t("charts.trendDelta")}
+            accent="indigo"
+            icon={TrendingUpDown}
+            loading={trendSummaryLoading}
+            chart={
+              <MiniBarChart
+                items={trendChart}
+                locale={locale}
+                emptyLabel={tCommon("noData")}
+                valueLabel={(value) => formatNumber(value, locale)}
+              />
+            }
+          >
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{tStocks("sku")}</th>
+                  <th>{tStocks("warehouse")}</th>
+                  <th>{t("trend.inventoryDelta")}</th>
+                  <th>{t("trend.outboundTrend")}</th>
+                  <th>{t("trend.priceTrend")}</th>
+                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trendSummaryLoading ? (
+                  <LoadingRow colSpan={6} label={tCommon("loading")} />
+                ) : trendSummary?.length ? (
+                  trendSummary.map((item) => {
+                    const recommendation = resolveRecommendation(item);
+                    return (
+                      <tr key={`${item.productVariantId}-${item.warehouseId}`}>
+                        <td><InsightSkuCell sku={item.sku} severity={item.severity} /></td>
+                        <td><InsightWarehouseCell code={item.warehouseCode} name={item.warehouseName} /></td>
+                        <td className="tabular-nums">{formatNumber(item.inventoryValueDelta, locale)}</td>
+                        <td className="tabular-nums">{formatNumber(item.outboundTrendPercent, locale)}%</td>
+                        <td className="tabular-nums">{item.priceTrendPercent != null ? `${formatNumber(item.priceTrendPercent, locale)}%` : "—"}</td>
+                        <td>
+                          <RecommendationCard
+                            recommendation={recommendation}
+                            severity={item.severity}
+                            locale={locale}
+                            onExplain={() =>
+                              openExplain(recommendation, item.severity, {
+                                sku: item.sku,
+                                warehouseCode: item.warehouseCode,
+                                warehouseName: item.warehouseName,
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <EmptyRow colSpan={6} label={tCommon("noData")} />
+                )}
+              </tbody>
+            </table>
+          </InsightSection>
+        )}
       </div>
 
       <InsightExplainModal
@@ -703,6 +1117,62 @@ function buildTransferChart(transferSuggestions: TransferSuggestion[] | undefine
       label: item.sku,
       sublabel: `${item.sourceWarehouseCode} → ${item.destinationWarehouseCode}`,
       value: item.suggestedQuantity,
+      severity: item.severity,
+    }));
+}
+
+function buildMarkdownChart(items: MarkdownCandidateInsight[] | undefined) {
+  if (!Array.isArray(items) || !items.length) return [];
+  return [...items]
+    .sort((a, b) => (b.estimatedInventoryValue ?? 0) - (a.estimatedInventoryValue ?? 0))
+    .slice(0, TOP_CHART_COUNT)
+    .map((item) => ({
+      id: `${item.productVariantId}-${item.warehouseId}`,
+      label: item.sku,
+      sublabel: item.warehouseCode,
+      value: item.estimatedInventoryValue ?? 0,
+      severity: item.severity,
+    }));
+}
+
+function buildPromotionChart(items: PromotionRiskInsight[] | undefined) {
+  if (!Array.isArray(items) || !items.length) return [];
+  return [...items]
+    .sort((a, b) => (a.estimatedDaysOfCover ?? 999) - (b.estimatedDaysOfCover ?? 999))
+    .slice(0, TOP_CHART_COUNT)
+    .map((item) => ({
+      id: `${item.productVariantId}-${item.warehouseId}`,
+      label: item.sku,
+      sublabel: item.warehouseCode,
+      value: item.estimatedDaysOfCover ?? 0,
+      severity: item.severity,
+    }));
+}
+
+function buildReorderChart(items: ReorderRiskInsight[] | undefined) {
+  if (!Array.isArray(items) || !items.length) return [];
+  return [...items]
+    .sort((a, b) => (b.suggestedReorderQuantity ?? 0) - (a.suggestedReorderQuantity ?? 0))
+    .slice(0, TOP_CHART_COUNT)
+    .map((item) => ({
+      id: `${item.productVariantId}-${item.warehouseId}`,
+      label: item.sku,
+      sublabel: item.warehouseCode,
+      value: item.suggestedReorderQuantity ?? 0,
+      severity: item.severity,
+    }));
+}
+
+function buildTrendChart(items: TrendSummaryInsight[] | undefined) {
+  if (!Array.isArray(items) || !items.length) return [];
+  return [...items]
+    .sort((a, b) => Math.abs(b.inventoryValueDelta) - Math.abs(a.inventoryValueDelta))
+    .slice(0, TOP_CHART_COUNT)
+    .map((item) => ({
+      id: `${item.productVariantId}-${item.warehouseId}`,
+      label: item.sku,
+      sublabel: item.warehouseCode,
+      value: Math.abs(item.inventoryValueDelta),
       severity: item.severity,
     }));
 }

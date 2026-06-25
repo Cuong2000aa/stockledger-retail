@@ -35,7 +35,7 @@ CurrentStock      ← fast lookup
 | **RBAC** | Email users, permission groups in DB, teams, document authorization | ✅ Done |
 | **Login (stub)** | `POST /api/auth/login`, frontend `/login`, session → `X-User-Email` header | ✅ Done |
 | **Valuation** | CostPrice on SKU; ProductCostHistory; cost history report API | ✅ Done |
-| **Insights** | Dead stock, sales velocity, transfer suggestions, snapshot cache, action cards | ✅ Done |
+| **Insights** | Executive summary, 7 analytics tabs (dead stock, velocity, transfer, markdown, promotion/reorder risk, trend), pricing-aware DTOs, snapshot cache, drill-down CTAs | ✅ Done |
 | **Reports** | Inventory value, NXT, near-expiry lots, lot stocks, cost history | ✅ Done |
 | **Stock reservations** | POS/OMS holds — list & manual release API + UI | ✅ Done |
 | **Approval workflow** | 2-step approval for high-value inventory documents & POs | ✅ Done |
@@ -130,9 +130,18 @@ See [docs/RBAC.md](docs/RBAC.md).
 
 ### Inventory Insights (read-only)
 
-- `GET /api/inventory-insights/dead-stock`
-- `GET /api/inventory-insights/sales-velocity`
-- `GET /api/inventory-insights/transfer-suggestions` — filter by `brandId`, `regionCode`
+Pricing-aware decision support with executive KPIs, seven analytics views, and rule-based recommendation cards. See [docs/Insights.md](docs/Insights.md) (EN) and [docs/Insights.vi.md](docs/Insights.vi.md) (VI).
+
+- `GET /api/inventory-insights/executive-summary` — aggregated KPIs for current scope
+- `GET /api/inventory-insights/dead-stock` — no outbound in N days
+- `GET /api/inventory-insights/sales-velocity` — outbound rate and cover days
+- `GET /api/inventory-insights/transfer-suggestions` — surplus → deficit warehouse pairs
+- `GET /api/inventory-insights/markdown-candidates` — slow movers with margin/value context
+- `GET /api/inventory-insights/promotion-risk` — promotion price vs velocity/cover
+- `GET /api/inventory-insights/reorder-risk` — low cover + open PO/GR pipeline
+- `GET /api/inventory-insights/trend-summary` — period-over-period inventory deltas
+
+Common filters: `warehouseId`, `brandId`, `regionCode`, `lookbackDays`, `daysWithoutOutbound`
 
 ### Analytics (read-only)
 
@@ -143,7 +152,7 @@ See [docs/RBAC.md](docs/RBAC.md).
 
 ### Frontend (Next.js)
 
-Bilingual UI (VI / EN): login, dashboard, products, SKUs, warehouses, suppliers, purchase orders, goods receipts, inventory documents (incl. receive-transfer & multi-step approval), current stock, stock history, insights, **reports**, **stock reservations**, **admin** (brands, users, teams, permissions, transfer policies, operations).
+Bilingual UI (VI / EN): login, dashboard, products, SKUs, warehouses, suppliers, purchase orders, goods receipts, inventory documents (incl. receive-transfer & multi-step approval), current stock, stock history, **insights** (executive summary + 7 tabs, drill-down CTAs), **reports**, **stock reservations**, **admin** (brands, users, teams, permissions, transfer policies, operations).
 
 Default locale: `vi` — `http://localhost:3000/vi`
 
@@ -363,6 +372,8 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 | [docs/Entities.vn.md](docs/Entities.vn.md) | Entity dictionary (VI) |
 | [docs/ERD.md](docs/ERD.md) | Database tables & relationships |
 | [docs/InventoryDomain.md](docs/InventoryDomain.md) | Domain overview |
+| [docs/Insights.md](docs/Insights.md) | Inventory insights suite (EN) |
+| [docs/Insights.vi.md](docs/Insights.vi.md) | Phân tích tồn kho / Insights (VI) |
 
 ---
 

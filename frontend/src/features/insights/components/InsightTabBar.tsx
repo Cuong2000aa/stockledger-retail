@@ -34,6 +34,30 @@ const tabAccents: Record<
     badge: "bg-white/25 text-white",
     ring: "ring-sky-200/80",
   },
+  markdown: {
+    active: "bg-gradient-to-r from-amber-600 to-orange-500 text-white shadow-lg shadow-amber-500/25",
+    idle: "bg-amber-50/80 text-amber-800 hover:bg-amber-100",
+    badge: "bg-white/25 text-white",
+    ring: "ring-amber-200/80",
+  },
+  promotionRisk: {
+    active: "bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white shadow-lg shadow-fuchsia-500/25",
+    idle: "bg-fuchsia-50/80 text-fuchsia-800 hover:bg-fuchsia-100",
+    badge: "bg-white/25 text-white",
+    ring: "ring-fuchsia-200/80",
+  },
+  reorderRisk: {
+    active: "bg-gradient-to-r from-emerald-600 to-green-500 text-white shadow-lg shadow-emerald-500/25",
+    idle: "bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100",
+    badge: "bg-white/25 text-white",
+    ring: "ring-emerald-200/80",
+  },
+  trend: {
+    active: "bg-gradient-to-r from-slate-700 to-slate-600 text-white shadow-lg shadow-slate-500/25",
+    idle: "bg-slate-50/80 text-slate-800 hover:bg-slate-100",
+    badge: "bg-white/25 text-white",
+    ring: "ring-slate-200/80",
+  },
 };
 
 export function InsightTabBar({

@@ -289,6 +289,25 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 
 ---
 
+# Quy tắc Insights (Phân tích tồn kho)
+
+| Mã | Rule | Mô tả |
+|----|------|-------|
+| BR1601 | Insights chỉ đọc; không tạo phiếu hay ghi `StockTransaction`. | API insights không ghi sổ. |
+| BR1602 | Lọc theo `warehouseId`, `brandId`, `regionCode`; header phạm vi khi thiếu param. | Phạm vi brand/kho/vùng. |
+| BR1603 | Tồn chết / markdown: tồn ≥ `minOnHand`, không xuất trong `daysWithoutOutbound`. | Điều kiện tồn chết. |
+| BR1604 | Gợi ý chuyển: cặp kho cùng brand/vùng; số lượng từ thừa vs cover mục tiêu. | Logic chuyển kho. |
+| BR1605 | Giá trên DTO lấy từ cache SKU, `ProductPrice`, `InventoryValuationSnapshot`; không sửa giá. | Insights chỉ đọc giá. |
+| BR1606 | Rủi ro KM: giá Promotion/Markdown đang hoặc vừa hiệu lực. | Tín hiệu khuyến mãi. |
+| BR1607 | Rủi ro đặt hàng: cover thấp + PO/GR đang mở. | Tín hiệu mua hàng. |
+| BR1608 | Xu hướng: so sánh kỳ lookback với kỳ trước cùng độ dài. | Delta theo kỳ. |
+| BR1609 | Mỗi dòng có thể có 0+ CTA; chỉ deep-link tới màn hình hiện có. | Hành động gợi ý. |
+| BR1610 | Có thể cache `InsightSnapshot`; admin refresh qua operations. | Cache snapshot. |
+
+Chi tiết: [Insights.vi.md](Insights.vi.md)
+
+---
+
 # Quy tắc duyệt nhiều bước (Approval Workflow)
 
 | Mã | Rule | Mô tả |
