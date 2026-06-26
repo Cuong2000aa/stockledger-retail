@@ -86,6 +86,7 @@ export default function InsightsPage() {
   const { notifyError } = useNotify();
 
   const [warehouseId, setWarehouseId] = useState("");
+  const [brandId, setBrandId] = useState("");
   const [daysWithoutOutbound, setDaysWithoutOutbound] = useState(60);
   const [lookbackDays, setLookbackDays] = useState(30);
   const [activeTab, setActiveTab] = useState<InsightTab>("deadStock");
@@ -107,14 +108,17 @@ export default function InsightsPage() {
     }
   }, [searchParams]);
 
-  const activeWarehouseId = warehouseId || undefined;
+  const insightScope = {
+    warehouseId: warehouseId || undefined,
+    brandId: brandId || undefined,
+  };
 
   const {
     data: executiveSummary,
     isLoading: executiveSummaryLoading,
   } = useQuery({
-    queryKey: insightQueryKeys.executiveSummary(activeWarehouseId, lookbackDays, daysWithoutOutbound),
-    queryFn: () => fetchInsightsExecutiveSummary(activeWarehouseId, lookbackDays, daysWithoutOutbound),
+    queryKey: insightQueryKeys.executiveSummary(insightScope, lookbackDays, daysWithoutOutbound),
+    queryFn: () => fetchInsightsExecutiveSummary(insightScope, lookbackDays, daysWithoutOutbound),
     staleTime: 2 * 60_000,
   });
 
@@ -123,8 +127,8 @@ export default function InsightsPage() {
     isLoading: deadStockLoading,
     isFetched: deadStockFetched,
   } = useQuery({
-    queryKey: insightQueryKeys.deadStock(activeWarehouseId, daysWithoutOutbound),
-    queryFn: () => fetchDeadStockInsights(activeWarehouseId, daysWithoutOutbound, 1, 20),
+    queryKey: insightQueryKeys.deadStock(insightScope, daysWithoutOutbound),
+    queryFn: () => fetchDeadStockInsights(insightScope, daysWithoutOutbound, 1, 20),
     enabled: activeTab === "deadStock",
     staleTime: 2 * 60_000,
   });
@@ -134,8 +138,8 @@ export default function InsightsPage() {
     isLoading: salesVelocityLoading,
     isFetched: salesVelocityFetched,
   } = useQuery({
-    queryKey: insightQueryKeys.salesVelocity(activeWarehouseId, lookbackDays),
-    queryFn: () => fetchSalesVelocityInsights(activeWarehouseId, lookbackDays, 20),
+    queryKey: insightQueryKeys.salesVelocity(insightScope, lookbackDays),
+    queryFn: () => fetchSalesVelocityInsights(insightScope, lookbackDays, 20),
     enabled: activeTab === "velocity",
     staleTime: 2 * 60_000,
   });
@@ -145,9 +149,22 @@ export default function InsightsPage() {
     isLoading: transferSuggestionsLoading,
     isFetched: transferSuggestionsFetched,
   } = useQuery({
-    queryKey: insightQueryKeys.transferSuggestions(undefined, activeWarehouseId, lookbackDays),
+    queryKey: insightQueryKeys.transferSuggestions(
+      undefined,
+      insightScope.warehouseId,
+      lookbackDays,
+      insightScope.brandId
+    ),
     queryFn: () =>
-      fetchTransferSuggestions(undefined, activeWarehouseId, lookbackDays, 14, 7, 20),
+      fetchTransferSuggestions(
+        undefined,
+        insightScope.warehouseId,
+        lookbackDays,
+        14,
+        7,
+        20,
+        insightScope.brandId
+      ),
     enabled: activeTab === "transfer",
     staleTime: 2 * 60_000,
   });
@@ -157,8 +174,8 @@ export default function InsightsPage() {
     isLoading: markdownCandidatesLoading,
     isFetched: markdownCandidatesFetched,
   } = useQuery({
-    queryKey: insightQueryKeys.markdownCandidates(activeWarehouseId, daysWithoutOutbound),
-    queryFn: () => fetchMarkdownCandidates(activeWarehouseId, daysWithoutOutbound, 1, 20),
+    queryKey: insightQueryKeys.markdownCandidates(insightScope, daysWithoutOutbound),
+    queryFn: () => fetchMarkdownCandidates(insightScope, daysWithoutOutbound, 1, 20),
     enabled: activeTab === "markdown",
     staleTime: 2 * 60_000,
   });
@@ -168,8 +185,8 @@ export default function InsightsPage() {
     isLoading: promotionRiskLoading,
     isFetched: promotionRiskFetched,
   } = useQuery({
-    queryKey: insightQueryKeys.promotionRisk(activeWarehouseId, lookbackDays),
-    queryFn: () => fetchPromotionRiskInsights(activeWarehouseId, lookbackDays, 20),
+    queryKey: insightQueryKeys.promotionRisk(insightScope, lookbackDays),
+    queryFn: () => fetchPromotionRiskInsights(insightScope, lookbackDays, 20),
     enabled: activeTab === "promotionRisk",
     staleTime: 2 * 60_000,
   });
@@ -179,8 +196,8 @@ export default function InsightsPage() {
     isLoading: reorderRiskLoading,
     isFetched: reorderRiskFetched,
   } = useQuery({
-    queryKey: insightQueryKeys.reorderRisk(activeWarehouseId, lookbackDays),
-    queryFn: () => fetchReorderRiskInsights(activeWarehouseId, lookbackDays, 20),
+    queryKey: insightQueryKeys.reorderRisk(insightScope, lookbackDays),
+    queryFn: () => fetchReorderRiskInsights(insightScope, lookbackDays, 20),
     enabled: activeTab === "reorderRisk",
     staleTime: 2 * 60_000,
   });
@@ -190,8 +207,8 @@ export default function InsightsPage() {
     isLoading: trendSummaryLoading,
     isFetched: trendSummaryFetched,
   } = useQuery({
-    queryKey: insightQueryKeys.trendSummary(activeWarehouseId, lookbackDays),
-    queryFn: () => fetchTrendSummaryInsights(activeWarehouseId, lookbackDays, 20),
+    queryKey: insightQueryKeys.trendSummary(insightScope, lookbackDays),
+    queryFn: () => fetchTrendSummaryInsights(insightScope, lookbackDays, 20),
     enabled: activeTab === "trend",
     staleTime: 2 * 60_000,
   });
@@ -369,6 +386,7 @@ export default function InsightsPage() {
 
   const handleResetFilters = () => {
     setWarehouseId("");
+    setBrandId("");
     setDaysWithoutOutbound(60);
     setLookbackDays(30);
   };
@@ -443,6 +461,8 @@ export default function InsightsPage() {
           activeTab={activeTab}
           warehouseId={warehouseId}
           onWarehouseChange={setWarehouseId}
+          brandId={brandId}
+          onBrandChange={setBrandId}
           daysWithoutOutbound={daysWithoutOutbound}
           onDaysWithoutOutboundChange={setDaysWithoutOutbound}
           lookbackDays={lookbackDays}

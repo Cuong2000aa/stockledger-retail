@@ -11,26 +11,36 @@ import type {
 } from "./types";
 import { createTransferPayloadFromCta } from "./recommendation-utils";
 
+type InsightScope = {
+  warehouseId?: string;
+  brandId?: string;
+};
+
+const scopeParams = ({ warehouseId, brandId }: InsightScope) => ({
+  ...(warehouseId ? { warehouseId } : {}),
+  ...(brandId ? { brandId } : {}),
+});
+
 export const fetchDeadStockInsights = (
-  warehouseId?: string,
+  scope: InsightScope = {},
   daysWithoutOutbound = 60,
   minOnHand = 1,
   maxResults = 20
 ) =>
   apiClient
     .get<DeadStockInsight[]>("/api/inventory-insights/dead-stock", {
-      params: { warehouseId, daysWithoutOutbound, minOnHand, maxResults },
+      params: { ...scopeParams(scope), daysWithoutOutbound, minOnHand, maxResults },
     })
     .then((r) => r.data);
 
 export const fetchSalesVelocityInsights = (
-  warehouseId?: string,
+  scope: InsightScope = {},
   lookbackDays = 30,
   maxResults = 20
 ) =>
   apiClient
     .get<SalesVelocityInsight[]>("/api/inventory-insights/sales-velocity", {
-      params: { warehouseId, lookbackDays, maxResults },
+      params: { ...scopeParams(scope), lookbackDays, maxResults },
     })
     .then((r) => r.data);
 
@@ -40,13 +50,15 @@ export const fetchTransferSuggestions = (
   lookbackDays = 30,
   targetCoverDays = 14,
   reserveCoverDays = 7,
-  maxResults = 20
+  maxResults = 20,
+  brandId?: string
 ) =>
   apiClient
     .get<TransferSuggestion[]>("/api/inventory-insights/transfer-suggestions", {
       params: {
         sourceWarehouseId,
         destinationWarehouseId,
+        ...(brandId ? { brandId } : {}),
         lookbackDays,
         targetCoverDays,
         reserveCoverDays,
@@ -56,58 +68,58 @@ export const fetchTransferSuggestions = (
     .then((r) => r.data);
 
 export const fetchMarkdownCandidates = (
-  warehouseId?: string,
+  scope: InsightScope = {},
   daysWithoutOutbound = 60,
   minOnHand = 1,
   maxResults = 20
 ) =>
   apiClient
     .get<MarkdownCandidateInsight[]>("/api/inventory-insights/markdown-candidates", {
-      params: { warehouseId, daysWithoutOutbound, minOnHand, maxResults },
+      params: { ...scopeParams(scope), daysWithoutOutbound, minOnHand, maxResults },
     })
     .then((r) => r.data);
 
 export const fetchPromotionRiskInsights = (
-  warehouseId?: string,
+  scope: InsightScope = {},
   lookbackDays = 30,
   maxResults = 20
 ) =>
   apiClient
     .get<PromotionRiskInsight[]>("/api/inventory-insights/promotion-risk", {
-      params: { warehouseId, lookbackDays, maxResults },
+      params: { ...scopeParams(scope), lookbackDays, maxResults },
     })
     .then((r) => r.data);
 
 export const fetchReorderRiskInsights = (
-  warehouseId?: string,
+  scope: InsightScope = {},
   lookbackDays = 30,
   maxResults = 20
 ) =>
   apiClient
     .get<ReorderRiskInsight[]>("/api/inventory-insights/reorder-risk", {
-      params: { warehouseId, lookbackDays, maxResults },
+      params: { ...scopeParams(scope), lookbackDays, maxResults },
     })
     .then((r) => r.data);
 
 export const fetchTrendSummaryInsights = (
-  warehouseId?: string,
+  scope: InsightScope = {},
   lookbackDays = 30,
   maxResults = 20
 ) =>
   apiClient
     .get<TrendSummaryInsight[]>("/api/inventory-insights/trend-summary", {
-      params: { warehouseId, lookbackDays, maxResults },
+      params: { ...scopeParams(scope), lookbackDays, maxResults },
     })
     .then((r) => r.data);
 
 export const fetchInsightsExecutiveSummary = (
-  warehouseId?: string,
+  scope: InsightScope = {},
   lookbackDays = 30,
   daysWithoutOutbound = 60
 ) =>
   apiClient
     .get<InsightsExecutiveSummary>("/api/inventory-insights/executive-summary", {
-      params: { warehouseId, lookbackDays, daysWithoutOutbound },
+      params: { ...scopeParams(scope), lookbackDays, daysWithoutOutbound },
     })
     .then((r) => r.data);
 

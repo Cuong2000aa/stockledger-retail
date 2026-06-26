@@ -23,6 +23,7 @@ public interface IProductVariantRepository
         int skip,
         int take,
         string? search = null,
+        Guid? brandId = null,
         CancellationToken cancellationToken = default);
 
     Task<List<ProductVariant>> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default);

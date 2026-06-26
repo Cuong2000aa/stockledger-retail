@@ -19,6 +19,7 @@ import {
   upsertProductPrice,
   updateProductVariant,
 } from "@/lib/api";
+import { fetchBrands } from "@/features/admin/api";
 import { validateProductVariantForm } from "@/lib/validation";
 import { formatNumber } from "@/lib/format";
 import {
@@ -144,6 +145,7 @@ export default function ProductVariantsPage() {
   const qc = useQueryClient();
   const { notifyValidation, notifyError, confirm } = useNotify();
   const [page, setPage] = useState(1);
+  const [brandId, setBrandId] = useState("");
   const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
     useListSearch(() => setPage(1));
   const [modalOpen, setModalOpen] = useState(false);
@@ -156,8 +158,15 @@ export default function ProductVariantsPage() {
   const deepLinkHandled = useRef(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["product-variants", page, debouncedSearch],
-    queryFn: () => fetchProductVariants(page, 50, debouncedSearch || undefined),
+    queryKey: ["product-variants", page, debouncedSearch, brandId],
+    queryFn: () =>
+      fetchProductVariants(page, 50, debouncedSearch || undefined, brandId || undefined),
+  });
+
+  const { data: brands } = useQuery({
+    queryKey: ["brands-product-variants"],
+    queryFn: fetchBrands,
+    staleTime: 5 * 60_000,
   });
 
   const { data: products } = useQuery({
@@ -170,6 +179,19 @@ export default function ProductVariantsPage() {
     queryFn: () => fetchProductPrices(editing!.id),
     enabled: modalOpen && !!editing?.id,
   });
+
+  const hasFilters = hasSearch || brandId !== "";
+
+  const clearFilters = () => {
+    resetSearch();
+    setBrandId("");
+    setPage(1);
+  };
+
+  const handleBrandChange = (value: string) => {
+    setBrandId(value);
+    setPage(1);
+  };
 
   const productMap = new Map(
     products?.items.map((p) => [p.id, p.name]) ?? []
@@ -620,9 +642,23 @@ export default function ProductVariantsPage() {
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder={tFilters("searchSku")}
-        onReset={resetSearch}
-        showReset={hasSearch}
-      />
+        onReset={clearFilters}
+        showReset={hasFilters}
+      >
+        <label className="min-w-[200px] text-sm text-slate-600">
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+            {t("brand")}
+          </span>
+          <select className="input" value={brandId} onChange={(e) => handleBrandChange(e.target.value)}>
+            <option value="">{t("allBrands")}</option>
+            {brands?.map((brand) => (
+              <option key={brand.id} value={brand.id}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </ListFilterBar>
 
       <div className="card mb-6 overflow-hidden">
         <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4">

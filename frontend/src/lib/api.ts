@@ -112,10 +112,20 @@ export const deleteProduct = (id: string) =>
   api.delete(`/api/products/${id}`);
 
 // Product variants
-export const fetchProductVariants = (page = 1, pageSize = 50, search?: string) =>
+export const fetchProductVariants = (
+  page = 1,
+  pageSize = 50,
+  search?: string,
+  brandId?: string
+) =>
   api
     .get<PagedResult<ProductVariant>>("/api/product-variants", {
-      params: { page, pageSize, search: search || undefined },
+      params: {
+        page,
+        pageSize,
+        search: search || undefined,
+        brandId: brandId || undefined,
+      },
     })
     .then((r) => r.data);
 
