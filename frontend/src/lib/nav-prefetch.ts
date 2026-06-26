@@ -13,6 +13,7 @@ import {
   fetchSuppliers,
   fetchWarehouses,
 } from "@/lib/api";
+import { fetchBrands } from "@/features/admin/api";
 import {
   fetchDeadStockInsights,
   fetchSalesVelocityInsights,
@@ -85,12 +86,16 @@ const prefetchers: Record<string, Prefetcher> = {
       queryFn: () => fetchWarehouses(1, 200),
     });
     void qc.prefetchQuery({
-      queryKey: insightQueryKeys.deadStock(undefined, 60),
-      queryFn: () => fetchDeadStockInsights(undefined, 60, 1, 20),
+      queryKey: ["brands-insights"],
+      queryFn: fetchBrands,
     });
     void qc.prefetchQuery({
-      queryKey: insightQueryKeys.salesVelocity(undefined, 30),
-      queryFn: () => fetchSalesVelocityInsights(undefined, 30, 20),
+      queryKey: insightQueryKeys.deadStock({}, 60),
+      queryFn: () => fetchDeadStockInsights({}, 60, 1, 20),
+    });
+    void qc.prefetchQuery({
+      queryKey: insightQueryKeys.salesVelocity({}, 30),
+      queryFn: () => fetchSalesVelocityInsights({}, 30, 20),
     });
     void qc.prefetchQuery({
       queryKey: insightQueryKeys.transferSuggestions(undefined, undefined, 30),

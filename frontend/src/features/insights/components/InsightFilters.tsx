@@ -1,10 +1,11 @@
 "use client";
 
+import { fetchBrands } from "@/features/admin/api";
 import { fetchWarehouses } from "@/lib/api";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Calendar, Filter, RotateCcw, Warehouse } from "lucide-react";
+import { Calendar, Filter, RotateCcw, Tag, Warehouse } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type { InsightTab } from "../types";
@@ -13,6 +14,8 @@ type InsightFiltersProps = {
   activeTab: InsightTab;
   warehouseId: string;
   onWarehouseChange: (id: string) => void;
+  brandId: string;
+  onBrandChange: (id: string) => void;
   daysWithoutOutbound: number;
   onDaysWithoutOutboundChange: (days: number) => void;
   lookbackDays: number;
@@ -24,6 +27,8 @@ export function InsightFilters({
   activeTab,
   warehouseId,
   onWarehouseChange,
+  brandId,
+  onBrandChange,
   daysWithoutOutbound,
   onDaysWithoutOutboundChange,
   lookbackDays,
@@ -43,6 +48,12 @@ export function InsightFilters({
   const { data: warehouses, isFetching } = useQuery({
     queryKey: ["warehouses-insights", debouncedSearch],
     queryFn: () => fetchWarehouses(1, 100, debouncedSearch || undefined),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: brands } = useQuery({
+    queryKey: ["brands-insights"],
+    queryFn: fetchBrands,
     staleTime: 5 * 60_000,
   });
 
@@ -76,13 +87,24 @@ export function InsightFilters({
       <div
         className={clsx(
           "grid gap-4",
-          showDeadDays && showLookback
-            ? "md:grid-cols-3"
-            : showDeadDays || showLookback
-              ? "md:grid-cols-2"
-              : "md:grid-cols-1"
+          showDeadDays || showLookback ? "md:grid-cols-3" : "md:grid-cols-2"
         )}
       >
+        <label className="text-sm text-slate-600">
+          <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
+            <Tag className="h-3.5 w-3.5" />
+            {t("filters.brand")}
+          </span>
+          <select className="input" value={brandId} onChange={(e) => onBrandChange(e.target.value)}>
+            <option value="">{t("filters.allBrands")}</option>
+            {brands?.map((brand) => (
+              <option key={brand.id} value={brand.id}>
+                {brand.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="text-sm text-slate-600">
           <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">
             <Warehouse className="h-3.5 w-3.5" />

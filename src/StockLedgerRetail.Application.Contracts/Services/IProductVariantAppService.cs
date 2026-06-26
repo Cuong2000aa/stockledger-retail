@@ -9,6 +9,7 @@ public interface IProductVariantAppService
         int? page = null,
         int? pageSize = null,
         string? search = null,
+        Guid? brandId = null,
         CancellationToken cancellationToken = default);
 
     Task<List<ProductVariantDto>> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default);

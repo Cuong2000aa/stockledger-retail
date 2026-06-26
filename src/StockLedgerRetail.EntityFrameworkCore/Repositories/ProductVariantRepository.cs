@@ -50,9 +50,22 @@ public class ProductVariantRepository : IProductVariantRepository
         int skip,
         int take,
         string? search = null,
+        Guid? brandId = null,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.ProductVariants.Include(x => x.Product).AsQueryable();
+        var query = _dbContext.ProductVariants
+            .Include(x => x.Product)
+                .ThenInclude(p => p.BrandEntity)
+            .AsQueryable();
+
+        if (brandId.HasValue)
+        {
+            var scopedBrandId = brandId.Value;
+            query = query.Where(x =>
+                x.BrandId == scopedBrandId ||
+                x.Product.BrandId == scopedBrandId);
+        }
+
         var term = TextSearchHelper.Normalize(search);
         if (term is not null)
         {
@@ -61,7 +74,10 @@ public class ProductVariantRepository : IProductVariantRepository
                 EF.Functions.ILike(x.Sku, pattern) ||
                 (x.Barcode != null && EF.Functions.ILike(x.Barcode, pattern)) ||
                 EF.Functions.ILike(x.Product.ProductCode, pattern) ||
-                EF.Functions.ILike(x.Product.Name, pattern));
+                EF.Functions.ILike(x.Product.Name, pattern) ||
+                (x.Product.Brand != null && EF.Functions.ILike(x.Product.Brand, pattern)) ||
+                (x.Product.BrandEntity != null && EF.Functions.ILike(x.Product.BrandEntity.Name, pattern)) ||
+                (x.Product.BrandEntity != null && EF.Functions.ILike(x.Product.BrandEntity.Code, pattern)));
         }
 
         query = query.OrderBy(x => x.Sku);
