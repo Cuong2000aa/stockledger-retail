@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Domain.Repositories;
+using StockLedgerRetail.Enums;
 using StockLedgerRetail.Insights;
 using StockLedgerRetail.Services;
 
@@ -22,6 +23,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     private readonly IBrandScopeContext _brandScopeContext;
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly ITransferPolicyRepository _transferPolicyRepository;
+    private readonly IMarkdownPolicyRepository _markdownPolicyRepository;
+    private readonly IMarkdownPolicyEngine _markdownPolicyEngine;
     private readonly IInsightSnapshotRepository _insightSnapshotRepository;
     private readonly IInsightRecommendationEngine _recommendationEngine;
     private readonly InsightSnapshotOptions _snapshotOptions;
@@ -32,6 +35,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         IBrandScopeContext brandScopeContext,
         IWarehouseRepository warehouseRepository,
         ITransferPolicyRepository transferPolicyRepository,
+        IMarkdownPolicyRepository markdownPolicyRepository,
+        IMarkdownPolicyEngine markdownPolicyEngine,
         IInsightSnapshotRepository insightSnapshotRepository,
         IInsightRecommendationEngine recommendationEngine,
         IOptions<InsightSnapshotOptions> snapshotOptions,
@@ -41,6 +46,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         _brandScopeContext = brandScopeContext;
         _warehouseRepository = warehouseRepository;
         _transferPolicyRepository = transferPolicyRepository;
+        _markdownPolicyRepository = markdownPolicyRepository;
+        _markdownPolicyEngine = markdownPolicyEngine;
         _insightSnapshotRepository = insightSnapshotRepository;
         _recommendationEngine = recommendationEngine;
         _snapshotOptions = snapshotOptions.Value;
@@ -93,6 +100,19 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         var normalizedMinOnHand = minOnHand <= 0 ? 1 : minOnHand;
         var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
         var referenceDateUtc = DateTime.UtcNow;
+        const int lookbackDays = 30;
+        var velocityFromDate = referenceDateUtc.AddDays(-lookbackDays);
+
+        var velocityFacts = await _inventoryInsightReadRepository.GetSalesVelocityFactsAsync(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            velocityFromDate,
+            referenceDateUtc,
+            500,
+            cancellationToken);
+        var velocityByKey = MarkdownInsightVelocityHelper.IndexVelocityFacts(velocityFacts);
+        var brandMedianSellThrough = MarkdownInsightVelocityHelper.BuildBrandMedianSellThrough(velocityFacts);
 
         var facts = await _inventoryInsightReadRepository.GetDeadStockFactsAsync(
             warehouseId,
@@ -138,6 +158,15 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                     Severity = days >= 120 ? "critical" : "warning",
                     RuleCode = "dead_stock"
                 };
+
+                ApplyMarkdownSuggestion(
+                    insight,
+                    x.BrandId,
+                    x.RegionCode,
+                    x.WarehouseType,
+                    velocityByKey,
+                    brandMedianSellThrough,
+                    context);
 
                 ApplyRecommendation(insight, context);
                 return insight;
@@ -353,6 +382,20 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         var normalizedMinOnHand = minOnHand <= 0 ? 1 : minOnHand;
         var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
         var referenceDateUtc = DateTime.UtcNow;
+        const int lookbackDays = 30;
+        var velocityFromDate = referenceDateUtc.AddDays(-lookbackDays);
+
+        var velocityFacts = await _inventoryInsightReadRepository.GetSalesVelocityFactsAsync(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            velocityFromDate,
+            referenceDateUtc,
+            500,
+            cancellationToken);
+        var velocityByKey = MarkdownInsightVelocityHelper.IndexVelocityFacts(velocityFacts);
+        var brandMedianSellThrough = MarkdownInsightVelocityHelper.BuildBrandMedianSellThrough(velocityFacts);
+
         var context = await BuildRecommendationContextAsync(
             null,
             null,
@@ -378,13 +421,6 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             var days = x.LastOutboundAt.HasValue
                 ? Math.Max(normalizedDays, (referenceDateUtc.Date - x.LastOutboundAt.Value.Date).Days)
                 : normalizedDays;
-            var markdownDepth = days >= 120 ? 25m : 15m;
-            var markdownBeforeVat = x.CurrentSellingPriceBeforeVat.HasValue
-                ? RoundMoney(x.CurrentSellingPriceBeforeVat.Value * (1 - markdownDepth / 100m))
-                : (decimal?)null;
-            var markdownAfterVat = markdownBeforeVat.HasValue && x.VatRate.HasValue
-                ? RoundMoney(markdownBeforeVat.Value * (1 + x.VatRate.Value / 100m))
-                : markdownBeforeVat;
 
             var insight = new MarkdownCandidateInsightDto
             {
@@ -400,14 +436,24 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
                 CurrentSellingPriceBeforeVat = x.CurrentSellingPriceBeforeVat,
                 CurrentSellingPriceAfterVat = x.CurrentSellingPriceAfterVat,
                 VatRate = x.VatRate,
-                SuggestedMarkdownPriceBeforeVat = markdownBeforeVat,
-                SuggestedMarkdownPriceAfterVat = markdownAfterVat,
-                MarkdownDepthPercent = markdownDepth,
                 EstimatedInventoryValue = x.InventoryValue,
-                EstimatedRecoveryValue = markdownAfterVat.HasValue ? markdownAfterVat.Value * x.QuantityOnHand : null,
                 Severity = days >= 120 ? "critical" : "warning",
                 RuleCode = "markdown_candidate"
             };
+
+            ApplyMarkdownSuggestion(
+                insight,
+                x.BrandId,
+                x.RegionCode,
+                x.WarehouseType,
+                velocityByKey,
+                brandMedianSellThrough,
+                context);
+
+            if (insight.SuggestedMarkdownPriceAfterVat.HasValue)
+            {
+                insight.EstimatedRecoveryValue = insight.SuggestedMarkdownPriceAfterVat.Value * x.QuantityOnHand;
+            }
 
             ApplyRecommendation(insight, context);
             return insight;
@@ -918,10 +964,12 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var warehouses = await _warehouseRepository.GetListAsync(cancellationToken);
         var policies = await _transferPolicyRepository.GetActivePoliciesAsync(cancellationToken);
+        var markdownPolicies = await _markdownPolicyRepository.GetActivePoliciesAsync(cancellationToken);
         var bootstrapContext = new InsightRecommendationContext
         {
             Warehouses = warehouses,
             TransferPolicies = policies,
+            MarkdownPolicies = markdownPolicies,
             ReplenishTransferByDestinationKey = new Dictionary<string, TransferSuggestionDto>()
         };
 
@@ -945,8 +993,103 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         {
             Warehouses = warehouses,
             TransferPolicies = policies,
+            MarkdownPolicies = markdownPolicies,
             ReplenishTransferByDestinationKey = replenishMap
         };
+    }
+
+    private void ApplyMarkdownSuggestion(
+        DeadStockInsightDto insight,
+        Guid? brandId,
+        string? regionCode,
+        WarehouseType warehouseType,
+        IReadOnlyDictionary<string, SalesVelocityFact> velocityByKey,
+        IReadOnlyDictionary<string, decimal> brandMedianSellThrough,
+        InsightRecommendationContext context)
+    {
+        var velocityKey = MarkdownInsightVelocityHelper.BuildVelocityKey(insight.ProductVariantId, insight.WarehouseId);
+        velocityByKey.TryGetValue(velocityKey, out var velocity);
+        var brandKey = brandId?.ToString() ?? "none";
+        brandMedianSellThrough.TryGetValue(brandKey, out var brandMedian);
+
+        var suggestion = _markdownPolicyEngine.Evaluate(
+            new MarkdownEvaluationInput(
+                brandId,
+                regionCode,
+                warehouseType,
+                insight.DaysWithoutOutbound,
+                insight.QuantityOnHand,
+                insight.CostPrice,
+                insight.CurrentSellingPriceBeforeVat,
+                insight.VatRate,
+                velocity?.OutboundQuantity ?? 0m,
+                brandMedian),
+            context.MarkdownPolicies);
+
+        if (suggestion is null)
+        {
+            return;
+        }
+
+        insight.SuggestedMarkdownPriceBeforeVat = suggestion.SuggestedMarkdownPriceBeforeVat;
+        insight.SuggestedMarkdownPriceAfterVat = suggestion.SuggestedMarkdownPriceAfterVat;
+        insight.MarkdownDepthPercent = suggestion.MarkdownDepthPercent;
+        insight.PolicyTierCode = suggestion.TierCode;
+        insight.GrossMarginAfterMarkdownPercent = suggestion.GrossMarginAfterMarkdownPercent;
+        insight.ShopSellThroughRatio = suggestion.ShopSellThroughRatio;
+        insight.BrandMedianSellThroughRatio = suggestion.BrandMedianSellThroughRatio;
+        insight.MarkdownRequiresApproval = suggestion.RequiresApproval;
+        insight.RuleCode = suggestion.RuleCode;
+
+        if (suggestion.Severity == "critical")
+        {
+            insight.Severity = "critical";
+        }
+    }
+
+    private void ApplyMarkdownSuggestion(
+        MarkdownCandidateInsightDto insight,
+        Guid? brandId,
+        string? regionCode,
+        WarehouseType warehouseType,
+        IReadOnlyDictionary<string, SalesVelocityFact> velocityByKey,
+        IReadOnlyDictionary<string, decimal> brandMedianSellThrough,
+        InsightRecommendationContext context)
+    {
+        var velocityKey = MarkdownInsightVelocityHelper.BuildVelocityKey(insight.ProductVariantId, insight.WarehouseId);
+        velocityByKey.TryGetValue(velocityKey, out var velocity);
+        var brandKey = brandId?.ToString() ?? "none";
+        brandMedianSellThrough.TryGetValue(brandKey, out var brandMedian);
+
+        var suggestion = _markdownPolicyEngine.Evaluate(
+            new MarkdownEvaluationInput(
+                brandId,
+                regionCode,
+                warehouseType,
+                insight.DaysWithoutOutbound,
+                insight.QuantityOnHand,
+                insight.CostPrice,
+                insight.CurrentSellingPriceBeforeVat,
+                insight.VatRate,
+                velocity?.OutboundQuantity ?? 0m,
+                brandMedian),
+            context.MarkdownPolicies);
+
+        if (suggestion is null)
+        {
+            return;
+        }
+
+        insight.SuggestedMarkdownPriceBeforeVat = suggestion.SuggestedMarkdownPriceBeforeVat;
+        insight.SuggestedMarkdownPriceAfterVat = suggestion.SuggestedMarkdownPriceAfterVat;
+        insight.MarkdownDepthPercent = suggestion.MarkdownDepthPercent;
+        insight.PolicyTierCode = suggestion.TierCode;
+        insight.GrossMarginAfterMarkdownPercent = suggestion.GrossMarginAfterMarkdownPercent;
+        insight.ShopSellThroughRatio = suggestion.ShopSellThroughRatio;
+        insight.BrandMedianSellThroughRatio = suggestion.BrandMedianSellThroughRatio;
+        insight.MarkdownRequiresApproval = suggestion.RequiresApproval;
+        insight.RuleCode = suggestion.RuleCode;
+        insight.Severity = suggestion.Severity;
     }
 
     private void ApplyRecommendation(DeadStockInsightDto insight, InsightRecommendationContext context)

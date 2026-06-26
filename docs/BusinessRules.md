@@ -258,3 +258,16 @@ Every inventory transaction must be linked to a business document.
 | BR1608 | Trend summary compares current lookback window to the immediately prior period of equal length. |
 | BR1609 | `InsightRecommendationEngine` may attach zero or more CTAs per row; actions deep-link to existing UI routes only. |
 | BR1610 | Heavy insight queries may be served from `InsightSnapshot`; admin operations can trigger snapshot refresh. |
+
+## Markdown policy (BR17xx)
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1701 | Each brand may have one or more active `MarkdownPolicy` rows; resolution prefers matching `RegionCode` and `WarehouseType` over brand-default. |
+| BR1702 | Suggested markdown % must not exceed `MaxMarkdownPercent` and must respect `MinGrossMarginPercent` unless `AllowBelowCost` is true. |
+| BR1703 | `MarkdownPolicyEngine` uses idle days, shop sell-through, and brand median sell-through — not idle days alone. |
+| BR1704 | Insights compute suggestions only; persisting prices requires `ProductPrice` (`PriceType.Markdown`) via SKU UI or API. |
+| BR1705 | When `RequireApprovalAbovePercent` is exceeded, DTO sets `MarkdownRequiresApproval` (operational hint; approval workflow optional). |
+| BR1706 | System default tiers apply when no brand policy matches (10% / 15% / 25% by idle band). |
+
+See [MarkdownPolicy.md](MarkdownPolicy.md).

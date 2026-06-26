@@ -42,6 +42,22 @@ public class DeadStockInsightDto
 
     public Guid? BrandId { get; set; }
 
+    public decimal? SuggestedMarkdownPriceBeforeVat { get; set; }
+
+    public decimal? SuggestedMarkdownPriceAfterVat { get; set; }
+
+    public decimal? MarkdownDepthPercent { get; set; }
+
+    public string? PolicyTierCode { get; set; }
+
+    public decimal? GrossMarginAfterMarkdownPercent { get; set; }
+
+    public decimal? ShopSellThroughRatio { get; set; }
+
+    public decimal? BrandMedianSellThroughRatio { get; set; }
+
+    public bool MarkdownRequiresApproval { get; set; }
+
     public string RecommendedActionCode { get; set; } = string.Empty;
 
     public Dictionary<string, string> RecommendationParams { get; set; } = new();
@@ -188,6 +204,16 @@ public class MarkdownCandidateInsightDto
     public decimal? EstimatedInventoryValue { get; set; }
 
     public decimal? EstimatedRecoveryValue { get; set; }
+
+    public string? PolicyTierCode { get; set; }
+
+    public decimal? GrossMarginAfterMarkdownPercent { get; set; }
+
+    public decimal? ShopSellThroughRatio { get; set; }
+
+    public decimal? BrandMedianSellThroughRatio { get; set; }
+
+    public bool MarkdownRequiresApproval { get; set; }
 
     public string Severity { get; set; } = "warning";
 

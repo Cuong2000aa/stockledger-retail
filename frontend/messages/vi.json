@@ -52,7 +52,8 @@
     "users": "Người dùng",
     "teams": "Nhóm",
     "permissions": "Quyền",
-    "transferPolicies": "Chính sách chuyển kho"
+    "transferPolicies": "Chính sách chuyển kho",
+    "markdownPolicies": "Chính sách giảm giá"
   },
   "stockReservations": {
     "title": "Giữ hàng POS",
@@ -680,6 +681,7 @@
         "create_transfer": "Tạo chuyển kho",
         "view_history": "Xem lịch sử",
         "review_sku": "Xem SKU",
+        "apply_markdown": "Áp dụng giảm giá",
         "open_reports": "Mở báo cáo"
       },
       "blocked": {
@@ -856,6 +858,25 @@
     "transferPolicies": {
       "title": "Chính sách chuyển kho",
       "subtitle": "Cho phép chuyển cross-brand (DC chung)"
+    },
+    "markdownPolicies": {
+      "title": "Chính sách giảm giá",
+      "subtitle": "Cấu hình tier markdown theo brand — ngày tồn, sell-through, sàn biên lợi nhuận",
+      "brand": "Brand",
+      "selectBrand": "Chọn brand",
+      "lookbackDays": "Cửa sổ bán (ngày)",
+      "minDaysIdle": "Tối thiểu ngày không bán",
+      "minMargin": "Biên lợi nhuận tối thiểu (%)",
+      "maxMarkdown": "Giảm tối đa (%)",
+      "approvalAbove": "Cần duyệt nếu giảm > (%)",
+      "slowSellThreshold": "Ngưỡng sell-through chậm (× median brand)",
+      "allowBelowCost": "Cho phép bán dưới giá vốn (clearance)",
+      "tierCount": "Số tier",
+      "tiersTitle": "Bậc giảm giá",
+      "tierMinDays": "Từ ngày",
+      "tierMaxDays": "Đến ngày",
+      "tierPercent": "Giảm (%)",
+      "tierSlowPercent": "Giảm khi bán chậm (%)"
     }
   }
 }

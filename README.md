@@ -41,6 +41,7 @@ CurrentStock      ← fast lookup
 | **Approval workflow** | 2-step approval for high-value inventory documents & POs | ✅ Done |
 | **Lot / expiry** | StockLot, LotStock, FEFO (`TrackLotExpiry` on SKU) | ✅ Done |
 | **Transfer policy admin** | CRUD API + admin UI | ✅ Done |
+| **Markdown policy** | Per-brand markdown tiers, policy engine, insights CTAs, admin UI | ✅ Done |
 | **Admin UI** | Brands, users, teams, permissions, transfer policies, operations | ✅ Done |
 | **Demo seed** | Optional sample multi-brand data (`Seed:Fb:Enabled`) | ✅ Done |
 | **AI Copilot** | Natural-language Q&A on insight APIs | 🔜 Planned |
@@ -113,6 +114,7 @@ See [docs/RBAC.md](docs/RBAC.md).
 
 - `GET/POST /api/brands`, `GET/PUT /api/brands/{id}`
 - `GET/POST/PUT /api/admin/transfer-policies` — cross-brand transfer rules
+- `GET/POST/PUT /api/admin/markdown-policies` — per-brand markdown / discount rules
 - `GET/PUT/POST /api/admin/operations` — background jobs (reconciliation, insight refresh)
 
 ### Inventory reports (read-only)
@@ -130,7 +132,7 @@ See [docs/RBAC.md](docs/RBAC.md).
 
 ### Inventory Insights (read-only)
 
-Pricing-aware decision support with executive KPIs, seven analytics views, and rule-based recommendation cards. See [docs/Insights.md](docs/Insights.md) (EN) and [docs/Insights.vi.md](docs/Insights.vi.md) (VI).
+Pricing-aware decision support with executive KPIs, seven analytics views, rule-based recommendation cards, and **MarkdownPolicyEngine** for per-brand discount suggestions. See [docs/Insights.md](docs/Insights.md) (EN) and [docs/Insights.vi.md](docs/Insights.vi.md) (VI). Policy config: [docs/MarkdownPolicy.md](docs/MarkdownPolicy.md).
 
 - `GET /api/inventory-insights/executive-summary` — aggregated KPIs for current scope
 - `GET /api/inventory-insights/dead-stock` — no outbound in N days
@@ -372,6 +374,8 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 | [docs/Entities.vn.md](docs/Entities.vn.md) | Entity dictionary (VI) |
 | [docs/ERD.md](docs/ERD.md) | Database tables & relationships |
 | [docs/InventoryDomain.md](docs/InventoryDomain.md) | Domain overview |
+| [docs/MarkdownPolicy.md](docs/MarkdownPolicy.md) | Markdown policy engine (EN) |
+| [docs/MarkdownPolicy.vi.md](docs/MarkdownPolicy.vi.md) | Chính sách giảm giá (VI) |
 | [docs/Insights.md](docs/Insights.md) | Inventory insights suite (EN) |
 | [docs/Insights.vi.md](docs/Insights.vi.md) | Phân tích tồn kho / Insights (VI) |
 

@@ -33,7 +33,8 @@ import { CostSource, PriceType, ProductStatus, type ProductPrice, type ProductVa
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { BadgeDollarSign, Layers, Plus, Tags } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 
 type VariantForm = {
   productId: string;
@@ -151,6 +152,8 @@ export default function ProductVariantsPage() {
   const [regularPriceForm, setRegularPriceForm] = useState<PriceForm>(emptyPriceForm());
   const [promotionPriceForm, setPromotionPriceForm] = useState<PriceForm>(emptyPriceForm());
   const [markdownPriceForm, setMarkdownPriceForm] = useState<PriceForm>(emptyPriceForm());
+  const searchParams = useSearchParams();
+  const deepLinkHandled = useRef(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["product-variants", page, debouncedSearch],
@@ -355,6 +358,44 @@ export default function ProductVariantsPage() {
     setMarkdownPriceForm(emptyPriceForm());
     setModalOpen(true);
   }
+
+  useEffect(() => {
+    const q = searchParams.get("search");
+    if (q && search !== q) {
+      setSearch(q);
+    }
+  }, [searchParams, search, setSearch]);
+
+  useEffect(() => {
+    if (deepLinkHandled.current || !data?.items.length) {
+      return;
+    }
+
+    const variantId = searchParams.get("variantId");
+    if (!variantId) {
+      return;
+    }
+
+    const variant = data.items.find((item) => item.id === variantId);
+    if (!variant) {
+      return;
+    }
+
+    deepLinkHandled.current = true;
+    openEdit(variant);
+
+    const markdownBefore = searchParams.get("markdownBeforeVat");
+    const markdownAfter = searchParams.get("markdownAfterVat");
+    if (markdownBefore) {
+      setMarkdownPriceForm({
+        priceBeforeVat: markdownBefore,
+        vatRate: variant.vatRate != null ? String(variant.vatRate) : "",
+        priceAfterVat: markdownAfter ?? "",
+        effectiveFrom: new Date().toISOString().slice(0, 10),
+        effectiveTo: "",
+      });
+    }
+  }, [data?.items, searchParams]);
 
   const hasCostPrice = form.costPrice.trim() !== "";
   const groupedPrices = useMemo(() => {

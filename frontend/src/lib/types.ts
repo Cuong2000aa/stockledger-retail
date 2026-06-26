@@ -816,6 +816,35 @@ export interface TransferPolicy {
   note?: string;
 }
 
+export interface MarkdownPolicyTier {
+  tierCode: string;
+  minDaysWithoutOutbound: number;
+  maxDaysWithoutOutbound?: number;
+  markdownPercent: number;
+  slowSellThroughMarkdownPercent?: number;
+  severity: string;
+}
+
+export interface MarkdownPolicy {
+  id: string;
+  brandId: string;
+  brandName?: string;
+  regionCode?: string;
+  warehouseType?: WarehouseType;
+  lookbackDays: number;
+  minDaysWithoutOutbound: number;
+  minOnHand: number;
+  minInventoryValueAtCost?: number;
+  minGrossMarginPercent: number;
+  maxMarkdownPercent: number;
+  allowBelowCost: boolean;
+  requireApprovalAbovePercent?: number;
+  slowSellThroughThreshold: number;
+  tiers: MarkdownPolicyTier[];
+  isActive: boolean;
+  note?: string;
+}
+
 export enum StockReservationStatus {
   Active = 1,
   Committed = 2,

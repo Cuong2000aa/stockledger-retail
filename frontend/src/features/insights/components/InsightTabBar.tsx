@@ -14,49 +14,42 @@ export type InsightTabConfig = {
 
 const tabAccents: Record<
   InsightTab,
-  { active: string; idle: string; badge: string; ring: string }
+  { active: string; idle: string; badge: string }
 > = {
   deadStock: {
-    active: "bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-lg shadow-rose-500/25",
-    idle: "bg-rose-50/80 text-rose-800 hover:bg-rose-100",
+    active: "bg-rose-600 text-white shadow-sm",
+    idle: "bg-rose-50 text-rose-800 hover:bg-rose-100 ring-1 ring-rose-200/80",
     badge: "bg-white/25 text-white",
-    ring: "ring-rose-200/80",
   },
   velocity: {
-    active: "bg-gradient-to-r from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-500/25",
-    idle: "bg-indigo-50/80 text-indigo-800 hover:bg-indigo-100",
+    active: "bg-indigo-600 text-white shadow-sm",
+    idle: "bg-indigo-50 text-indigo-800 hover:bg-indigo-100 ring-1 ring-indigo-200/80",
     badge: "bg-white/25 text-white",
-    ring: "ring-indigo-200/80",
   },
   transfer: {
-    active: "bg-gradient-to-r from-sky-600 to-cyan-500 text-white shadow-lg shadow-sky-500/25",
-    idle: "bg-sky-50/80 text-sky-800 hover:bg-sky-100",
+    active: "bg-sky-600 text-white shadow-sm",
+    idle: "bg-sky-50 text-sky-800 hover:bg-sky-100 ring-1 ring-sky-200/80",
     badge: "bg-white/25 text-white",
-    ring: "ring-sky-200/80",
   },
   markdown: {
-    active: "bg-gradient-to-r from-amber-600 to-orange-500 text-white shadow-lg shadow-amber-500/25",
-    idle: "bg-amber-50/80 text-amber-800 hover:bg-amber-100",
+    active: "bg-amber-600 text-white shadow-sm",
+    idle: "bg-amber-50 text-amber-800 hover:bg-amber-100 ring-1 ring-amber-200/80",
     badge: "bg-white/25 text-white",
-    ring: "ring-amber-200/80",
   },
   promotionRisk: {
-    active: "bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white shadow-lg shadow-fuchsia-500/25",
-    idle: "bg-fuchsia-50/80 text-fuchsia-800 hover:bg-fuchsia-100",
+    active: "bg-fuchsia-600 text-white shadow-sm",
+    idle: "bg-fuchsia-50 text-fuchsia-800 hover:bg-fuchsia-100 ring-1 ring-fuchsia-200/80",
     badge: "bg-white/25 text-white",
-    ring: "ring-fuchsia-200/80",
   },
   reorderRisk: {
-    active: "bg-gradient-to-r from-emerald-600 to-green-500 text-white shadow-lg shadow-emerald-500/25",
-    idle: "bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100",
+    active: "bg-emerald-600 text-white shadow-sm",
+    idle: "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 ring-1 ring-emerald-200/80",
     badge: "bg-white/25 text-white",
-    ring: "ring-emerald-200/80",
   },
   trend: {
-    active: "bg-gradient-to-r from-slate-700 to-slate-600 text-white shadow-lg shadow-slate-500/25",
-    idle: "bg-slate-50/80 text-slate-800 hover:bg-slate-100",
+    active: "bg-slate-700 text-white shadow-sm",
+    idle: "bg-slate-50 text-slate-800 hover:bg-slate-100 ring-1 ring-slate-200/80",
     badge: "bg-white/25 text-white",
-    ring: "ring-slate-200/80",
   },
 };
 
@@ -69,9 +62,11 @@ export function InsightTabBar({
   activeTab: InsightTab;
   onChange: (tab: InsightTab) => void;
 }) {
+  const activeDescription = tabs.find((tab) => tab.id === activeTab)?.description;
+
   return (
     <div className="border-b border-slate-100 bg-white px-4 py-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -81,45 +76,32 @@ export function InsightTabBar({
             <button
               key={tab.id}
               type="button"
+              title={tab.description}
               onClick={() => onChange(tab.id)}
               className={clsx(
-                "group flex min-w-0 flex-1 flex-col rounded-2xl px-4 py-3 text-left transition-all duration-200 ring-1",
-                isActive ? accent.active : clsx(accent.idle, accent.ring)
+                "inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors",
+                isActive ? accent.active : accent.idle
               )}
             >
-              <div className="flex items-center gap-2">
-                <span
-                  className={clsx(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
-                    isActive ? "bg-white/20" : "bg-white ring-1 ring-black/5"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{tab.label}</span>
-                <span
-                  className={clsx(
-                    "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums",
-                    isActive
-                      ? accent.badge
-                      : "bg-white text-slate-700 ring-1 ring-slate-200"
-                  )}
-                >
-                  {tab.count == null ? "—" : tab.count}
-                </span>
-              </div>
-              <p
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="whitespace-nowrap">{tab.label}</span>
+              <span
                 className={clsx(
-                  "mt-1.5 line-clamp-2 text-[11px] leading-relaxed",
-                  isActive ? "text-white/85" : "text-slate-500"
+                  "rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums",
+                  isActive
+                    ? accent.badge
+                    : "bg-white text-slate-700 ring-1 ring-slate-200"
                 )}
               >
-                {tab.description}
-              </p>
+                {tab.count == null ? "—" : tab.count}
+              </span>
             </button>
           );
         })}
       </div>
+      {activeDescription ? (
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">{activeDescription}</p>
+      ) : null}
     </div>
   );
 }

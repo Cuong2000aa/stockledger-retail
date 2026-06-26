@@ -16,6 +16,8 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<TransferPolicy> TransferPolicies => Set<TransferPolicy>();
 
+    public DbSet<MarkdownPolicy> MarkdownPolicies => Set<MarkdownPolicy>();
+
     public DbSet<AppUser> AppUsers => Set<AppUser>();
 
     public DbSet<Permission> Permissions => Set<Permission>();

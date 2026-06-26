@@ -27,6 +27,7 @@ import {
   UsersRound,
   Shield,
   ArrowLeftRight,
+  BadgeDollarSign,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
@@ -58,6 +59,7 @@ const adminNavItems = [
   { href: "/admin/teams", icon: UsersRound, key: "teams" },
   { href: "/admin/permissions", icon: Shield, key: "permissions" },
   { href: "/admin/transfer-policies", icon: ArrowLeftRight, key: "transferPolicies" },
+  { href: "/admin/markdown-policies", icon: BadgeDollarSign, key: "markdownPolicies" },
 ] as const;
 
 function NavItemLabel({

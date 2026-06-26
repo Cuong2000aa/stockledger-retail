@@ -3,7 +3,14 @@
 import { StatCard } from "@/components/StatCard";
 import type { InsightsExecutiveSummary } from "@/features/insights/types";
 import { formatNumber } from "@/lib/format";
-import { AlertTriangle, ArrowRightLeft, BadgeDollarSign, LineChart, ShoppingCart } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRightLeft,
+  BadgeDollarSign,
+  LineChart,
+  PackageX,
+  ShoppingCart,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function InsightsExecutiveSummaryStrip({
@@ -16,7 +23,13 @@ export function InsightsExecutiveSummaryStrip({
   const t = useTranslations("insights.stats");
 
   return (
-    <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <StatCard
+        label={t("deadSkus")}
+        value={summary ? formatNumber(summary.deadStockCount, locale) : "—"}
+        icon={PackageX}
+        accent="rose"
+      />
       <StatCard
         label={t("tiedCapital")}
         value={summary ? formatNumber(summary.tiedCapital, locale) : "—"}

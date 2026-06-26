@@ -304,7 +304,20 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1609 | Mỗi dòng có thể có 0+ CTA; chỉ deep-link tới màn hình hiện có. | Hành động gợi ý. |
 | BR1610 | Có thể cache `InsightSnapshot`; admin refresh qua operations. | Cache snapshot. |
 
-Chi tiết: [Insights.vi.md](Insights.vi.md)
+## Chính sách giảm giá (BR17xx)
+
+| Mã | Rule | Mô tả |
+|----|------|-------|
+| BR1701 | Mỗi brand có ≥1 `MarkdownPolicy` active; ưu tiên policy khớp `RegionCode` / `WarehouseType`. | Resolve policy. |
+| BR1702 | % đề xuất ≤ `MaxMarkdownPercent` và ≥ sàn `MinGrossMarginPercent` trừ khi `AllowBelowCost`. | Rào tài chính. |
+| BR1703 | Engine dùng ngày đứng, sell-through shop và median brand — không chỉ ngày đứng. | Tín hiệu đa chiều. |
+| BR1704 | Insights chỉ tính đề xuất; ghi giá qua `ProductPrice` Markdown. | Tách đọc/ghi. |
+| BR1705 | Vượt `RequireApprovalAbovePercent` → `MarkdownRequiresApproval` trên DTO. | Gợi ý duyệt. |
+| BR1706 | Không có policy brand → tier mặc định 10% / 15% / 25%. | Fallback hệ thống. |
+
+Chi tiết: [MarkdownPolicy.vi.md](MarkdownPolicy.vi.md)
+
+Chi tiết Insights: [Insights.vi.md](Insights.vi.md)
 
 ---
 

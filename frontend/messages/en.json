@@ -52,7 +52,8 @@
     "users": "Users",
     "teams": "Teams",
     "permissions": "Permissions",
-    "transferPolicies": "Transfer policies"
+    "transferPolicies": "Transfer policies",
+    "markdownPolicies": "Markdown policies"
   },
   "operations": {
     "title": "System operations",
@@ -654,6 +655,7 @@
         "create_transfer": "Create transfer",
         "view_history": "View history",
         "review_sku": "Review SKU",
+        "apply_markdown": "Apply markdown",
         "open_reports": "Open reports"
       },
       "blocked": {
@@ -841,6 +843,25 @@
     "transferPolicies": {
       "title": "Transfer policies",
       "subtitle": "Rules for cross-brand transfers"
+    },
+    "markdownPolicies": {
+      "title": "Markdown policies",
+      "subtitle": "Per-brand markdown tiers — idle days, sell-through, margin floor",
+      "brand": "Brand",
+      "selectBrand": "Select brand",
+      "lookbackDays": "Sales lookback (days)",
+      "minDaysIdle": "Min days without sales",
+      "minMargin": "Min gross margin (%)",
+      "maxMarkdown": "Max markdown (%)",
+      "approvalAbove": "Approval required above (%)",
+      "slowSellThreshold": "Slow sell-through threshold (× brand median)",
+      "allowBelowCost": "Allow below cost (clearance)",
+      "tierCount": "Tiers",
+      "tiersTitle": "Markdown tiers",
+      "tierMinDays": "From days",
+      "tierMaxDays": "To days",
+      "tierPercent": "Markdown (%)",
+      "tierSlowPercent": "When slow sell (%)"
     }
   }
 }

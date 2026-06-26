@@ -48,6 +48,33 @@ Cross-brand transfer rules.
 
 ---
 
+## MarkdownPolicy
+
+Per-brand markdown / clearance pricing rules (tiers stored as JSON).
+
+### Fields
+
+* Id
+* BrandId
+* RegionCode (optional override)
+* WarehouseType (optional override)
+* LookbackDays
+* MinDaysWithoutOutbound
+* MinOnHand
+* MinInventoryValueAtCost (optional)
+* MinGrossMarginPercent
+* MaxMarkdownPercent
+* AllowBelowCost
+* RequireApprovalAbovePercent (optional)
+* SlowSellThroughThreshold
+* TiersJson (JSON array of tier objects)
+* IsActive
+* Note
+
+See [MarkdownPolicy.md](MarkdownPolicy.md).
+
+---
+
 ## ProductVariant
 
 Represents a sellable SKU.
