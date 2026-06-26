@@ -82,6 +82,7 @@ export function RecommendationCard({
   executingActionId,
   onApiAction,
   onExplain,
+  compact = false,
 }: {
   recommendation?: InsightRecommendation;
   severity: string;
@@ -89,6 +90,7 @@ export function RecommendationCard({
   executingActionId?: string | null;
   onApiAction?: (actionId: string) => void;
   onExplain?: () => void;
+  compact?: boolean;
 }) {
   const t = useTranslations("insights");
   const tActions = useTranslations("insights.actions");
@@ -122,6 +124,64 @@ export function RecommendationCard({
   const sortedActions = [...(recommendation.actions ?? [])].sort(
     (a, b) => Number(b.isPrimary) - Number(a.isPrimary)
   );
+
+  if (compact) {
+    const primaryActions = sortedActions.filter((action) => action.isPrimary);
+    const compactActions =
+      primaryActions.length > 0
+        ? primaryActions.slice(0, 2)
+        : sortedActions.slice(0, 1);
+
+    return (
+      <div className="flex max-w-[18rem] flex-col gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <SeverityBadge severity={severity} label={severityLabel(t, severity)} />
+          <p className="truncate text-xs font-semibold text-slate-800" title={title}>
+            {title}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {onExplain ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md bg-violet-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-violet-500"
+              onClick={onExplain}
+            >
+              <MessageCircle className="h-3 w-3" />
+              {t("copilot.explain")}
+            </button>
+          ) : null}
+          {compactActions.map((action) =>
+            action.kind === "api" ? (
+              <button
+                key={action.id}
+                type="button"
+                className={compactCtaClass(action.isPrimary)}
+                disabled={executingActionId === action.id}
+                onClick={() => onApiAction?.(action.id)}
+              >
+                {executingActionId === action.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3" />
+                )}
+                <span className="truncate">{ctaLabel(tCtas, action.labelKey)}</span>
+              </button>
+            ) : (
+              <Link
+                key={action.id}
+                href={buildNavigateHref(action.route ?? "/", action.payload ?? {})}
+                className={compactCtaClass(action.isPrimary)}
+              >
+                <CtaIcon labelKey={action.labelKey} />
+                <span className="truncate">{ctaLabel(tCtas, action.labelKey)}</span>
+              </Link>
+            )
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -238,10 +298,20 @@ function CtaIcon({ labelKey }: { labelKey: string }) {
     create_transfer: Sparkles,
     view_history: Eye,
     review_sku: PackageSearch,
+    apply_markdown: Percent,
     open_reports: LineChart,
   };
   const Icon = icons[labelKey] ?? ArrowRightLeft;
   return <Icon className="h-3.5 w-3.5" />;
+}
+
+function compactCtaClass(isPrimary: boolean) {
+  return clsx(
+    "inline-flex max-w-full items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition-all",
+    isPrimary
+      ? "bg-slate-900 text-white hover:bg-slate-800"
+      : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+  );
 }
 
 function ctaClass(isPrimary: boolean) {

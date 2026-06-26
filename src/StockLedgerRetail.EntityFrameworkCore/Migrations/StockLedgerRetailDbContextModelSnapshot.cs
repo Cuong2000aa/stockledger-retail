@@ -722,6 +722,73 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.ToTable("lot_stocks", (string)null);
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.MarkdownPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AllowBelowCost")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("LookbackDays")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MaxMarkdownPercent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<int>("MinDaysWithoutOutbound")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MinGrossMarginPercent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<decimal?>("MinInventoryValueAtCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("MinOnHand")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RegionCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("RequireApprovalAbovePercent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<decimal>("SlowSellThroughThreshold")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<string>("TiersJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int?>("WarehouseType")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "RegionCode", "WarehouseType", "IsActive");
+
+                    b.ToTable("markdown_policies", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Permission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2046,6 +2113,17 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("StockLot");
 
                     b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.MarkdownPolicy", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Brand");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Product", b =>

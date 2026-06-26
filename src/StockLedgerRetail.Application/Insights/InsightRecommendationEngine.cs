@@ -109,29 +109,54 @@ public class InsightRecommendationEngine : IInsightRecommendationEngine
                 ["daysIdle"] = insight.DaysWithoutOutbound.ToString(),
                 ["inventoryValue"] = (insight.EstimatedInventoryValue ?? 0).ToString("0.##")
             },
-            Actions = new List<InsightRecommendationCtaDto>
-            {
-                NavigateCta(
-                    "view_history",
-                    "view_history",
-                    "/stock-transactions",
-                    new Dictionary<string, string>
-                    {
-                        ["search"] = insight.Sku,
-                        ["warehouseId"] = insight.WarehouseId.ToString()
-                    },
-                    isPrimary: actionCode == InsightActionCodes.MarkdownCandidateReview),
-                NavigateCta(
-                    "review_sku",
-                    "review_sku",
-                    "/product-variants",
-                    new Dictionary<string, string>
-                    {
-                        ["search"] = insight.Sku
-                    },
-                    isPrimary: actionCode == InsightActionCodes.MarkdownCandidateExecute)
-            }
+            Actions = BuildMarkdownCandidateActions(insight, actionCode)
         };
+    }
+
+    private static List<InsightRecommendationCtaDto> BuildMarkdownCandidateActions(
+        MarkdownCandidateInsightDto insight,
+        string actionCode)
+    {
+        var actions = new List<InsightRecommendationCtaDto>
+        {
+            NavigateCta(
+                "view_history",
+                "view_history",
+                "/stock-transactions",
+                new Dictionary<string, string>
+                {
+                    ["search"] = insight.Sku,
+                    ["warehouseId"] = insight.WarehouseId.ToString()
+                },
+                isPrimary: actionCode == InsightActionCodes.MarkdownCandidateReview
+                    && !insight.SuggestedMarkdownPriceBeforeVat.HasValue)
+        };
+
+        if (insight.SuggestedMarkdownPriceBeforeVat.HasValue)
+        {
+            AddMarkdownPriceCtas(
+                actions,
+                insight.ProductVariantId,
+                insight.Sku,
+                insight.SuggestedMarkdownPriceBeforeVat,
+                insight.SuggestedMarkdownPriceAfterVat,
+                insight.MarkdownDepthPercent,
+                isPrimary: actionCode == InsightActionCodes.MarkdownCandidateExecute);
+        }
+
+        actions.Add(NavigateCta(
+            "review_sku",
+            "review_sku",
+            "/product-variants",
+            new Dictionary<string, string>
+            {
+                ["search"] = insight.Sku,
+                ["variantId"] = insight.ProductVariantId.ToString()
+            },
+            isPrimary: actionCode == InsightActionCodes.MarkdownCandidateExecute
+                && !insight.SuggestedMarkdownPriceBeforeVat.HasValue));
+
+        return actions;
     }
 
     public InsightRecommendationDto BuildPromotionRisk(PromotionRiskInsightDto insight, InsightRecommendationContext context)
@@ -520,6 +545,20 @@ public class InsightRecommendationEngine : IInsightRecommendationEngine
                 }));
         }
 
+        if (insight.SuggestedMarkdownPriceBeforeVat.HasValue
+            && actionCode is InsightActionCodes.DeadStockCriticalMarkdown
+                or InsightActionCodes.DeadStockMarkdownOrTransfer)
+        {
+            AddMarkdownPriceCtas(
+                actions,
+                insight.ProductVariantId,
+                insight.Sku,
+                insight.SuggestedMarkdownPriceBeforeVat,
+                insight.SuggestedMarkdownPriceAfterVat,
+                insight.MarkdownDepthPercent,
+                isPrimary: true);
+        }
+
         return actions;
     }
 
@@ -745,4 +784,43 @@ public class InsightRecommendationEngine : IInsightRecommendationEngine
             IsPrimary = isPrimary,
             Payload = payload
         };
+
+    private static void AddMarkdownPriceCtas(
+        ICollection<InsightRecommendationCtaDto> actions,
+        Guid productVariantId,
+        string sku,
+        decimal? beforeVat,
+        decimal? afterVat,
+        decimal? depthPercent,
+        bool isPrimary)
+    {
+        if (!beforeVat.HasValue)
+        {
+            return;
+        }
+
+        var payload = new Dictionary<string, string>
+        {
+            ["search"] = sku,
+            ["variantId"] = productVariantId.ToString(),
+            ["markdownBeforeVat"] = beforeVat.Value.ToString("0.##")
+        };
+
+        if (afterVat.HasValue)
+        {
+            payload["markdownAfterVat"] = afterVat.Value.ToString("0.##");
+        }
+
+        if (depthPercent.HasValue)
+        {
+            payload["markdownPercent"] = depthPercent.Value.ToString("0.##");
+        }
+
+        actions.Add(NavigateCta(
+            "apply_markdown",
+            "apply_markdown",
+            "/product-variants",
+            payload,
+            isPrimary));
+    }
 }

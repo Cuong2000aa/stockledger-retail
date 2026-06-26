@@ -2,7 +2,7 @@
 
 import type { InsightTab } from "../types";
 import clsx from "clsx";
-import { Bot, Sparkles } from "lucide-react";
+import { Bot } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function InsightsHeroBanner({
@@ -29,30 +29,21 @@ export function InsightsHeroBanner({
   return (
     <div
       className={clsx(
-        "mb-6 overflow-hidden rounded-2xl bg-gradient-to-r p-[1px] ring-1",
+        "mb-4 overflow-hidden rounded-xl bg-gradient-to-r p-px ring-1",
         gradients[activeTab]
       )}
     >
-      <div className="rounded-[calc(1rem-1px)] bg-white/90 px-5 py-4 backdrop-blur-sm">
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-md shadow-violet-500/30">
-            <Bot className="h-5 w-5" />
+      <div className="rounded-[calc(0.75rem-1px)] bg-white/95 px-4 py-3 backdrop-blur-sm">
+        <div className="flex items-start gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white">
+            <Bot className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold text-slate-900">{t("copilot.bannerTitle")}</p>
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 ring-1 ring-violet-200">
-                <Sparkles className="h-3 w-3" />
-                {t("aiReady")}
-              </span>
-            </div>
+            <p className="mb-0.5 text-xs font-semibold text-slate-700">{t("copilot.bannerTitle")}</p>
             {loading ? (
-              <div className="space-y-2">
-                <div className="skeleton h-3 w-full max-w-2xl" />
-                <div className="skeleton h-3 w-4/5 max-w-xl" />
-              </div>
+              <div className="skeleton h-3 w-full max-w-xl" />
             ) : (
-              <p className="text-sm leading-relaxed text-slate-600">{summary}</p>
+              <p className="line-clamp-2 text-sm leading-snug text-slate-600">{summary}</p>
             )}
           </div>
         </div>

@@ -85,6 +85,9 @@ Insights **read** prices; they do not create `ProductPrice` rows or change SKU c
 | Open reports | `/[locale]/reports?...` |
 | Draft transfer | `/[locale]/inventory-documents?type=transfer&...` |
 | Draft PO | `/[locale]/purchase-orders?...` |
+| Apply markdown | `/[locale]/product-variants?...` (prefilled Markdown price form) |
+
+Suggested markdown depth and prices come from **`MarkdownPolicyEngine`** (admin config at `/admin/markdown-policies`). See [MarkdownPolicy.md](MarkdownPolicy.md).
 
 Action codes live in `InsightActionCodes`; types in `InsightActionTypes`. The UI renders them in **RecommendationCard** with bilingual labels under `insights.recommendation.*` in `frontend/messages`.
 

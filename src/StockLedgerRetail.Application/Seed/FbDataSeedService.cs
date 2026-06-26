@@ -23,6 +23,7 @@ public class FbDataSeedService : IFbDataSeedService
     private readonly IProductRepository _productRepository;
     private readonly IProductVariantRepository _productVariantRepository;
     private readonly ITransferPolicyRepository _transferPolicyRepository;
+    private readonly IMarkdownPolicyRepository _markdownPolicyRepository;
     private readonly IStockLotRepository _stockLotRepository;
     private readonly ILotStockRepository _lotStockRepository;
     private readonly ICurrentStockRepository _currentStockRepository;
@@ -35,6 +36,7 @@ public class FbDataSeedService : IFbDataSeedService
         IProductRepository productRepository,
         IProductVariantRepository productVariantRepository,
         ITransferPolicyRepository transferPolicyRepository,
+        IMarkdownPolicyRepository markdownPolicyRepository,
         IStockLotRepository stockLotRepository,
         ILotStockRepository lotStockRepository,
         ICurrentStockRepository currentStockRepository,
@@ -46,6 +48,7 @@ public class FbDataSeedService : IFbDataSeedService
         _productRepository = productRepository;
         _productVariantRepository = productVariantRepository;
         _transferPolicyRepository = transferPolicyRepository;
+        _markdownPolicyRepository = markdownPolicyRepository;
         _stockLotRepository = stockLotRepository;
         _lotStockRepository = lotStockRepository;
         _currentStockRepository = currentStockRepository;
@@ -67,6 +70,7 @@ public class FbDataSeedService : IFbDataSeedService
         await SeedWarehousesAsync(now, cancellationToken);
         await SeedSuppliersAsync(now, cancellationToken);
         await SeedTransferPolicyAsync(cancellationToken);
+        await SeedMarkdownPoliciesAsync(cancellationToken);
         await SeedProductsAndVariantsAsync(now, cancellationToken);
         await SeedLotsAndStockAsync(now, cancellationToken);
 
@@ -220,6 +224,46 @@ public class FbDataSeedService : IFbDataSeedService
         }, cancellationToken);
 
         await _transferPolicyRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SeedMarkdownPoliciesAsync(CancellationToken cancellationToken)
+    {
+        var tiersJson =
+            """[{"tierCode":"watch","minDaysWithoutOutbound":60,"maxDaysWithoutOutbound":89,"markdownPercent":10,"slowSellThroughMarkdownPercent":15,"severity":"warning"},{"tierCode":"moderate","minDaysWithoutOutbound":90,"maxDaysWithoutOutbound":119,"markdownPercent":15,"slowSellThroughMarkdownPercent":20,"severity":"warning"},{"tierCode":"aggressive","minDaysWithoutOutbound":120,"markdownPercent":25,"slowSellThroughMarkdownPercent":30,"severity":"critical"}]""";
+
+        await _markdownPolicyRepository.InsertAsync(new MarkdownPolicy
+        {
+            Id = Guid.Parse("a8000001-0001-4001-8001-000000000001"),
+            BrandId = DominosBrandId,
+            LookbackDays = 30,
+            MinDaysWithoutOutbound = 60,
+            MinOnHand = 1,
+            MinGrossMarginPercent = 15,
+            MaxMarkdownPercent = 35,
+            RequireApprovalAbovePercent = 20,
+            SlowSellThroughThreshold = 0.5m,
+            TiersJson = tiersJson,
+            IsActive = true,
+            Note = "Domino's F&B — markdown tiers for slow-moving store stock"
+        }, cancellationToken);
+
+        await _markdownPolicyRepository.InsertAsync(new MarkdownPolicy
+        {
+            Id = Guid.Parse("a8000002-0002-4002-8002-000000000002"),
+            BrandId = PopeyesBrandId,
+            LookbackDays = 30,
+            MinDaysWithoutOutbound = 45,
+            MinOnHand = 1,
+            MinGrossMarginPercent = 12,
+            MaxMarkdownPercent = 40,
+            RequireApprovalAbovePercent = 25,
+            SlowSellThroughThreshold = 0.5m,
+            TiersJson = tiersJson,
+            IsActive = true,
+            Note = "Popeyes F&B — slightly faster markdown thresholds"
+        }, cancellationToken);
+
+        await _markdownPolicyRepository.SaveChangesAsync(cancellationToken);
     }
 
     private async Task SeedProductsAndVariantsAsync(DateTime now, CancellationToken cancellationToken)

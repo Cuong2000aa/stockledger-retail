@@ -1,8 +1,6 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
-import { StatCard } from "@/components/StatCard";
-import { StatCardsSkeleton } from "@/components/LoadingState";
 import { MiniBarChart } from "@/features/insights/components/MiniBarChart";
 import { InsightExplainModal } from "@/features/insights/components/InsightExplainModal";
 import { InsightFilters } from "@/features/insights/components/InsightFilters";
@@ -32,17 +30,13 @@ import type { InsightRecommendation } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
-import clsx from "clsx";
 import {
-  AlertTriangle,
   ArrowRightLeft,
   BadgeDollarSign,
   PackageX,
   Percent,
   ShoppingCart,
-  Sparkles,
   TrendingUpDown,
-  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { useCallback, useMemo, useState, useEffect } from "react";
@@ -431,16 +425,7 @@ export default function InsightsPage() {
 
   return (
     <div>
-      <PageHeader
-        title={t("title")}
-        subtitle={t("subtitle")}
-        action={
-          <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500/10 to-indigo-500/10 px-3 py-2 text-xs font-medium text-violet-700 ring-1 ring-violet-200/60">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("aiReady")}
-          </div>
-        }
-      />
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
       <InsightsHeroBanner
         activeTab={activeTab}
@@ -452,57 +437,6 @@ export default function InsightsPage() {
         summary={executiveSummary}
         locale={locale}
       />
-
-      {activeTabLoading && !deadStockFetched && !salesVelocityFetched && !transferSuggestionsFetched && executiveSummaryLoading ? (
-        <StatCardsSkeleton />
-      ) : (
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCardWrap active={activeTab === "deadStock"}>
-            <StatCard
-              label={t("stats.deadSkus")}
-              value={
-                stats.deadCount == null ? "—" : formatNumber(stats.deadCount, locale)
-              }
-              icon={PackageX}
-              accent="rose"
-            />
-          </StatCardWrap>
-          <StatCardWrap active={activeTab === "deadStock"}>
-            <StatCard
-              label={t("stats.tiedCapital")}
-              value={
-                stats.tiedCapital == null ? "—" : formatNumber(stats.tiedCapital, locale)
-              }
-              icon={TrendingDown}
-              accent="amber"
-            />
-          </StatCardWrap>
-          <StatCardWrap active={activeTab === "velocity"}>
-            <StatCard
-              label={t("stats.lowCover")}
-              value={
-                stats.urgentVelocity == null
-                  ? "—"
-                  : formatNumber(stats.urgentVelocity, locale)
-              }
-              icon={AlertTriangle}
-              accent="indigo"
-            />
-          </StatCardWrap>
-          <StatCardWrap active={activeTab === "transfer"}>
-            <StatCard
-              label={t("stats.transfers")}
-              value={
-                stats.transferCount == null
-                  ? "—"
-                  : formatNumber(stats.transferCount, locale)
-              }
-              icon={ArrowRightLeft}
-              accent="sky"
-            />
-          </StatCardWrap>
-        </div>
-      )}
 
       <div className="card overflow-hidden">
         <InsightFilters
@@ -543,7 +477,7 @@ export default function InsightsPage() {
                   <th>{t("deadStock.days")}</th>
                   <th>{tStocks("onHand")}</th>
                   <th>{t("deadStock.costValue")}</th>
-                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -574,6 +508,7 @@ export default function InsightsPage() {
                         </td>
                         <td>
                           <RecommendationCard
+                            compact
                             recommendation={recommendation}
                             severity={item.severity}
                             locale={locale}
@@ -624,7 +559,7 @@ export default function InsightsPage() {
                   <th>{t("salesVelocity.outbound")}</th>
                   <th>{t("salesVelocity.avgDaily")}</th>
                   <th>{t("salesVelocity.coverDays")}</th>
-                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -657,6 +592,7 @@ export default function InsightsPage() {
                         </td>
                         <td>
                           <RecommendationCard
+                            compact
                             recommendation={recommendation}
                             severity={item.severity}
                             locale={locale}
@@ -704,7 +640,7 @@ export default function InsightsPage() {
                   <th>{t("transfer.route")}</th>
                   <th>{t("transfer.qty")}</th>
                   <th>{t("transfer.coverDays")}</th>
-                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -739,6 +675,7 @@ export default function InsightsPage() {
                         </td>
                         <td>
                           <RecommendationCard
+                            compact
                             recommendation={recommendation}
                             severity={item.severity}
                             locale={locale}
@@ -792,7 +729,7 @@ export default function InsightsPage() {
                   <th>{t("deadStock.costValue")}</th>
                   <th>{t("markdown.depth")}</th>
                   <th>{t("markdown.recovery")}</th>
-                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -811,6 +748,7 @@ export default function InsightsPage() {
                         <td className="tabular-nums">{formatNumber(item.estimatedRecoveryValue ?? 0, locale)}</td>
                         <td>
                           <RecommendationCard
+                            compact
                             recommendation={recommendation}
                             severity={item.severity}
                             locale={locale}
@@ -860,7 +798,7 @@ export default function InsightsPage() {
                   <th>{t("promotionRisk.regularPrice")}</th>
                   <th>{t("promotionRisk.promoPrice")}</th>
                   <th>{t("promotionRisk.discount")}</th>
-                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -879,6 +817,7 @@ export default function InsightsPage() {
                         <td className="tabular-nums">{item.promotionDiscountPercent != null ? `${formatNumber(item.promotionDiscountPercent, locale)}%` : "—"}</td>
                         <td>
                           <RecommendationCard
+                            compact
                             recommendation={recommendation}
                             severity={item.severity}
                             locale={locale}
@@ -928,7 +867,7 @@ export default function InsightsPage() {
                   <th>{t("salesVelocity.coverDays")}</th>
                   <th>{t("reorderRisk.onOrder")}</th>
                   <th>{t("reorderRisk.suggestedQty")}</th>
-                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -947,6 +886,7 @@ export default function InsightsPage() {
                         <td className="tabular-nums">{item.suggestedReorderQuantity != null ? formatNumber(item.suggestedReorderQuantity, locale) : "—"}</td>
                         <td>
                           <RecommendationCard
+                            compact
                             recommendation={recommendation}
                             severity={item.severity}
                             locale={locale}
@@ -995,7 +935,7 @@ export default function InsightsPage() {
                   <th>{t("trend.inventoryDelta")}</th>
                   <th>{t("trend.outboundTrend")}</th>
                   <th>{t("trend.priceTrend")}</th>
-                  <th className="min-w-[20rem]">{t("recommendation.label")}</th>
+                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1013,6 +953,7 @@ export default function InsightsPage() {
                         <td className="tabular-nums">{item.priceTrendPercent != null ? `${formatNumber(item.priceTrendPercent, locale)}%` : "—"}</td>
                         <td>
                           <RecommendationCard
+                            compact
                             recommendation={recommendation}
                             severity={item.severity}
                             locale={locale}
@@ -1046,25 +987,6 @@ export default function InsightsPage() {
         actionDetail={explainState?.actionDetail ?? ""}
         context={explainState?.context ?? {}}
       />
-    </div>
-  );
-}
-
-function StatCardWrap({
-  active,
-  children,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={clsx(
-        "rounded-2xl transition-all duration-200",
-        active && "ring-2 ring-brand-500/40 ring-offset-2 ring-offset-slate-50"
-      )}
-    >
-      {children}
     </div>
   );
 }

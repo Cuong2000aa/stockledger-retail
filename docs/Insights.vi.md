@@ -85,6 +85,9 @@ Insights **chỉ đọc** giá; không tạo `ProductPrice` hay đổi cache SKU
 | Mở báo cáo | `/[locale]/reports?...` |
 | Soạn phiếu chuyển | `/[locale]/inventory-documents?type=transfer&...` |
 | Soạn PO | `/[locale]/purchase-orders?...` |
+| Áp dụng giảm giá | `/[locale]/product-variants?...` (prefill giá Markdown) |
+
+Độ sâu giảm giá và giá đề xuất do **`MarkdownPolicyEngine`** (cấu hình tại `/admin/markdown-policies`). Xem [MarkdownPolicy.vi.md](MarkdownPolicy.vi.md).
 
 Mã action: `InsightActionCodes`; loại: `InsightActionTypes`. UI dùng **RecommendationCard** và i18n `insights.recommendation.*` trong `frontend/messages/en.json` và `vi.json`.
 
@@ -106,5 +109,6 @@ Truy vấn nặng có thể lấy từ `InsightSnapshot` (key qua `InsightSnapsh
 | [Insights.md](Insights.md) | English version |
 | [UseCases.md](UseCases.md) | UC012 — Inventory Insights |
 | [BusinessRules.vi.md](BusinessRules.vi.md) | Quy tắc BR16xx |
+| [MarkdownPolicy.vi.md](MarkdownPolicy.vi.md) | Chính sách giảm giá theo brand |
 | [MultiBrand.vi.md](MultiBrand.vi.md) | Phạm vi brand/vùng cho insights |
 | [InventoryDomain.md](InventoryDomain.md) | Vị trí trong domain |

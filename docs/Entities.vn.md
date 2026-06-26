@@ -22,6 +22,7 @@
 | LotStock              | Tồn theo lô             | Số lượng lô tại từng kho |
 | Brand                 | Thương hiệu             | Master đa brand                      |
 | TransferPolicy        | Chính sách chuyển kho   | Quy tắc chuyển khác brand             |
+| MarkdownPolicy        | Chính sách giảm giá     | Tier markdown theo brand              |
 
 ---
 
@@ -37,6 +38,14 @@
 
 * Cho phép chuyển giữa kho khác brand khi `AllowCrossBrand = true`
 * Cùng brand: không cần policy
+
+---
+
+# MarkdownPolicy (Chính sách giảm giá)
+
+* Cấu hình theo `BrandId` (tùy chọn `RegionCode`, `WarehouseType`)
+* `TiersJson`: các bậc % giảm theo ngày tồn / sell-through
+* Engine: `MarkdownPolicyEngine` — chi tiết [MarkdownPolicy.vi.md](MarkdownPolicy.vi.md)
 
 ---
 

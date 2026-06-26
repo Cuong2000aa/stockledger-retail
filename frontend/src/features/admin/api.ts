@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api";
-import type { AppUser, Brand, BrandStatus, PermissionGroup, Team, TransferPolicy } from "@/lib/types";
+import type { AppUser, Brand, BrandStatus, MarkdownPolicy, MarkdownPolicyTier, PermissionGroup, Team, TransferPolicy } from "@/lib/types";
 
 export const fetchBrands = () =>
   apiClient.get<Brand[]>("/api/brands").then((r) => r.data);
@@ -64,3 +64,44 @@ export const updateTransferPolicy = (
   apiClient
     .put<TransferPolicy>(`/api/admin/transfer-policies/${id}`, body)
     .then((r) => r.data);
+
+export const fetchMarkdownPolicies = () =>
+  apiClient.get<MarkdownPolicy[]>("/api/admin/markdown-policies").then((r) => r.data);
+
+export const createMarkdownPolicy = (body: {
+  brandId: string;
+  regionCode?: string;
+  warehouseType?: number;
+  lookbackDays: number;
+  minDaysWithoutOutbound: number;
+  minOnHand: number;
+  minInventoryValueAtCost?: number;
+  minGrossMarginPercent: number;
+  maxMarkdownPercent: number;
+  allowBelowCost: boolean;
+  requireApprovalAbovePercent?: number;
+  slowSellThroughThreshold: number;
+  tiers: MarkdownPolicyTier[];
+  note?: string;
+}) => apiClient.post<MarkdownPolicy>("/api/admin/markdown-policies", body).then((r) => r.data);
+
+export const updateMarkdownPolicy = (
+  id: string,
+  body: {
+    regionCode?: string;
+    warehouseType?: number;
+    lookbackDays: number;
+    minDaysWithoutOutbound: number;
+    minOnHand: number;
+    minInventoryValueAtCost?: number;
+    minGrossMarginPercent: number;
+    maxMarkdownPercent: number;
+    allowBelowCost: boolean;
+    requireApprovalAbovePercent?: number;
+    slowSellThroughThreshold: number;
+    tiers: MarkdownPolicyTier[];
+    isActive: boolean;
+    note?: string;
+  }
+) =>
+  apiClient.put<MarkdownPolicy>(`/api/admin/markdown-policies/${id}`, body).then((r) => r.data);

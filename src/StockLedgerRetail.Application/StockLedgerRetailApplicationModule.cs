@@ -19,6 +19,7 @@ using StockLedgerRetail.Application.Operations;
 using StockLedgerRetail.Application.Reports;
 using StockLedgerRetail.Application.Seed;
 using StockLedgerRetail.Application.StockReservations;
+using StockLedgerRetail.Application.MarkdownPolicies;
 using StockLedgerRetail.Application.TransferPolicies;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Inventory;
@@ -51,6 +52,8 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IStockLedgerService, StockLedgerService>();
         services.AddScoped<ITransferPolicyService, TransferPolicyService>();
         services.AddScoped<ITransferPolicyAppService, TransferPolicyAppService>();
+        services.AddScoped<IMarkdownPolicyAppService, MarkdownPolicyAppService>();
+        services.AddScoped<IMarkdownPolicyEngine, MarkdownPolicyEngine>();
         services.AddScoped<ILotStockService, LotStockService>();
         services.AddScoped<IUnitBarcodeStockService, UnitBarcodeStockService>();
         services.AddScoped<ApprovalWorkflowHelper>();

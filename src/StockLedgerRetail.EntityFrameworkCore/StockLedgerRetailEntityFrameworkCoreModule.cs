@@ -18,6 +18,7 @@ public static class StockLedgerRetailEntityFrameworkCoreModule
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IBrandRepository, BrandRepository>();
         services.AddScoped<ITransferPolicyRepository, TransferPolicyRepository>();
+        services.AddScoped<IMarkdownPolicyRepository, MarkdownPolicyRepository>();
         services.AddScoped<IAppUserRepository, AppUserRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IPermissionGroupRepository, PermissionGroupRepository>();
