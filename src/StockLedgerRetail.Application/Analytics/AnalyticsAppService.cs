@@ -114,13 +114,29 @@ public class AnalyticsAppService : IAnalyticsAppService
             scope.ScopedWarehouseIds,
             cancellationToken);
 
+        var operational = transactions.Where(t =>
+            MovementMetrics.IsOperationalIn(t.TransactionType)
+            || MovementMetrics.IsOperationalOut(t.TransactionType)).ToList();
+
+        var transfers = transactions.Where(t => MovementMetrics.IsTransfer(t.TransactionType)).ToList();
+
         return new MovementSummaryDto
         {
             FromDate = dateRange.FromInclusiveUtc,
             ToDate = dateRange.ToDateForDisplay,
-            TotalIn = transactions.Where(t => t.QuantityDelta > 0).Sum(t => t.QuantityDelta),
-            TotalOut = Math.Abs(transactions.Where(t => t.QuantityDelta < 0).Sum(t => t.QuantityDelta)),
-            TransactionCount = transactions.Count
+            TotalIn = operational
+                .Where(t => MovementMetrics.IsOperationalIn(t.TransactionType))
+                .Sum(t => t.QuantityDelta),
+            TotalOut = operational
+                .Where(t => MovementMetrics.IsOperationalOut(t.TransactionType))
+                .Sum(t => -t.QuantityDelta),
+            TransferIn = transfers
+                .Where(t => t.TransactionType is StockTransactionType.TransferIn)
+                .Sum(t => t.QuantityDelta),
+            TransferOut = transfers
+                .Where(t => t.TransactionType is StockTransactionType.TransferOut)
+                .Sum(t => -t.QuantityDelta),
+            TransactionCount = operational.Count
         };
     }
 

@@ -263,6 +263,7 @@ Every inventory transaction must be linked to a business document.
 | BR1606 | Promotion-risk rows consider active or recent `ProductPrice` rows with `PriceType` Promotion or Markdown. |
 | BR1607 | Reorder-risk combines low cover days with open purchase-order and goods-receipt pipeline quantities. |
 | BR1608 | Trend summary compares current lookback window to the immediately prior period of equal length. |
+| BR1611 | Dashboard movement **Total in / Total out** counts operational types (`In`/`Out` and adjustments) only; **excludes** internal transfers (`TransferIn`/`TransferOut`). |
 | BR1609 | `InsightRecommendationEngine` may attach zero or more CTAs per row; actions deep-link to existing UI routes only. |
 | BR1610 | Heavy insight queries may be served from `InsightSnapshot`; admin operations can trigger snapshot refresh. |
 

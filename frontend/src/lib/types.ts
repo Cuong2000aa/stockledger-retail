@@ -536,6 +536,8 @@ export interface MovementSummary {
   toDate: string;
   totalIn: number;
   totalOut: number;
+  transferIn: number;
+  transferOut: number;
   transactionCount: number;
 }
 

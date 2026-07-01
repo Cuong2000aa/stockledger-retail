@@ -36,10 +36,19 @@ public class MovementSummaryDto
 
     public DateTime ToDate { get; set; }
 
+    /// <summary>Operational inbound (purchase, returns, adjustments) — excludes internal transfers.</summary>
     public decimal TotalIn { get; set; }
 
+    /// <summary>Operational outbound (sales, issues, adjustments) — excludes internal transfers.</summary>
     public decimal TotalOut { get; set; }
 
+    /// <summary>Internal transfer inbound quantity (informational).</summary>
+    public decimal TransferIn { get; set; }
+
+    /// <summary>Internal transfer outbound quantity (informational).</summary>
+    public decimal TransferOut { get; set; }
+
+    /// <summary>Count of operational in/out transactions in the period.</summary>
     public int TransactionCount { get; set; }
 }
 
