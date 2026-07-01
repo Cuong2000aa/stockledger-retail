@@ -146,6 +146,14 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
+            {(movements.transferIn > 0 || movements.transferOut > 0) && (
+              <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
+                {t("transferMovementsNote", {
+                  in: formatNumber(movements.transferIn, locale),
+                  out: formatNumber(movements.transferOut, locale),
+                })}
+              </p>
+            )}
           </div>
         )}
 

@@ -26,7 +26,7 @@ public class AnalyticsController : ControllerBase
     public Task<List<StockByWarehouseDto>> GetStockByWarehouseAsync(CancellationToken cancellationToken) =>
         _analyticsAppService.GetStockByWarehouseAsync(cancellationToken);
 
-    /// <summary>Tổng nhập/xuất trong khoảng thời gian (mặc định 30 ngày).</summary>
+    /// <summary>Tổng nhập/xuất thực tế trong khoảng thời gian (mặc định 30 ngày). Không gồm chuyển kho nội bộ.</summary>
     [HttpGet("movements")]
     public Task<MovementSummaryDto> GetMovementSummaryAsync(
         [FromQuery] DateTime? fromDate,

@@ -308,6 +308,7 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1606 | Rủi ro KM: giá Promotion/Markdown đang hoặc vừa hiệu lực. | Tín hiệu khuyến mãi. |
 | BR1607 | Rủi ro đặt hàng: cover thấp + PO/GR đang mở. | Tín hiệu mua hàng. |
 | BR1608 | Xu hướng: so sánh kỳ lookback với kỳ trước cùng độ dài. | Delta theo kỳ. |
+| BR1611 | Dashboard **Tổng nhập / Xuất** chỉ tính giao dịch thực (`In`/`Out`, điều chỉnh); **không** gồm chuyển kho nội bộ (`TransferIn`/`TransferOut`). | Tránh hiểu nhầm tồn chuỗi giảm khi chỉ chuyển kho. |
 | BR1609 | Mỗi dòng có thể có 0+ CTA; chỉ deep-link tới màn hình hiện có. | Hành động gợi ý. |
 | BR1610 | Có thể cache `InsightSnapshot`; admin refresh qua operations. | Cache snapshot. |
 
