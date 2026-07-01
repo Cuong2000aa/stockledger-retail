@@ -384,7 +384,7 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 | [docs/BusinessRules.md](docs/BusinessRules.md) | BA / User | Business rules (EN) |
 | [docs/BusinessRules.vi.md](docs/BusinessRules.vi.md) | **User / BA** | Quy tắc nghiệp vụ (VI) |
 | [docs/Entities.md](docs/Entities.md) | Dev | Entity dictionary (EN) |
-| [docs/Entities.vn.md](docs/Entities.vn.md) | BA | Từ điển thực thể (VI) |
+| [docs/Entities.vn.md](docs/Entities.vn.md) | BA | Entities_VN (VI) |
 | [docs/ERD.md](docs/ERD.md) | Dev | Database tables & relationships |
 | [docs/InventoryDomain.md](docs/InventoryDomain.md) | Dev / BA | Domain overview |
 | [docs/MarkdownPolicy.md](docs/MarkdownPolicy.md) | Dev / BA | Markdown policy engine (EN) |
