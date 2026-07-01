@@ -23,5 +23,8 @@ public class TransactionLogConfiguration : IEntityTypeConfiguration<TransactionL
         builder.HasIndex(x => x.EntityName);
         builder.HasIndex(x => x.EntityId);
         builder.HasIndex(x => x.CreatedAt);
+        builder.HasIndex(x => new { x.EntityName, x.CreatedAt });
+        builder.HasIndex(x => new { x.CreatedBy, x.CreatedAt });
+        builder.HasIndex(x => new { x.Action, x.CreatedAt });
     }
 }

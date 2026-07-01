@@ -229,6 +229,8 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR906 | PO does not affect stock. | PO không tác động tồn kho. |
 | BR907 | GR approval updates PO ReceivedQuantity. | Duyệt GR cập nhật số đã nhận trên PO. |
 | BR908 | PO → PartiallyReceived or Received. | PO chuyển trạng thái theo số đã nhận. |
+| BR909 | User chỉ thấy và thao tác PO/GR thuộc kho được gán (trừ admin / quyền xem mọi kho). | Phạm vi kho trên mua hàng và nhận hàng. |
+| BR910 | Nhận từng phần: nhiều GR cho một PO; tổng nhận không vượt số đặt. | Cho phép nhận nhiều lần theo từng lô giao hàng. |
 
 ---
 
@@ -273,6 +275,9 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1209 | Updating current Regular price refreshes SKU current selling cache. | Cập nhật Regular price đang hiệu lực sẽ làm mới cache giá bán hiện hành trên SKU. |
 | BR1210 | Promotion and Markdown keep separate effective histories. | Promotion và Markdown giữ lịch sử hiệu lực riêng, không ghi đè current của nhau. |
 | BR1211 | InventoryValuationSnapshot stores valuation per SKU / warehouse / date. | InventoryValuationSnapshot lưu định giá theo SKU / kho / ngày snapshot. |
+| BR1212 | Giá **trước VAT** là đầu vào chuẩn khi cập nhật giá bán; hệ thống tính giá sau VAT. | Người dùng nhập giá trước thuế; BE là nguồn sự thật. |
+| BR1213 | BE từ chối nếu giá sau VAT gửi từ client không khớp công thức làm tròn. | Tránh lệch giữa màn hình và sổ sách. |
+| BR1214 | Margin hiển thị trên SKU lấy từ giá vốn và giá bán trước VAT. | Biên lợi nhuận thống nhất trên báo cáo và danh mục. |
 
 ---
 
@@ -286,6 +291,8 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1304 | Fulfillment/insights filter by brandId, regionCode. | Allocate/insights lọc brand/vùng. |
 | BR1305 | Scope headers apply when params omitted. | Header phạm vi khi không truyền param. |
 | BR1306 | Transfer suggestions same brand + region. | Gợi ý chuyển cùng brand và vùng. |
+| BR1307 | Mỗi user có thể gán một hoặc nhiều kho; một kho **chính** (primary) để mặc định lọc. | Phân quyền theo cửa hàng / DC trong chuỗi lớn. |
+| BR1308 | Báo cáo, tồn hiện tại, PO, GR, phiếu kho chỉ hiển thị dữ liệu trong phạm vi kho của user. | Nhân viên cửa hàng không xem tồn toàn chuỗi. |
 
 ---
 

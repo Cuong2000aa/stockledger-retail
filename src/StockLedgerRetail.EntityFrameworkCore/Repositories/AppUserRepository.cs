@@ -31,12 +31,21 @@ public class AppUserRepository : IAppUserRepository
             .ThenInclude(x => x.Group)
             .ThenInclude(x => x.Permissions)
             .ThenInclude(x => x.Permission)
+            .Include(x => x.WarehouseAssignments)
             .FirstOrDefaultAsync(x => x.Email == email.ToLowerInvariant(), cancellationToken);
+
+    public Task<AppUser?> GetByIdWithAssignmentsAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _dbContext.AppUsers
+            .Include(x => x.GroupAssignments)
+            .ThenInclude(x => x.Group)
+            .Include(x => x.WarehouseAssignments)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
     public Task<List<AppUser>> GetListAsync(CancellationToken cancellationToken = default) =>
         _dbContext.AppUsers
             .Include(x => x.GroupAssignments)
             .ThenInclude(x => x.Group)
+            .Include(x => x.WarehouseAssignments)
             .OrderBy(x => x.Email)
             .ToListAsync(cancellationToken);
 

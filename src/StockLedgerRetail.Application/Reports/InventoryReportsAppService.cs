@@ -19,6 +19,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
     private readonly ILotStockRepository _lotStockRepository;
     private readonly ICacheService _cacheService;
     private readonly CacheOptions _cacheOptions;
+    private readonly IWarehouseScopeService _warehouseScopeService;
     private readonly ILogger<InventoryReportsAppService> _logger;
 
     public InventoryReportsAppService(
@@ -28,6 +29,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
         ILotStockRepository lotStockRepository,
         ICacheService cacheService,
         IOptions<CacheOptions> cacheOptions,
+        IWarehouseScopeService warehouseScopeService,
         ILogger<InventoryReportsAppService> logger)
     {
         _inventoryReportReadRepository = inventoryReportReadRepository;
@@ -36,6 +38,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
         _lotStockRepository = lotStockRepository;
         _cacheService = cacheService;
         _cacheOptions = cacheOptions.Value;
+        _warehouseScopeService = warehouseScopeService;
         _logger = logger;
     }
 
@@ -46,8 +49,14 @@ public class InventoryReportsAppService : IInventoryReportsAppService
         int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
+        var scope = _warehouseScopeService.ResolveListScope(warehouseId);
         var paging = PagingNormalizer.Normalize(page, pageSize);
-        var cacheKey = CacheKeys.InventoryValue(warehouseId, brandId, paging.Page, paging.PageSize);
+        var cacheKey = CacheKeys.InventoryValue(
+            scope.WarehouseId,
+            brandId,
+            paging.Page,
+            paging.PageSize,
+            scope.ScopedWarehouseIds);
 
         var cachedReport = await TryGetCachedReportAsync<InventoryValueReportDto>(
             reportName: "InventoryValue",
@@ -60,8 +69,9 @@ public class InventoryReportsAppService : IInventoryReportsAppService
         }
 
         var reportFromDatabase = await BuildInventoryValueReportFromDatabaseAsync(
-            warehouseId,
+            scope.WarehouseId,
             brandId,
+            scope.ScopedWarehouseIds,
             paging.Skip,
             paging.Take,
             paging.Page,
@@ -86,14 +96,16 @@ public class InventoryReportsAppService : IInventoryReportsAppService
         int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
+        var scope = _warehouseScopeService.ResolveListScope(warehouseId);
         var paging = PagingNormalizer.Normalize(page, pageSize);
         var dateRange = ReportDateRange.FromUserInput(fromDate, toDate);
         var cacheKey = CacheKeys.NxtReport(
             dateRange.FromInclusiveUtc,
             dateRange.ToDateForDisplay,
-            warehouseId,
+            scope.WarehouseId,
             paging.Page,
-            paging.PageSize);
+            paging.PageSize,
+            scope.ScopedWarehouseIds);
 
         var cachedReport = await TryGetCachedReportAsync<NxtReportDto>(
             reportName: "NXT",
@@ -107,7 +119,8 @@ public class InventoryReportsAppService : IInventoryReportsAppService
 
         var reportFromDatabase = await BuildNxtReportFromDatabaseAsync(
             dateRange,
-            warehouseId,
+            scope.WarehouseId,
+            scope.ScopedWarehouseIds,
             paging.Skip,
             paging.Take,
             paging.Page,
@@ -165,16 +178,28 @@ public class InventoryReportsAppService : IInventoryReportsAppService
         Guid? brandId = null,
         CancellationToken cancellationToken = default)
     {
+        var scope = _warehouseScopeService.ResolveListScope(warehouseId);
         var expiryBefore = DateTime.UtcNow.Date.AddDays(daysAhead);
         var lots = await _stockLotRepository.GetNearExpiryAsync(
-            expiryBefore, warehouseId, brandId, 200, cancellationToken);
+            expiryBefore,
+            scope.WarehouseId,
+            brandId,
+            200,
+            scope.ScopedWarehouseIds,
+            cancellationToken);
 
         var result = new List<NearExpiryLotDto>();
         foreach (var lot in lots)
         {
             foreach (var lotStock in lot.LotStocks.Where(x => x.QuantityOnHand > 0))
             {
-                if (warehouseId.HasValue && lotStock.WarehouseId != warehouseId.Value)
+                if (scope.WarehouseId.HasValue && lotStock.WarehouseId != scope.WarehouseId.Value)
+                {
+                    continue;
+                }
+
+                if (scope.ScopedWarehouseIds is { Count: > 0 }
+                    && !scope.ScopedWarehouseIds.Contains(lotStock.WarehouseId))
                 {
                     continue;
                 }
@@ -208,9 +233,15 @@ public class InventoryReportsAppService : IInventoryReportsAppService
         int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
+        var scope = _warehouseScopeService.ResolveListScope(warehouseId);
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (items, totalCount) = await _lotStockRepository.GetPagedListAsync(
-            warehouseId, productVariantId, skip, take, cancellationToken);
+            scope.WarehouseId,
+            productVariantId,
+            skip,
+            take,
+            scope.ScopedWarehouseIds,
+            cancellationToken);
 
         return PagingNormalizer.Create(
             items.Select(x => new LotStockDto
@@ -287,6 +318,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
     private async Task<InventoryValueReportDto> BuildInventoryValueReportFromDatabaseAsync(
         Guid? warehouseId,
         Guid? brandId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         int skip,
         int take,
         int page,
@@ -304,6 +336,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
         var (totalValue, totalLineCount) = await _inventoryReportReadRepository.GetInventoryValueTotalsAsync(
             warehouseId,
             brandId,
+            scopedWarehouseIds,
             cancellationToken);
 
         var linesFromDatabase = await _inventoryReportReadRepository.GetInventoryValueLinesAsync(
@@ -311,6 +344,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
             brandId,
             skip,
             take,
+            scopedWarehouseIds,
             cancellationToken);
 
         return new InventoryValueReportDto
@@ -326,6 +360,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
     private async Task<NxtReportDto> BuildNxtReportFromDatabaseAsync(
         ReportDateRange dateRange,
         Guid? warehouseId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         int skip,
         int take,
         int page,
@@ -345,6 +380,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
             dateRange.FromInclusiveUtc,
             dateRange.ToExclusiveUtc,
             warehouseId,
+            scopedWarehouseIds,
             cancellationToken);
 
         var linesFromDatabase = await _inventoryReportReadRepository.GetNxtLinesAsync(
@@ -353,6 +389,7 @@ public class InventoryReportsAppService : IInventoryReportsAppService
             warehouseId,
             skip,
             take,
+            scopedWarehouseIds,
             cancellationToken);
 
         return new NxtReportDto

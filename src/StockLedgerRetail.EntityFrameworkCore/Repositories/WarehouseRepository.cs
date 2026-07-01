@@ -27,9 +27,20 @@ public class WarehouseRepository : IWarehouseRepository
         int skip,
         int take,
         string? search = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (scopedWarehouseIds is { Count: 0 })
+        {
+            return ([], 0);
+        }
+
         var query = _dbContext.Warehouses.AsQueryable();
+
+        if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.Id));
+        }
         var term = TextSearchHelper.Normalize(search);
         if (term is not null)
         {

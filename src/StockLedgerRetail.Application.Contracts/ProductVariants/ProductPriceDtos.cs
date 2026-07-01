@@ -34,12 +34,14 @@ public class UpsertProductPriceDto
 {
     public PriceType PriceType { get; set; }
 
+    /// <summary>Price before VAT is authoritative; after VAT is derived on save when mismatched.</summary>
     [Range(0, double.MaxValue)]
     public decimal PriceBeforeVat { get; set; }
 
     [Range(0, 100)]
     public decimal VatRate { get; set; }
 
+    /// <summary>Optional preview from client; server validates consistency with <see cref="PriceBeforeVat"/>.</summary>
     [Range(0, double.MaxValue)]
     public decimal? PriceAfterVat { get; set; }
 

@@ -38,6 +38,10 @@ public class ProductVariantDto
 
     public decimal? VatRate { get; set; }
 
+    public decimal? MarginValueBeforeVat { get; set; }
+
+    public decimal? MarginRatePercent { get; set; }
+
     public CostSource? CostSource { get; set; }
 
     public CostSource? CurrentCostSource { get; set; }

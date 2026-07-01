@@ -3,6 +3,9 @@ export type AuthSession = {
   displayName: string;
   permissionCodes: string[];
   groupCodes: string[];
+  warehouseIds?: string[];
+  primaryWarehouseId?: string | null;
+  hasUnrestrictedWarehouseAccess?: boolean;
 };
 
 const STORAGE_KEY = "stockledger_auth_session";

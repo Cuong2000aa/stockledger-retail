@@ -1,5 +1,6 @@
 "use client";
 
+import { useWarehouseScope } from "@/hooks/useWarehouseScope";
 import { fetchBrands } from "@/features/admin/api";
 import { fetchWarehouses } from "@/lib/api";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
@@ -37,6 +38,7 @@ export function InsightFilters({
 }: InsightFiltersProps) {
   const t = useTranslations("insights");
   const tFilters = useTranslations("filters");
+  const { canSelectAllWarehouses } = useWarehouseScope();
   const [warehouseSearch, setWarehouseSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -123,7 +125,9 @@ export function InsightFilters({
               value={warehouseId}
               onChange={(e) => onWarehouseChange(e.target.value)}
             >
-              <option value="">{t("filters.allWarehouses")}</option>
+              {canSelectAllWarehouses ? (
+                <option value="">{t("filters.allWarehouses")}</option>
+              ) : null}
               {warehouses?.items.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {formatWarehouseOptionLabel(warehouse)}

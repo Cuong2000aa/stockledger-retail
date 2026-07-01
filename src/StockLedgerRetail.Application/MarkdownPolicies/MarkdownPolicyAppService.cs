@@ -1,4 +1,5 @@
 using System.Text.Json;
+using StockLedgerRetail.Application.Insights;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.MarkdownPolicies;
@@ -15,13 +16,16 @@ public class MarkdownPolicyAppService : IMarkdownPolicyAppService
 
     private readonly IMarkdownPolicyRepository _markdownPolicyRepository;
     private readonly IBrandRepository _brandRepository;
+    private readonly IInsightSnapshotRepository _insightSnapshotRepository;
 
     public MarkdownPolicyAppService(
         IMarkdownPolicyRepository markdownPolicyRepository,
-        IBrandRepository brandRepository)
+        IBrandRepository brandRepository,
+        IInsightSnapshotRepository insightSnapshotRepository)
     {
         _markdownPolicyRepository = markdownPolicyRepository;
         _brandRepository = brandRepository;
+        _insightSnapshotRepository = insightSnapshotRepository;
     }
 
     public async Task<List<MarkdownPolicyDto>> GetListAsync(CancellationToken cancellationToken = default)
@@ -75,6 +79,7 @@ public class MarkdownPolicyAppService : IMarkdownPolicyAppService
 
         await _markdownPolicyRepository.InsertAsync(policy, cancellationToken);
         await _markdownPolicyRepository.SaveChangesAsync(cancellationToken);
+        await InvalidateInsightSnapshotsAsync(cancellationToken);
 
         return await GetAsync(policy.Id, cancellationToken);
     }
@@ -106,8 +111,22 @@ public class MarkdownPolicyAppService : IMarkdownPolicyAppService
 
         await _markdownPolicyRepository.UpdateAsync(policy, cancellationToken);
         await _markdownPolicyRepository.SaveChangesAsync(cancellationToken);
+        await InvalidateInsightSnapshotsAsync(cancellationToken);
 
         return await GetAsync(id, cancellationToken);
+    }
+
+    private async Task InvalidateInsightSnapshotsAsync(CancellationToken cancellationToken)
+    {
+        await _insightSnapshotRepository.DeleteByInsightKindAsync(
+            InsightSnapshotKeyBuilder.KindMarkdownCandidates,
+            cancellationToken);
+        await _insightSnapshotRepository.DeleteByInsightKindAsync(
+            InsightSnapshotKeyBuilder.KindDeadStock,
+            cancellationToken);
+        await _insightSnapshotRepository.DeleteByInsightKindAsync(
+            InsightSnapshotKeyBuilder.KindExecutiveSummary,
+            cancellationToken);
     }
 
     private static void ValidateTiers(IReadOnlyList<MarkdownPolicyTierDto> tiers)

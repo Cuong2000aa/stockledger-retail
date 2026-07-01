@@ -14,6 +14,7 @@ public interface IStockLotRepository
         Guid? warehouseId,
         Guid? brandId,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<(List<StockLot> Items, int TotalCount)> GetPagedListAsync(

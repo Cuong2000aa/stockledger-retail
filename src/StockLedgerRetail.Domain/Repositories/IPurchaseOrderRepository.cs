@@ -15,6 +15,8 @@ public interface IPurchaseOrderRepository
         int skip,
         int take,
         string? search = null,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<int> CountByDatePrefixAsync(string datePrefix, CancellationToken cancellationToken = default);

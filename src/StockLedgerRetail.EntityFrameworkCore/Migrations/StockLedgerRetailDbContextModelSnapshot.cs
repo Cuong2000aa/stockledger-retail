@@ -1720,6 +1720,12 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasIndex("EntityName");
 
+                    b.HasIndex("Action", "CreatedAt");
+
+                    b.HasIndex("CreatedBy", "CreatedAt");
+
+                    b.HasIndex("EntityName", "CreatedAt");
+
                     b.ToTable("transaction_logs", (string)null);
                 });
 
@@ -1770,6 +1776,29 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("GroupId");
 
                     b.ToTable("user_group_assignments", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.UserWarehouseAssignment", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("UserId", "WarehouseId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("UserId", "IsPrimary");
+
+                    b.ToTable("user_warehouse_assignments", (string)null);
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.VariantUnitBarcode", b =>
@@ -2378,6 +2407,25 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.UserWarehouseAssignment", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.AppUser", "User")
+                        .WithMany("WarehouseAssignments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StockLedgerRetail.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.VariantUnitBarcode", b =>
                 {
                     b.HasOne("StockLedgerRetail.Domain.Entities.ProductVariant", "ProductVariant")
@@ -2420,6 +2468,8 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.Navigation("LedTeams");
 
                     b.Navigation("TeamMemberships");
+
+                    b.Navigation("WarehouseAssignments");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.Brand", b =>

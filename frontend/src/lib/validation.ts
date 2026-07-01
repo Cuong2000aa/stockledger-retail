@@ -87,11 +87,52 @@ export function validateSupplierForm(
 export function validateProductVariantForm(form: {
   productId: string;
   sku: string;
+  costPrice?: string;
+  sellingPriceBeforeVat?: string;
+  sellingPriceAfterVat?: string;
+  vatRate?: string;
 }): ValidationIssue[] {
-  return collect(
+  const issues = collect(
     required(form.productId, "productRequired"),
     required(form.sku, "skuRequired")
   );
+
+  const parseOptional = (value?: string) => {
+    if (value == null || value.trim() === "") return undefined;
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? Number.NaN : parsed;
+  };
+
+  const cost = parseOptional(form.costPrice);
+  if (cost != null && Number.isNaN(cost)) {
+    issues.push({ key: "costPriceInvalid" });
+  } else if (cost != null && cost < 0) {
+    issues.push({ key: "costPriceNegative" });
+  }
+
+  const before = parseOptional(form.sellingPriceBeforeVat);
+  const after = parseOptional(form.sellingPriceAfterVat);
+  const vat = parseOptional(form.vatRate);
+
+  if (before != null && Number.isNaN(before)) {
+    issues.push({ key: "priceBeforeVatInvalid" });
+  } else if (before != null && before < 0) {
+    issues.push({ key: "priceBeforeVatNegative" });
+  }
+
+  if (after != null && Number.isNaN(after)) {
+    issues.push({ key: "priceAfterVatInvalid" });
+  } else if (after != null && after < 0) {
+    issues.push({ key: "priceAfterVatNegative" });
+  }
+
+  if (vat != null && Number.isNaN(vat)) {
+    issues.push({ key: "vatRateInvalid" });
+  } else if (vat != null && (vat < 0 || vat > 100)) {
+    issues.push({ key: "vatRateRange" });
+  }
+
+  return issues;
 }
 
 export type DocumentLineInput = {

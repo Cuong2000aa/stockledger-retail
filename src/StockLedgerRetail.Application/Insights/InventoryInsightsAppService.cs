@@ -29,6 +29,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     private readonly IInsightRecommendationEngine _recommendationEngine;
     private readonly InsightSnapshotOptions _snapshotOptions;
     private readonly ILogger<InventoryInsightsAppService> _logger;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
     public InventoryInsightsAppService(
         IInventoryInsightReadRepository inventoryInsightReadRepository,
@@ -40,7 +41,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         IInsightSnapshotRepository insightSnapshotRepository,
         IInsightRecommendationEngine recommendationEngine,
         IOptions<InsightSnapshotOptions> snapshotOptions,
-        ILogger<InventoryInsightsAppService> logger)
+        ILogger<InventoryInsightsAppService> logger,
+        IWarehouseScopeService warehouseScopeService)
     {
         _inventoryInsightReadRepository = inventoryInsightReadRepository;
         _brandScopeContext = brandScopeContext;
@@ -52,6 +54,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         _recommendationEngine = recommendationEngine;
         _snapshotOptions = snapshotOptions.Value;
         _logger = logger;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     public async Task<List<DeadStockInsightDto>> GetDeadStockAsync(
@@ -66,6 +69,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
         var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var (resolvedWarehouseId, scopedWarehouseIds) = ResolveWarehouseScope(warehouseId);
+        warehouseId = resolvedWarehouseId;
         var snapshotKey = InsightSnapshotKeyBuilder.BuildDeadStockKey(
             warehouseId,
             scopedBrandId,
@@ -86,12 +91,17 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             }
         }
 
+        var policyLookbackDays = await ResolveMarkdownLookbackDaysAsync(
+            scopedBrandId,
+            scopedRegionCode,
+            cancellationToken);
+
         var context = await BuildRecommendationContextAsync(
             null,
             null,
             scopedBrandId,
             scopedRegionCode,
-            30,
+            policyLookbackDays,
             14,
             7,
             cancellationToken);
@@ -100,8 +110,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         var normalizedMinOnHand = minOnHand <= 0 ? 1 : minOnHand;
         var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
         var referenceDateUtc = DateTime.UtcNow;
-        const int lookbackDays = 30;
-        var velocityFromDate = referenceDateUtc.AddDays(-lookbackDays);
+        var velocityFromDate = referenceDateUtc.AddDays(-policyLookbackDays);
 
         var velocityFacts = await _inventoryInsightReadRepository.GetSalesVelocityFactsAsync(
             warehouseId,
@@ -110,6 +119,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             velocityFromDate,
             referenceDateUtc,
             500,
+            scopedWarehouseIds,
             cancellationToken);
         var velocityByKey = MarkdownInsightVelocityHelper.IndexVelocityFacts(velocityFacts);
         var brandMedianSellThrough = MarkdownInsightVelocityHelper.BuildBrandMedianSellThrough(velocityFacts);
@@ -122,6 +132,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             normalizedDays,
             normalizedMinOnHand,
             normalizedMaxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
         var result = facts
@@ -191,6 +202,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
         var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var (resolvedWarehouseId, scopedWarehouseIds) = ResolveWarehouseScope(warehouseId);
+        warehouseId = resolvedWarehouseId;
         var snapshotKey = InsightSnapshotKeyBuilder.BuildSalesVelocityKey(
             warehouseId,
             scopedBrandId,
@@ -232,6 +245,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             fromDateUtc,
             toDateUtc,
             normalizedMaxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
         var result = facts
@@ -298,6 +312,17 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
         var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+
+        if (sourceWarehouseId.HasValue)
+        {
+            _warehouseScopeService.EnsureWarehouseAccess(sourceWarehouseId.Value);
+        }
+
+        if (destinationWarehouseId.HasValue)
+        {
+            _warehouseScopeService.EnsureWarehouseAccess(destinationWarehouseId.Value);
+        }
+
         var snapshotKey = InsightSnapshotKeyBuilder.BuildTransferKey(
             sourceWarehouseId,
             destinationWarehouseId,
@@ -358,6 +383,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
         var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var (resolvedWarehouseId, scopedWarehouseIds) = ResolveWarehouseScope(warehouseId);
+        warehouseId = resolvedWarehouseId;
         var snapshotKey = InsightSnapshotKeyBuilder.BuildMarkdownCandidatesKey(
             warehouseId,
             scopedBrandId,
@@ -382,8 +409,11 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         var normalizedMinOnHand = minOnHand <= 0 ? 1 : minOnHand;
         var normalizedMaxResults = NormalizePositive(maxResults, 50, 200);
         var referenceDateUtc = DateTime.UtcNow;
-        const int lookbackDays = 30;
-        var velocityFromDate = referenceDateUtc.AddDays(-lookbackDays);
+        var policyLookbackDays = await ResolveMarkdownLookbackDaysAsync(
+            scopedBrandId,
+            scopedRegionCode,
+            cancellationToken);
+        var velocityFromDate = referenceDateUtc.AddDays(-policyLookbackDays);
 
         var velocityFacts = await _inventoryInsightReadRepository.GetSalesVelocityFactsAsync(
             warehouseId,
@@ -392,6 +422,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             velocityFromDate,
             referenceDateUtc,
             500,
+            scopedWarehouseIds,
             cancellationToken);
         var velocityByKey = MarkdownInsightVelocityHelper.IndexVelocityFacts(velocityFacts);
         var brandMedianSellThrough = MarkdownInsightVelocityHelper.BuildBrandMedianSellThrough(velocityFacts);
@@ -401,7 +432,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             null,
             scopedBrandId,
             scopedRegionCode,
-            30,
+            policyLookbackDays,
             14,
             7,
             cancellationToken);
@@ -414,6 +445,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             normalizedDays,
             normalizedMinOnHand,
             normalizedMaxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
         var result = facts.Select(x =>
@@ -477,6 +509,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
         var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var (resolvedWarehouseId, scopedWarehouseIds) = ResolveWarehouseScope(warehouseId);
+        warehouseId = resolvedWarehouseId;
         var snapshotKey = InsightSnapshotKeyBuilder.BuildPromotionRiskKey(
             warehouseId,
             scopedBrandId,
@@ -517,6 +551,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             fromDateUtc,
             toDateUtc,
             normalizedMaxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
         var result = facts.Select(x =>
@@ -576,6 +611,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
         var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var (resolvedWarehouseId, scopedWarehouseIds) = ResolveWarehouseScope(warehouseId);
+        warehouseId = resolvedWarehouseId;
         var snapshotKey = InsightSnapshotKeyBuilder.BuildReorderRiskKey(
             warehouseId,
             scopedBrandId,
@@ -616,6 +653,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             fromDateUtc,
             toDateUtc,
             normalizedMaxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
         var result = facts.Select(x =>
@@ -669,6 +707,8 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
         var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var (resolvedWarehouseId, scopedWarehouseIds) = ResolveWarehouseScope(warehouseId);
+        warehouseId = resolvedWarehouseId;
         var snapshotKey = InsightSnapshotKeyBuilder.BuildTrendSummaryKey(
             warehouseId,
             scopedBrandId,
@@ -713,6 +753,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             previousFromDateUtc,
             previousToDateUtc,
             normalizedMaxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
         var result = facts.Select(x =>
@@ -841,6 +882,7 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             fromDateUtc,
             toDateUtc,
             5000,
+            _warehouseScopeService.GetWarehouseFilterForLists(),
             cancellationToken);
 
         var groupedFacts = facts.GroupBy(x => x.ProductVariantId).ToList();
@@ -963,6 +1005,12 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         CancellationToken cancellationToken)
     {
         var warehouses = await _warehouseRepository.GetListAsync(cancellationToken);
+        var scopedWarehouseIds = _warehouseScopeService.GetWarehouseFilterForLists();
+        if (scopedWarehouseIds is { Count: > 0 })
+        {
+            warehouses = warehouses.Where(x => scopedWarehouseIds.Contains(x.Id)).ToList();
+        }
+
         var policies = await _transferPolicyRepository.GetActivePoliciesAsync(cancellationToken);
         var markdownPolicies = await _markdownPolicyRepository.GetActivePoliciesAsync(cancellationToken);
         var bootstrapContext = new InsightRecommendationContext
@@ -1212,6 +1260,45 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     {
         var normalized = value <= 0 ? fallback : value;
         return maxValue.HasValue ? Math.Min(normalized, maxValue.Value) : normalized;
+    }
+
+    private (Guid? WarehouseId, IReadOnlyCollection<Guid>? ScopedWarehouseIds) ResolveWarehouseScope(
+        Guid? requestedWarehouseId)
+    {
+        var normalized = _warehouseScopeService.NormalizeWarehouseFilter(requestedWarehouseId);
+        if (normalized.HasValue)
+        {
+            return (normalized, null);
+        }
+
+        var scoped = _warehouseScopeService.GetWarehouseFilterForLists();
+        if (scoped is { Count: 1 })
+        {
+            return (scoped.First(), null);
+        }
+
+        return (null, scoped);
+    }
+
+    private async Task<int> ResolveMarkdownLookbackDaysAsync(
+        Guid? brandId,
+        string? regionCode,
+        CancellationToken cancellationToken)
+    {
+        var policies = await _markdownPolicyRepository.GetActivePoliciesAsync(cancellationToken);
+        var normalizedRegion = string.IsNullOrWhiteSpace(regionCode)
+            ? null
+            : regionCode.Trim().ToUpperInvariant();
+
+        var matching = policies
+            .Where(policy =>
+                (!brandId.HasValue || policy.BrandId == brandId)
+                && (normalizedRegion == null
+                    || policy.RegionCode == null
+                    || string.Equals(policy.RegionCode, normalizedRegion, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        return matching.Count == 0 ? 30 : matching.Max(x => x.LookbackDays);
     }
 
     private static string GetVelocitySeverity(decimal averageDailyOutbound, decimal? estimatedDaysOfCover)

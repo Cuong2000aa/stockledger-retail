@@ -24,9 +24,11 @@ public interface IInventoryDocumentRepository
     Task<(List<InventoryDocument> Items, int TotalCount)> GetPagedListAsync(
         InventoryDocumentType? documentType,
         InventoryDocumentStatus? status,
+        TransferLifecycleStatus? transferLifecycle,
         int skip,
         int take,
         string? search = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<int> CountByTypeAndDatePrefixAsync(

@@ -64,6 +64,7 @@ public interface IInventoryReportReadRepository
     Task<(decimal TotalValue, int TotalLineCount)> GetInventoryValueTotalsAsync(
         Guid? warehouseId,
         Guid? brandId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<InventoryValueLineReadModel>> GetInventoryValueLinesAsync(
@@ -71,12 +72,14 @@ public interface IInventoryReportReadRepository
         Guid? brandId,
         int skip,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<NxtReportTotalsReadModel> GetNxtTotalsAsync(
         DateTime fromInclusive,
         DateTime toExclusive,
         Guid? warehouseId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<NxtMovementLineReadModel>> GetNxtLinesAsync(
@@ -85,5 +88,6 @@ public interface IInventoryReportReadRepository
         Guid? warehouseId,
         int skip,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 }

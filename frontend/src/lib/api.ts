@@ -14,6 +14,7 @@ import type {
   InventoryDocument,
   InventoryDocumentStatus,
   InventoryDocumentType,
+  TransferLifecycleStatus,
   InventorySummary,
   LowStockItem,
   MovementSummary,
@@ -182,13 +183,15 @@ export const fetchInventoryDocuments = (
   status?: InventoryDocumentStatus,
   page = 1,
   pageSize = 20,
-  search?: string
+  search?: string,
+  transferLifecycle?: TransferLifecycleStatus
 ) =>
   api
     .get<PagedResult<InventoryDocument>>("/api/inventory-documents", {
       params: {
         documentType,
         status,
+        transferLifecycle,
         page,
         pageSize,
         search: search || undefined,

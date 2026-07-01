@@ -11,10 +11,14 @@ namespace StockLedgerRetail.Application.Inventory;
 public class CurrentStockAppService : ICurrentStockAppService
 {
     private readonly ICurrentStockRepository _currentStockRepository;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
-    public CurrentStockAppService(ICurrentStockRepository currentStockRepository)
+    public CurrentStockAppService(
+        ICurrentStockRepository currentStockRepository,
+        IWarehouseScopeService warehouseScopeService)
     {
         _currentStockRepository = currentStockRepository;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     /// <summary>Lấy danh sách tồn, lọc theo kho và/hoặc SKU (tùy chọn).</summary>
@@ -26,9 +30,20 @@ public class CurrentStockAppService : ICurrentStockAppService
         string? search = null,
         CancellationToken cancellationToken = default)
     {
+        var scopedWarehouseId = _warehouseScopeService.NormalizeWarehouseFilter(warehouseId);
+        var scopedWarehouseIds = scopedWarehouseId.HasValue
+            ? null
+            : _warehouseScopeService.GetWarehouseFilterForLists();
+
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (stocks, totalCount) = await _currentStockRepository.GetPagedListAsync(
-            warehouseId, productVariantId, skip, take, search, cancellationToken);
+            scopedWarehouseId,
+            productVariantId,
+            skip,
+            take,
+            search,
+            scopedWarehouseIds,
+            cancellationToken);
         var items = stocks.Select(MapToDto).ToList();
         return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }
@@ -38,6 +53,8 @@ public class CurrentStockAppService : ICurrentStockAppService
     {
         var stock = await _currentStockRepository.GetByIdAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Current stock '{id}' was not found.");
+
+        _warehouseScopeService.EnsureWarehouseAccess(stock.WarehouseId);
 
         return MapToDto(stock);
     }

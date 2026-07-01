@@ -27,6 +27,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUnitBarcodeStockService _unitBarcodeStockService;
     private readonly IPermissionAuthorizationService _permissionAuthorizationService;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
     public GoodsReceiptAppService(
         IGoodsReceiptRepository goodsReceiptRepository,
@@ -38,7 +39,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         IAuditContext auditContext,
         IUnitOfWork unitOfWork,
         IUnitBarcodeStockService unitBarcodeStockService,
-        IPermissionAuthorizationService permissionAuthorizationService)
+        IPermissionAuthorizationService permissionAuthorizationService,
+        IWarehouseScopeService warehouseScopeService)
     {
         _goodsReceiptRepository = goodsReceiptRepository;
         _purchaseOrderRepository = purchaseOrderRepository;
@@ -50,6 +52,7 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         _unitOfWork = unitOfWork;
         _unitBarcodeStockService = unitBarcodeStockService;
         _permissionAuthorizationService = permissionAuthorizationService;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     public async Task<PagedResultDto<GoodsReceiptDto>> GetListAsync(
@@ -59,9 +62,16 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
         int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
+        var scope = _warehouseScopeService.ResolveListScope(null);
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (items, totalCount) = await _goodsReceiptRepository.GetPagedListAsync(
-            purchaseOrderId, status, skip, take, cancellationToken);
+            purchaseOrderId,
+            status,
+            skip,
+            take,
+            scope.WarehouseId,
+            scope.ScopedWarehouseIds,
+            cancellationToken);
 
         return PagingNormalizer.Create(
             items.Select(MapToDtoWithoutLines).ToList(),
@@ -74,6 +84,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
     {
         var gr = await _goodsReceiptRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Goods receipt '{id}' was not found.");
+
+        _warehouseScopeService.EnsureWarehouseAccess(gr.WarehouseId);
 
         var dto = MapToDto(gr);
         if (gr.InventoryDocumentId.HasValue)
@@ -133,6 +145,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
     {
         var gr = await _goodsReceiptRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Goods receipt '{id}' was not found.");
+
+        _warehouseScopeService.EnsureWarehouseAccess(gr.WarehouseId);
 
         if (gr.Status is not GoodsReceiptStatus.Draft)
         {
@@ -245,6 +259,8 @@ public class GoodsReceiptAppService : IGoodsReceiptAppService
     {
         var gr = await _goodsReceiptRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Goods receipt '{id}' was not found.");
+
+        _warehouseScopeService.EnsureWarehouseAccess(gr.WarehouseId);
 
         if (gr.Status is not GoodsReceiptStatus.Draft)
         {

@@ -20,6 +20,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
     private readonly IAuditContext _auditContext;
     private readonly ApprovalWorkflowHelper _approvalWorkflowHelper;
     private readonly IPermissionAuthorizationService _permissionAuthorizationService;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
     public PurchaseOrderAppService(
         IPurchaseOrderRepository purchaseOrderRepository,
@@ -29,7 +30,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         ITransactionAuditService transactionAuditService,
         IAuditContext auditContext,
         ApprovalWorkflowHelper approvalWorkflowHelper,
-        IPermissionAuthorizationService permissionAuthorizationService)
+        IPermissionAuthorizationService permissionAuthorizationService,
+        IWarehouseScopeService warehouseScopeService)
     {
         _purchaseOrderRepository = purchaseOrderRepository;
         _supplierRepository = supplierRepository;
@@ -39,6 +41,7 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         _auditContext = auditContext;
         _approvalWorkflowHelper = approvalWorkflowHelper;
         _permissionAuthorizationService = permissionAuthorizationService;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     public async Task<PagedResultDto<PurchaseOrderDto>> GetListAsync(
@@ -49,9 +52,17 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         string? search = null,
         CancellationToken cancellationToken = default)
     {
+        var scope = _warehouseScopeService.ResolveListScope(null);
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (items, totalCount) = await _purchaseOrderRepository.GetPagedListAsync(
-            status, supplierId, skip, take, search, cancellationToken);
+            status,
+            supplierId,
+            skip,
+            take,
+            search,
+            scope.WarehouseId,
+            scope.ScopedWarehouseIds,
+            cancellationToken);
 
         return PagingNormalizer.Create(
             items.Select(MapToDtoWithoutLines).ToList(),
@@ -64,6 +75,9 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
     {
         var po = await _purchaseOrderRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Purchase order '{id}' was not found.");
+
+        _warehouseScopeService.EnsureWarehouseAccess(po.WarehouseId);
+
         return MapToDto(po);
     }
 
@@ -112,6 +126,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         var po = await _purchaseOrderRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Purchase order '{id}' was not found.");
 
+        _warehouseScopeService.EnsureWarehouseAccess(po.WarehouseId);
+
         if (po.Status is not PurchaseOrderStatus.Draft)
         {
             throw new InvalidOperationException("Only draft purchase orders can be submitted.");
@@ -147,6 +163,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
     {
         var po = await _purchaseOrderRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Purchase order '{id}' was not found.");
+
+        _warehouseScopeService.EnsureWarehouseAccess(po.WarehouseId);
 
         if (po.Status is not PurchaseOrderStatus.PendingApproval)
         {
@@ -186,6 +204,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
     {
         var po = await _purchaseOrderRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Purchase order '{id}' was not found.");
+
+        _warehouseScopeService.EnsureWarehouseAccess(po.WarehouseId);
 
         if (po.Status is PurchaseOrderStatus.Received or PurchaseOrderStatus.Cancelled)
         {
@@ -313,6 +333,8 @@ public class PurchaseOrderAppService : IPurchaseOrderAppService
         {
             throw new InvalidOperationException($"Warehouse '{warehouseId}' was not found.");
         }
+
+        _warehouseScopeService.EnsureWarehouseAccess(warehouseId);
     }
 
     private static PurchaseOrderDto MapToDto(PurchaseOrder po) => new()

@@ -10,6 +10,7 @@ public interface IInventoryInsightReadRepository
         int daysWithoutOutbound,
         decimal minOnHand,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<SalesVelocityFact>> GetSalesVelocityFactsAsync(
@@ -19,6 +20,7 @@ public interface IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<MarkdownCandidateFact>> GetMarkdownCandidateFactsAsync(
@@ -29,6 +31,7 @@ public interface IInventoryInsightReadRepository
         int daysWithoutOutbound,
         decimal minOnHand,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<PromotionRiskFact>> GetPromotionRiskFactsAsync(
@@ -38,6 +41,7 @@ public interface IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<ReorderRiskFact>> GetReorderRiskFactsAsync(
@@ -47,6 +51,7 @@ public interface IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<TrendSummaryFact>> GetTrendSummaryFactsAsync(
@@ -58,5 +63,6 @@ public interface IInventoryInsightReadRepository
         DateTime previousFromDateUtc,
         DateTime previousToDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 }

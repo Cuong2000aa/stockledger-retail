@@ -330,7 +330,12 @@
     "stats": {
       "total": "Tổng phiếu",
       "draft": "Nháp (trang)",
-      "approved": "Đã duyệt (trang)"
+      "approved": "Đã duyệt (trang)",
+      "inTransit": "Đang vận chuyển (trang)"
+    },
+    "filters": {
+      "allDocuments": "Tất cả phiếu",
+      "inTransit": "Đang vận chuyển"
     }
   },
   "stocks": {
@@ -533,7 +538,7 @@
       "deadStockDays": "Số ngày tồn chết",
       "lookbackDays": "Số ngày nhìn lại",
       "searching": "Đang tìm kho…",
-      "deadStockDaysHint": "SKU không có outbound trong số ngày này được coi là tồn chết.",
+      "deadStockDaysHint": "SKU không có outbound trong số ngày này được coi là tồn chết. Các bậc markdown policy có thể áp dụng ở ngưỡng ngày cao hơn.",
       "lookbackDaysHint": "Dùng cho tốc độ bán và gợi ý chuyển kho."
     },
     "tabHints": {
@@ -741,6 +746,14 @@
     "supplierRequired": "Vui lòng chọn nhà cung cấp.",
     "productRequired": "Vui lòng chọn sản phẩm cha.",
     "skuRequired": "Vui lòng nhập mã SKU.",
+    "costPriceInvalid": "Giá vốn phải là số hợp lệ.",
+    "costPriceNegative": "Giá vốn không được âm.",
+    "priceBeforeVatInvalid": "Giá trước VAT phải là số hợp lệ.",
+    "priceBeforeVatNegative": "Giá trước VAT không được âm.",
+    "priceAfterVatInvalid": "Giá sau VAT phải là số hợp lệ.",
+    "priceAfterVatNegative": "Giá sau VAT không được âm.",
+    "vatRateInvalid": "Thuế VAT phải là số hợp lệ.",
+    "vatRateRange": "Thuế VAT phải từ 0 đến 100.",
     "noSkuAvailable": "Chưa có SKU trong hệ thống. Vào menu SKU để tạo trước.",
     "documentNeedsLine": "Phiếu phải có ít nhất một dòng hàng.",
     "lineSkuRequired": "Dòng {line}: vui lòng chọn SKU.",
@@ -851,7 +864,15 @@
     },
     "users": {
       "title": "Người dùng",
-      "subtitle": "Tài khoản và nhóm quyền"
+      "subtitle": "Tài khoản, nhóm quyền và phạm vi kho",
+      "editUser": "Sửa người dùng",
+      "displayName": "Tên hiển thị",
+      "permissionGroups": "Nhóm quyền",
+      "warehouses": "Kho",
+      "warehouseAssignments": "Gán kho",
+      "warehouseAssignmentsHint": "Nhân viên kho chỉ thấy dữ liệu các kho được gán. Chọn đúng một kho chính.",
+      "primary": "Chính",
+      "primaryWarehouseRequired": "Khi gán kho, phải chọn đúng một kho chính."
     },
     "teams": {
       "title": "Nhóm nghiệp vụ",

@@ -52,8 +52,14 @@ public class StockTransactionRepository : IStockTransactionRepository
         int skip,
         int take,
         string? search = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return ([], 0);
+        }
+
         var query = _dbContext.StockTransactions
             .Include(x => x.Document)
             .Include(x => x.DocumentLine)
@@ -68,6 +74,10 @@ public class StockTransactionRepository : IStockTransactionRepository
         if (warehouseId.HasValue)
         {
             query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         if (productVariantId.HasValue)
@@ -104,14 +114,52 @@ public class StockTransactionRepository : IStockTransactionRepository
     public Task<List<StockTransaction>> GetByDateRangeAsync(
         DateTime fromDate,
         DateTime toDateExclusive,
-        CancellationToken cancellationToken = default) =>
-        _dbContext.StockTransactions
-            .Where(x => x.TransactionDate >= fromDate && x.TransactionDate < toDateExclusive)
-            .ToListAsync(cancellationToken);
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return Task.FromResult(new List<StockTransaction>());
+        }
+
+        var query = _dbContext.StockTransactions
+            .Where(x => x.TransactionDate >= fromDate && x.TransactionDate < toDateExclusive);
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
+        }
+
+        return query.ToListAsync(cancellationToken);
+    }
 
     public async Task<List<StockLedgerAggregate>> GetAggregatedQuantitiesAsync(
-        CancellationToken cancellationToken = default) =>
-        await _dbContext.StockTransactions
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var query = _dbContext.StockTransactions.AsQueryable();
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
+        }
+
+        return await query
             .GroupBy(x => new { x.ProductVariantId, x.WarehouseId })
             .Select(g => new StockLedgerAggregate
             {
@@ -120,6 +168,7 @@ public class StockTransactionRepository : IStockTransactionRepository
                 LedgerQuantity = g.Sum(x => x.QuantityDelta)
             })
             .ToListAsync(cancellationToken);
+    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _dbContext.SaveChangesAsync(cancellationToken);

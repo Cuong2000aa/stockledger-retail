@@ -19,6 +19,7 @@ public interface ILotStockRepository
         Guid? productVariantId,
         int skip,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task InsertAsync(LotStock lotStock, CancellationToken cancellationToken = default);

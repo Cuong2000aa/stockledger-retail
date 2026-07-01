@@ -24,6 +24,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
     public async Task<(decimal TotalValue, int TotalLineCount)> GetInventoryValueTotalsAsync(
         Guid? warehouseId,
         Guid? brandId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
@@ -31,7 +32,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
             warehouseId,
             brandId);
 
-        var stocks = await LoadInventoryValueStockRowsAsync(warehouseId, brandId, cancellationToken);
+        var stocks = await LoadInventoryValueStockRowsAsync(warehouseId, brandId, scopedWarehouseIds, cancellationToken);
         if (stocks.Count == 0)
         {
             return (0m, 0);
@@ -57,6 +58,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
         Guid? brandId,
         int skip,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
@@ -66,7 +68,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
             skip,
             take);
 
-        var lines = await ProjectInventoryValueLinesAsync(warehouseId, brandId, cancellationToken);
+        var lines = await ProjectInventoryValueLinesAsync(warehouseId, brandId, scopedWarehouseIds, cancellationToken);
         var page = lines
             .OrderByDescending(x => x.InventoryValue)
             .Skip(skip)
@@ -81,6 +83,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
         DateTime fromInclusive,
         DateTime toExclusive,
         Guid? warehouseId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
@@ -89,7 +92,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
             toExclusive,
             warehouseId);
 
-        var lines = await BuildNxtLinesAsync(fromInclusive, toExclusive, warehouseId, cancellationToken);
+        var lines = await BuildNxtLinesAsync(fromInclusive, toExclusive, warehouseId, scopedWarehouseIds, cancellationToken);
 
         var totals = new NxtReportTotalsReadModel
         {
@@ -114,6 +117,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
         Guid? warehouseId,
         int skip,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
@@ -124,7 +128,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
             skip,
             take);
 
-        var lines = await BuildNxtLinesAsync(fromInclusive, toExclusive, warehouseId, cancellationToken);
+        var lines = await BuildNxtLinesAsync(fromInclusive, toExclusive, warehouseId, scopedWarehouseIds, cancellationToken);
         var page = lines
             .OrderByDescending(x => x.ClosingValue)
             .Skip(skip)
@@ -138,9 +142,10 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
     private async Task<List<InventoryValueLineReadModel>> ProjectInventoryValueLinesAsync(
         Guid? warehouseId,
         Guid? brandId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        var stocks = await LoadInventoryValueStockRowsAsync(warehouseId, brandId, cancellationToken);
+        var stocks = await LoadInventoryValueStockRowsAsync(warehouseId, brandId, scopedWarehouseIds, cancellationToken);
         if (stocks.Count == 0)
         {
             return [];
@@ -175,9 +180,16 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
     private async Task<List<InventoryValueStockRow>> LoadInventoryValueStockRowsAsync(
         Guid? warehouseId,
         Guid? brandId,
-        CancellationToken cancellationToken) =>
-        await (
-            from currentStock in FilteredCurrentStocks(warehouseId)
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        return await (
+            from currentStock in FilteredCurrentStocks(warehouseId, scopedWarehouseIds)
             where currentStock.QuantityOnHand > 0
             join productVariant in _dbContext.ProductVariants.AsNoTracking()
                 on currentStock.ProductVariantId equals productVariant.Id
@@ -193,6 +205,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
                 productVariant.CurrentCostPrice,
                 productVariant.CostPrice))
             .ToListAsync(cancellationToken);
+    }
 
     private static decimal ComputeInventoryValue(
         InventoryValueStockRow row,
@@ -212,15 +225,22 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
         DateTime fromInclusive,
         DateTime toExclusive,
         Guid? warehouseId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
         var movements = await LoadMovementAggregatesAsync(
             fromInclusive,
             toExclusive,
             warehouseId,
+            scopedWarehouseIds,
             cancellationToken);
 
-        var stockRows = await LoadClosingStockRowsAsync(warehouseId, cancellationToken);
+        var stockRows = await LoadClosingStockRowsAsync(warehouseId, scopedWarehouseIds, cancellationToken);
         var keys = movements.Keys
             .Union(stockRows.Values.Where(x => x.ClosingQuantity != 0).Select(x => x.Key))
             .Distinct()
@@ -265,12 +285,18 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
             .ToList();
     }
 
-    private IQueryable<CurrentStock> FilteredCurrentStocks(Guid? warehouseId)
+    private IQueryable<CurrentStock> FilteredCurrentStocks(
+        Guid? warehouseId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds)
     {
         var query = _dbContext.CurrentStocks.AsNoTracking();
         if (warehouseId.HasValue)
         {
             query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         return query;
@@ -280,6 +306,7 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
         DateTime fromInclusive,
         DateTime toExclusive,
         Guid? warehouseId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
         var query = _dbContext.StockTransactions.AsNoTracking()
@@ -288,6 +315,10 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
         if (warehouseId.HasValue)
         {
             query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         var rows = await query
@@ -308,10 +339,11 @@ public class InventoryReportReadRepository : IInventoryReportReadRepository
 
     private async Task<Dictionary<StockKey, ClosingStockRow>> LoadClosingStockRowsAsync(
         Guid? warehouseId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
         var rows = await (
-            from currentStock in FilteredCurrentStocks(warehouseId)
+            from currentStock in FilteredCurrentStocks(warehouseId, scopedWarehouseIds)
             join productVariant in _dbContext.ProductVariants.AsNoTracking()
                 on currentStock.ProductVariantId equals productVariant.Id
             join warehouse in _dbContext.Warehouses.AsNoTracking()

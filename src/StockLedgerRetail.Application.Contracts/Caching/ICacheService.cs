@@ -44,4 +44,8 @@ public class UserAuthCacheEntry
     public bool IsActive { get; set; }
 
     public List<string> PermissionCodes { get; set; } = new();
+
+    public List<Guid> WarehouseIds { get; set; } = new();
+
+    public Guid? PrimaryWarehouseId { get; set; }
 }

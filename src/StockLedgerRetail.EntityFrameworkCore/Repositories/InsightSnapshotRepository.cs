@@ -41,4 +41,11 @@ public class InsightSnapshotRepository : IInsightSnapshotRepository
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task DeleteByInsightKindAsync(string insightKind, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.InsightSnapshots
+            .Where(x => x.InsightKind == insightKind)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
 }

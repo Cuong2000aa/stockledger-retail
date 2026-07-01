@@ -18,17 +18,20 @@ public class WarehouseAppService : IWarehouseAppService
     private readonly ITransactionAuditService _transactionAuditService;
     private readonly ICacheService _cacheService;
     private readonly CacheOptions _cacheOptions;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
     public WarehouseAppService(
         IWarehouseRepository warehouseRepository,
         ITransactionAuditService transactionAuditService,
         ICacheService cacheService,
-        Microsoft.Extensions.Options.IOptions<CacheOptions> cacheOptions)
+        Microsoft.Extensions.Options.IOptions<CacheOptions> cacheOptions,
+        IWarehouseScopeService warehouseScopeService)
     {
         _warehouseRepository = warehouseRepository;
         _transactionAuditService = transactionAuditService;
         _cacheService = cacheService;
         _cacheOptions = cacheOptions.Value;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     /// <summary>Lấy danh sách tất cả kho.</summary>
@@ -39,14 +42,20 @@ public class WarehouseAppService : IWarehouseAppService
         CancellationToken cancellationToken = default)
     {
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
-        var cacheKey = CacheKeys.Warehouses(normalizedPage, normalizedPageSize, search);
+        var scopedWarehouseIds = _warehouseScopeService.GetWarehouseFilterForLists();
+        var cacheKey = CacheKeys.Warehouses(normalizedPage, normalizedPageSize, search, scopedWarehouseIds);
         var cached = await _cacheService.GetAsync<PagedResultDto<WarehouseDto>>(cacheKey, cancellationToken);
         if (cached is not null)
         {
             return cached;
         }
 
-        var (warehouses, totalCount) = await _warehouseRepository.GetPagedListAsync(skip, take, search, cancellationToken);
+        var (warehouses, totalCount) = await _warehouseRepository.GetPagedListAsync(
+            skip,
+            take,
+            search,
+            scopedWarehouseIds,
+            cancellationToken);
         var items = warehouses.Select(MapToDto).ToList();
         var result = PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
         await _cacheService.SetAsync(
@@ -60,6 +69,8 @@ public class WarehouseAppService : IWarehouseAppService
     /// <summary>Lấy chi tiết kho theo Id.</summary>
     public async Task<WarehouseDto> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        _warehouseScopeService.EnsureWarehouseAccess(id);
+
         var warehouse = await _warehouseRepository.GetByIdAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Warehouse '{id}' was not found.");
 

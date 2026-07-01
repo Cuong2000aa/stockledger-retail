@@ -33,6 +33,7 @@ public interface IStockReservationRepository
         StockReservationStatus? status,
         int skip,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<int> CountByDatePrefixAsync(string datePrefix, CancellationToken cancellationToken = default);

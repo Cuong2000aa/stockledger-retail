@@ -12,10 +12,14 @@ namespace StockLedgerRetail.Application.Inventory;
 public class StockTransactionAppService : IStockTransactionAppService
 {
     private readonly IStockTransactionRepository _stockTransactionRepository;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
-    public StockTransactionAppService(IStockTransactionRepository stockTransactionRepository)
+    public StockTransactionAppService(
+        IStockTransactionRepository stockTransactionRepository,
+        IWarehouseScopeService warehouseScopeService)
     {
         _stockTransactionRepository = stockTransactionRepository;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     /// <summary>Lấy danh sách giao dịch sổ cái, lọc theo kho và/hoặc SKU.</summary>
@@ -27,9 +31,20 @@ public class StockTransactionAppService : IStockTransactionAppService
         string? search = null,
         CancellationToken cancellationToken = default)
     {
+        var scopedWarehouseId = _warehouseScopeService.NormalizeWarehouseFilter(warehouseId);
+        var scopedWarehouseIds = scopedWarehouseId.HasValue
+            ? null
+            : _warehouseScopeService.GetWarehouseFilterForLists();
+
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (transactions, totalCount) = await _stockTransactionRepository.GetPagedListAsync(
-            warehouseId, productVariantId, skip, take, search, cancellationToken);
+            scopedWarehouseId,
+            productVariantId,
+            skip,
+            take,
+            search,
+            scopedWarehouseIds,
+            cancellationToken);
         var items = transactions.Select(MapToDto).ToList();
         return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
     }

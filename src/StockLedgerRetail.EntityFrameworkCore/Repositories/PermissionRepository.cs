@@ -134,4 +134,62 @@ public class PermissionRepository : IPermissionRepository
         await _dbContext.GroupPermissions.AddRangeAsync(groupPermissions, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task EnsureMissingPermissionsAsync(CancellationToken cancellationToken = default)
+    {
+        var existingCodes = await _dbContext.Permissions
+            .Select(x => x.Code)
+            .ToListAsync(cancellationToken);
+        var existingSet = existingCodes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missingCodes = PermissionCodes.All
+            .Where(code => !existingSet.Contains(code))
+            .ToList();
+
+        if (missingCodes.Count == 0)
+        {
+            return;
+        }
+
+        var permissions = missingCodes.Select(code => new Permission
+        {
+            Id = Guid.NewGuid(),
+            Code = code,
+            Name = code,
+            Category = code.Split('.')[0]
+        }).ToList();
+
+        await _dbContext.Permissions.AddRangeAsync(permissions, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var adminGroup = await _dbContext.PermissionGroups
+            .FirstOrDefaultAsync(x => x.Code == PermissionGroupCodes.SystemAdmin, cancellationToken);
+        if (adminGroup is null)
+        {
+            return;
+        }
+
+        var permissionMap = await _dbContext.Permissions
+            .Where(x => missingCodes.Contains(x.Code))
+            .ToDictionaryAsync(x => x.Code, x => x.Id, cancellationToken);
+
+        foreach (var code in missingCodes)
+        {
+            if (!permissionMap.TryGetValue(code, out var permissionId))
+            {
+                continue;
+            }
+
+            var alreadyAssigned = await _dbContext.GroupPermissions.AnyAsync(
+                x => x.GroupId == adminGroup.Id && x.PermissionId == permissionId,
+                cancellationToken);
+            if (!alreadyAssigned)
+            {
+                await _dbContext.GroupPermissions.AddAsync(
+                    new GroupPermission { GroupId = adminGroup.Id, PermissionId = permissionId },
+                    cancellationToken);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

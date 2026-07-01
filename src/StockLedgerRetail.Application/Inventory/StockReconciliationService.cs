@@ -13,22 +13,32 @@ public class StockReconciliationService : IStockReconciliationService
 {
     private readonly IStockTransactionRepository _stockTransactionRepository;
     private readonly ICurrentStockRepository _currentStockRepository;
+    private readonly IWarehouseScopeService _warehouseScopeService;
     private readonly ILogger<StockReconciliationService> _logger;
 
     public StockReconciliationService(
         IStockTransactionRepository stockTransactionRepository,
         ICurrentStockRepository currentStockRepository,
+        IWarehouseScopeService warehouseScopeService,
         ILogger<StockReconciliationService> logger)
     {
         _stockTransactionRepository = stockTransactionRepository;
         _currentStockRepository = currentStockRepository;
+        _warehouseScopeService = warehouseScopeService;
         _logger = logger;
     }
 
     public async Task<StockReconciliationResultDto> RunAsync(CancellationToken cancellationToken = default)
     {
-        var ledger = await _stockTransactionRepository.GetAggregatedQuantitiesAsync(cancellationToken);
-        var currentStocks = await _currentStockRepository.GetListAsync(cancellationToken: cancellationToken);
+        var scope = _warehouseScopeService.ResolveListScope(null);
+        var ledger = await _stockTransactionRepository.GetAggregatedQuantitiesAsync(
+            scope.WarehouseId,
+            scope.ScopedWarehouseIds,
+            cancellationToken);
+        var currentStocks = await _currentStockRepository.GetListAsync(
+            scope.WarehouseId,
+            scopedWarehouseIds: scope.ScopedWarehouseIds,
+            cancellationToken: cancellationToken);
 
         var ledgerMap = ledger.ToDictionary(
             x => (x.ProductVariantId, x.WarehouseId),
@@ -78,14 +88,13 @@ public class StockReconciliationService : IStockReconciliationService
             TotalPairsChecked = allKeys.Count,
             MismatchCount = mismatches.Count,
             Mismatches = mismatches
-                .OrderByDescending(x => Math.Abs(x.Variance))
                 .Select(x => new StockReconciliationMismatchDto
                 {
                     ProductVariantId = x.ProductVariantId,
                     WarehouseId = x.WarehouseId,
                     LedgerQuantity = x.LedgerQuantity,
                     CurrentStockQuantity = x.CurrentStockQuantity,
-                    Variance = x.Variance
+                    Variance = x.CurrentStockQuantity - x.LedgerQuantity
                 })
                 .ToList()
         };

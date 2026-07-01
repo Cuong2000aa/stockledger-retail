@@ -21,7 +21,12 @@ export const createUser = (body: {
 
 export const updateUser = (
   id: string,
-  body: { displayName: string; isActive: boolean; groupCodes: string[] }
+  body: {
+    displayName: string;
+    isActive: boolean;
+    groupCodes: string[];
+    warehouseAssignments?: { warehouseId: string; isPrimary: boolean }[];
+  }
 ) => apiClient.put<AppUser>(`/api/admin/users/${id}`, body).then((r) => r.data);
 
 export const fetchPermissionGroups = () =>

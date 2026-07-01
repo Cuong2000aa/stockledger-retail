@@ -97,8 +97,14 @@ public class StockReservationRepository : IStockReservationRepository
         StockReservationStatus? status,
         int skip,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return ([], 0);
+        }
+
         var query = _dbContext.StockReservations
             .Include(x => x.Lines)
             .ThenInclude(x => x.ProductVariant)
@@ -108,6 +114,10 @@ public class StockReservationRepository : IStockReservationRepository
         if (warehouseId.HasValue)
         {
             query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         if (status.HasValue)

@@ -20,14 +20,19 @@ public interface IStockTransactionRepository
         int skip,
         int take,
         string? search = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<StockTransaction>> GetByDateRangeAsync(
         DateTime fromDate,
-        DateTime toDate,
+        DateTime toDateExclusive,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<StockLedgerAggregate>> GetAggregatedQuantitiesAsync(
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
