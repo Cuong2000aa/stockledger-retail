@@ -122,40 +122,42 @@ Retail inventory use cases for StockLedger Retail.
 
 # UC007 — Purchase Order
 
-**Actor:** Procurement Staff
+**Actor:** Procurement / Warehouse Staff
 
-**Goal:** Order goods from a supplier.
+**Goal:** Order goods from a supplier for a specific store or DC — **without changing stock yet**.
 
-**Flow:**
+**Business flow:**
 
-1. Create Purchase Order (Draft) — select supplier, warehouse, lines
-2. Submit PO → status `Submitted`
-3. Optionally cancel if no goods received yet
+1. Create PO (Draft): choose supplier, **receiving warehouse**, SKU lines and quantities
+2. Submit PO — if total value exceeds the approval threshold (~10M VND), a manager must approve in two steps
+3. PO becomes **Submitted** — ready for physical receiving
+4. Staff only see POs for warehouses they are assigned to (chain-wide admins see all)
 
-**API:** `POST /api/purchase-orders`, `POST .../{id}/submit`, `POST .../{id}/cancel`
+**API:** `POST /api/purchase-orders`, `POST .../{id}/submit`, `POST .../{id}/approve`, `POST .../{id}/cancel`
 
-**Note:** PO does not change stock. Stock changes only via Goods Receipt.
+**Note:** PO never posts stock. Stock increases only when goods are received (UC008).
 
-**Status:** ✅ Implemented
+**Status:** ✅ Implemented (warehouse scope + multi-step approval for high value)
 
 ---
 
 # UC008 — Goods Receipt (Procurement)
 
-**Actor:** Warehouse Staff
+**Actor:** Warehouse Staff at the receiving location
 
-**Goal:** Receive goods against a submitted purchase order.
+**Goal:** Record actual goods received against an open purchase order and **increase store stock** in one approved step.
 
-**Flow:**
+**Business flow:**
 
-1. Create Goods Receipt (Draft) linked to PO — enter received quantities per line
-2. Approve GR
-3. System auto-creates and approves Stock In document (`SourceSystem = PROCUREMENT`)
-4. PO line `ReceivedQuantity` updated; PO status → `PartiallyReceived` or `Received`
+1. Create GR (Draft) linked to a **Submitted** or **PartiallyReceived** PO — enter received qty per line (partial delivery allowed)
+2. For lot-tracked SKUs, enter lot code and expiry where required
+3. Approve GR — system automatically creates and approves a Stock In document (`PROCUREMENT`)
+4. On-hand quantity at the PO warehouse increases; PO line **received qty** updates; PO → **PartiallyReceived** or **Received**
+5. Multiple GRs are allowed until the full order is received
 
 **API:** `POST /api/goods-receipts`, `POST .../{id}/approve`
 
-**Status:** ✅ Implemented
+**Status:** ✅ Implemented (integration-tested — see [Development.md](Development.md))
 
 ---
 

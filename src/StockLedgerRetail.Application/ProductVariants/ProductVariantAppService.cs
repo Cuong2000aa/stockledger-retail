@@ -4,6 +4,7 @@ using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
+using StockLedgerRetail.Pricing;
 using StockLedgerRetail.ProductVariants;
 using StockLedgerRetail.Services;
 
@@ -92,7 +93,11 @@ public class ProductVariantAppService : IProductVariantAppService
 
         var now = DateTime.UtcNow;
         var (costPrice, costSource) = NormalizeCost(input.CostPrice, input.CostSource);
-        var priceInput = NormalizeSellingPrice(input.SellingPrice, input.SellingPriceBeforeVat, input.SellingPriceAfterVat, input.VatRate);
+        var priceInput = PricingCalculator.NormalizeSellingPrice(
+            input.SellingPrice,
+            input.SellingPriceBeforeVat,
+            input.SellingPriceAfterVat,
+            input.VatRate);
         var variant = new ProductVariant
         {
             Id = Guid.NewGuid(),
@@ -151,7 +156,7 @@ public class ProductVariantAppService : IProductVariantAppService
         variant.Unit = input.Unit?.Trim();
         variant.Status = input.Status;
         var (costPrice, costSource) = NormalizeCost(input.CostPrice, input.CostSource);
-        var priceInput = NormalizeSellingPrice(
+        var priceInput = PricingCalculator.NormalizeSellingPrice(
             input.SellingPrice ?? variant.CurrentSellingPrice,
             input.SellingPriceBeforeVat ?? variant.CurrentSellingPriceBeforeVat,
             input.SellingPriceAfterVat ?? variant.CurrentSellingPriceAfterVat,
@@ -207,8 +212,15 @@ public class ProductVariantAppService : IProductVariantAppService
             throw new InvalidOperationException("VAT rate must be between 0 and 100.");
         }
 
+        if (input.PriceAfterVat.HasValue
+            && !PricingCalculator.PricesMatchVat(input.PriceBeforeVat, input.PriceAfterVat.Value, input.VatRate))
+        {
+            throw new InvalidOperationException(
+                "Price before VAT and after VAT do not match the configured VAT rate.");
+        }
+
         var now = DateTime.UtcNow;
-        var priceAfterVat = RoundCurrency(input.PriceBeforeVat * (1 + input.VatRate / 100m));
+        var priceAfterVat = PricingCalculator.CalcPriceAfterVat(input.PriceBeforeVat, input.VatRate);
         var currentPrice = await _productPriceRepository.GetCurrentByVariantAndTypeAsync(id, input.PriceType, cancellationToken);
         if (currentPrice is not null)
         {
@@ -250,7 +262,17 @@ public class ProductVariantAppService : IProductVariantAppService
         }
 
         await _productVariantRepository.SaveChangesAsync(cancellationToken);
-        return MapPriceToDto(price);
+
+        var dto = MapPriceToDto(price);
+        await _transactionAuditService.LogAsync(
+            nameof(ProductPrice),
+            price.Id,
+            AuditActionType.Create,
+            null,
+            dto,
+            cancellationToken);
+
+        return dto;
     }
 
     /// <summary>Xóa SKU.</summary>
@@ -268,32 +290,41 @@ public class ProductVariantAppService : IProductVariantAppService
     }
 
     /// <summary>Chuyển entity ProductVariant sang DTO.</summary>
-    private static ProductVariantDto MapToDto(ProductVariant variant) => new()
+    private static ProductVariantDto MapToDto(ProductVariant variant)
     {
-        Id = variant.Id,
-        ProductId = variant.ProductId,
-        BrandId = variant.BrandId,
-        Sku = variant.Sku,
-        Barcode = variant.Barcode,
-        Color = variant.Color,
-        Size = variant.Size,
-        Season = variant.Season,
-        Unit = variant.Unit,
-        Status = variant.Status,
-        CostPrice = variant.CostPrice,
-        SellingPrice = variant.SellingPrice,
-        CurrentCostPrice = variant.CurrentCostPrice,
-        CurrentSellingPrice = variant.CurrentSellingPrice,
-        SellingPriceBeforeVat = variant.CurrentSellingPriceBeforeVat,
-        SellingPriceAfterVat = variant.CurrentSellingPriceAfterVat,
-        VatRate = variant.VatRate,
-        CostSource = variant.CostSource,
-        CurrentCostSource = variant.CurrentCostSource,
-        TrackLotExpiry = variant.TrackLotExpiry,
-        IsBarcode = variant.IsBarcode,
-        CreatedAt = variant.CreatedAt,
-        UpdatedAt = variant.UpdatedAt
-    };
+        var (marginValue, marginRate) = PricingCalculator.CalcMarginBeforeVat(
+            variant.CurrentCostPrice ?? variant.CostPrice,
+            variant.CurrentSellingPriceBeforeVat);
+
+        return new ProductVariantDto
+        {
+            Id = variant.Id,
+            ProductId = variant.ProductId,
+            BrandId = variant.BrandId,
+            Sku = variant.Sku,
+            Barcode = variant.Barcode,
+            Color = variant.Color,
+            Size = variant.Size,
+            Season = variant.Season,
+            Unit = variant.Unit,
+            Status = variant.Status,
+            CostPrice = variant.CostPrice,
+            SellingPrice = variant.SellingPrice,
+            CurrentCostPrice = variant.CurrentCostPrice,
+            CurrentSellingPrice = variant.CurrentSellingPrice,
+            SellingPriceBeforeVat = variant.CurrentSellingPriceBeforeVat,
+            SellingPriceAfterVat = variant.CurrentSellingPriceAfterVat,
+            VatRate = variant.VatRate,
+            MarginValueBeforeVat = marginValue,
+            MarginRatePercent = marginRate,
+            CostSource = variant.CostSource,
+            CurrentCostSource = variant.CurrentCostSource,
+            TrackLotExpiry = variant.TrackLotExpiry,
+            IsBarcode = variant.IsBarcode,
+            CreatedAt = variant.CreatedAt,
+            UpdatedAt = variant.UpdatedAt
+        };
+    }
 
     private static void ValidateValuation(
         decimal? costPrice,
@@ -420,42 +451,6 @@ public class ProductVariantAppService : IProductVariantAppService
         AuditUserStamp.OnCreate(newPrice, _auditContext, effectiveAt);
         await _productPriceRepository.InsertAsync(newPrice, cancellationToken);
     }
-
-    private static PricingInput NormalizeSellingPrice(
-        decimal? sellingPrice,
-        decimal? sellingPriceBeforeVat,
-        decimal? sellingPriceAfterVat,
-        decimal? vatRate)
-    {
-        var normalizedVatRate = vatRate ?? 0m;
-        var legacyOrAfterVat = sellingPriceAfterVat ?? sellingPrice;
-
-        if (sellingPriceBeforeVat.HasValue && !legacyOrAfterVat.HasValue)
-        {
-            legacyOrAfterVat = RoundCurrency(sellingPriceBeforeVat.Value * (1 + normalizedVatRate / 100m));
-        }
-        else if (!sellingPriceBeforeVat.HasValue && legacyOrAfterVat.HasValue)
-        {
-            var divisor = 1 + normalizedVatRate / 100m;
-            sellingPriceBeforeVat = divisor == 0
-                ? legacyOrAfterVat.Value
-                : RoundCurrency(legacyOrAfterVat.Value / divisor);
-        }
-
-        return new PricingInput(
-            sellingPriceBeforeVat,
-            legacyOrAfterVat,
-            legacyOrAfterVat,
-            vatRate);
-    }
-
-    private static decimal RoundCurrency(decimal value) => Math.Round(value, 4, MidpointRounding.AwayFromZero);
-
-    private sealed record PricingInput(
-        decimal? PriceBeforeVat,
-        decimal? PriceAfterVat,
-        decimal? CurrentSellingPrice,
-        decimal? VatRate);
 
     private static ProductPriceDto MapPriceToDto(ProductPrice price) => new()
     {

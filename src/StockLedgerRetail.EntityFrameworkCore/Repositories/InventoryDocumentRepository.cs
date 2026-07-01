@@ -61,11 +61,18 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
     public async Task<(List<InventoryDocument> Items, int TotalCount)> GetPagedListAsync(
         InventoryDocumentType? documentType,
         InventoryDocumentStatus? status,
+        TransferLifecycleStatus? transferLifecycle,
         int skip,
         int take,
         string? search = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (scopedWarehouseIds is { Count: 0 })
+        {
+            return ([], 0);
+        }
+
         var query = _dbContext.InventoryDocuments.AsQueryable();
 
         if (documentType.HasValue)
@@ -76,6 +83,18 @@ public class InventoryDocumentRepository : IInventoryDocumentRepository
         if (status.HasValue)
         {
             query = query.Where(x => x.Status == status.Value);
+        }
+
+        if (transferLifecycle.HasValue)
+        {
+            query = query.Where(x => x.TransferLifecycleStatus == transferLifecycle.Value);
+        }
+
+        if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x =>
+                (x.SourceWarehouseId.HasValue && scopedWarehouseIds.Contains(x.SourceWarehouseId.Value))
+                || (x.DestinationWarehouseId.HasValue && scopedWarehouseIds.Contains(x.DestinationWarehouseId.Value)));
         }
 
         var term = TextSearchHelper.Normalize(search);

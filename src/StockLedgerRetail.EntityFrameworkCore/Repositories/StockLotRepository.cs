@@ -36,8 +36,14 @@ public class StockLotRepository : IStockLotRepository
         Guid? warehouseId,
         Guid? brandId,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return Task.FromResult(new List<StockLot>());
+        }
+
         var query = _dbContext.StockLots
             .Include(x => x.ProductVariant)
             .Include(x => x.LotStocks)
@@ -48,6 +54,11 @@ public class StockLotRepository : IStockLotRepository
         if (warehouseId.HasValue)
         {
             query = query.Where(x => x.LotStocks.Any(ls => ls.WarehouseId == warehouseId.Value && ls.QuantityOnHand > 0));
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => x.LotStocks.Any(ls =>
+                scopedWarehouseIds.Contains(ls.WarehouseId) && ls.QuantityOnHand > 0));
         }
 
         if (brandId.HasValue)

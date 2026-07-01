@@ -176,8 +176,14 @@ public class CurrentStockRepository : ICurrentStockRepository
     public Task<List<CurrentStock>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return Task.FromResult(new List<CurrentStock>());
+        }
+
         var query = _dbContext.CurrentStocks
             .Include(x => x.ProductVariant)
             .Include(x => x.Warehouse)
@@ -186,6 +192,10 @@ public class CurrentStockRepository : ICurrentStockRepository
         if (warehouseId.HasValue)
         {
             query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         if (productVariantId.HasValue)
@@ -202,8 +212,14 @@ public class CurrentStockRepository : ICurrentStockRepository
         int skip,
         int take,
         string? search = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return ([], 0);
+        }
+
         var query = _dbContext.CurrentStocks
             .Include(x => x.ProductVariant)
                 .ThenInclude(v => v.Product)
@@ -213,6 +229,10 @@ public class CurrentStockRepository : ICurrentStockRepository
         if (warehouseId.HasValue)
         {
             query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         if (productVariantId.HasValue)

@@ -8,6 +8,7 @@ import { Pagination } from "@/components/Pagination";
 import { StatCard } from "@/components/StatCard";
 import { UnitBarcodesModal } from "@/components/UnitBarcodesModal";
 import { useListSearch } from "@/hooks/useListSearch";
+import { useWarehouseScope } from "@/hooks/useWarehouseScope";
 import { fetchCurrentStocks, fetchWarehouses } from "@/lib/api";
 import { formatWarehouseOptionLabel } from "@/lib/formatWarehouseAddress";
 import { formatDate, formatNumber } from "@/lib/format";
@@ -25,6 +26,7 @@ export default function CurrentStocksPage() {
   const tFilters = useTranslations("filters");
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const { defaultWarehouseId, canSelectAllWarehouses } = useWarehouseScope();
   const [page, setPage] = useState(1);
   const [warehouseId, setWarehouseId] = useState("");
   const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
@@ -37,8 +39,12 @@ export default function CurrentStocksPage() {
     const initialSearch = searchParams.get("search");
     const initialWarehouseId = searchParams.get("warehouseId");
     if (initialSearch) setSearch(initialSearch);
-    if (initialWarehouseId) setWarehouseId(initialWarehouseId);
-  }, [searchParams, setSearch]);
+    if (initialWarehouseId) {
+      setWarehouseId(initialWarehouseId);
+    } else if (defaultWarehouseId) {
+      setWarehouseId(defaultWarehouseId);
+    }
+  }, [searchParams, setSearch, defaultWarehouseId]);
 
   const { data: warehouses } = useQuery({
     queryKey: ["warehouses-all"],
@@ -111,7 +117,9 @@ export default function CurrentStocksPage() {
               setPage(1);
             }}
           >
-            <option value="">{tFilters("allWarehouses")}</option>
+            {canSelectAllWarehouses ? (
+              <option value="">{tFilters("allWarehouses")}</option>
+            ) : null}
             {warehouses?.items.map((w) => (
               <option key={w.id} value={w.id}>
                 {formatWarehouseOptionLabel(w)}

@@ -14,6 +14,8 @@ public interface IGoodsReceiptRepository
         GoodsReceiptStatus? status,
         int skip,
         int take,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<int> CountByDatePrefixAsync(string datePrefix, CancellationToken cancellationToken = default);

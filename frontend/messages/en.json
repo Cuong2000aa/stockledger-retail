@@ -304,7 +304,17 @@
     "stats": {
       "total": "Total documents",
       "draft": "Draft (page)",
-      "approved": "Approved (page)"
+      "approved": "Approved (page)",
+      "inTransit": "In transit (page)"
+    },
+    "filters": {
+      "allDocuments": "All documents",
+      "inTransit": "In transit"
+    },
+    "transferLifecycle": {
+      "None": "—",
+      "Shipped": "In transit",
+      "Received": "Received"
     }
   },
   "stocks": {
@@ -507,7 +517,7 @@
       "deadStockDays": "Dead stock days",
       "lookbackDays": "Lookback days",
       "searching": "Searching warehouses…",
-      "deadStockDaysHint": "SKUs with no outbound for this many days are treated as dead stock.",
+      "deadStockDaysHint": "SKUs with no outbound for this many days are treated as dead stock. Markdown policy tiers may apply at higher day thresholds.",
       "lookbackDaysHint": "Used for sales velocity and transfer suggestions."
     },
     "tabHints": {
@@ -715,6 +725,14 @@
     "supplierRequired": "Please select a supplier.",
     "productRequired": "Please select a parent product.",
     "skuRequired": "SKU code is required.",
+    "costPriceInvalid": "Cost price must be a valid number.",
+    "costPriceNegative": "Cost price cannot be negative.",
+    "priceBeforeVatInvalid": "Price before VAT must be a valid number.",
+    "priceBeforeVatNegative": "Price before VAT cannot be negative.",
+    "priceAfterVatInvalid": "Price after VAT must be a valid number.",
+    "priceAfterVatNegative": "Price after VAT cannot be negative.",
+    "vatRateInvalid": "VAT rate must be a valid number.",
+    "vatRateRange": "VAT rate must be between 0 and 100.",
     "noSkuAvailable": "No SKU exists yet. Create SKUs before continuing.",
     "documentNeedsLine": "The document must contain at least one line.",
     "lineSkuRequired": "Line {line}: please select a SKU.",
@@ -836,7 +854,15 @@
     },
     "users": {
       "title": "Users",
-      "subtitle": "Accounts and permission groups"
+      "subtitle": "Accounts, permission groups, and warehouse scope",
+      "editUser": "Edit user",
+      "displayName": "Display name",
+      "permissionGroups": "Permission groups",
+      "warehouses": "Warehouses",
+      "warehouseAssignments": "Warehouse assignments",
+      "warehouseAssignmentsHint": "Shop users only see data for assigned warehouses. Pick exactly one primary warehouse.",
+      "primary": "Primary",
+      "primaryWarehouseRequired": "Select exactly one primary warehouse when assignments are set."
     },
     "teams": {
       "title": "Teams",

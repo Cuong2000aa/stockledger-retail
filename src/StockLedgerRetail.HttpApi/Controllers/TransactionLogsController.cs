@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Common;
+using StockLedgerRetail.Enums;
 using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Controllers;
@@ -20,13 +21,26 @@ public class TransactionLogsController : ControllerBase
         _transactionLogAppService = transactionLogAppService;
     }
 
-    /// <summary>Lấy danh sách audit log có phân trang. Có thể lọc theo `entityName` và `entityId`.</summary>
+    /// <summary>Lấy danh sách audit log có phân trang. Có thể lọc theo entity, người tạo, hành động và khoảng thời gian.</summary>
     [HttpGet]
     public Task<PagedResultDto<TransactionLogDto>> GetListAsync(
         [FromQuery] string? entityName,
         [FromQuery] Guid? entityId,
+        [FromQuery] string? createdBy,
+        [FromQuery] AuditActionType? action,
+        [FromQuery] DateTime? createdFrom,
+        [FromQuery] DateTime? createdTo,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default) =>
-        _transactionLogAppService.GetListAsync(entityName, entityId, page, pageSize, cancellationToken);
+        _transactionLogAppService.GetListAsync(
+            entityName,
+            entityId,
+            createdBy,
+            action,
+            createdFrom,
+            createdTo,
+            page,
+            pageSize,
+            cancellationToken);
 }

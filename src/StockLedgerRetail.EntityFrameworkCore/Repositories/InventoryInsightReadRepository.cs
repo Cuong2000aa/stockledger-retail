@@ -22,6 +22,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         int daysWithoutOutbound,
         decimal minOnHand,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default) =>
         GetDeadStockFactsCoreAsync(
             warehouseId,
@@ -31,6 +32,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             daysWithoutOutbound,
             minOnHand,
             maxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
     public Task<List<SalesVelocityFact>> GetSalesVelocityFactsAsync(
@@ -40,6 +42,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default) =>
         GetSalesVelocityFactsCoreAsync(
             warehouseId,
@@ -48,6 +51,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             fromDateUtc,
             toDateUtc,
             maxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
     public Task<List<MarkdownCandidateFact>> GetMarkdownCandidateFactsAsync(
@@ -58,6 +62,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         int daysWithoutOutbound,
         decimal minOnHand,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default) =>
         GetMarkdownCandidateFactsCoreAsync(
             warehouseId,
@@ -67,6 +72,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             daysWithoutOutbound,
             minOnHand,
             maxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
     public Task<List<PromotionRiskFact>> GetPromotionRiskFactsAsync(
@@ -76,6 +82,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default) =>
         GetPromotionRiskFactsCoreAsync(
             warehouseId,
@@ -84,6 +91,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             fromDateUtc,
             toDateUtc,
             maxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
     public Task<List<ReorderRiskFact>> GetReorderRiskFactsAsync(
@@ -93,6 +101,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default) =>
         GetReorderRiskFactsCoreAsync(
             warehouseId,
@@ -101,6 +110,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             fromDateUtc,
             toDateUtc,
             maxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
     public Task<List<TrendSummaryFact>> GetTrendSummaryFactsAsync(
@@ -112,6 +122,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         DateTime previousFromDateUtc,
         DateTime previousToDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default) =>
         GetTrendSummaryFactsCoreAsync(
             warehouseId,
@@ -122,6 +133,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             previousFromDateUtc,
             previousToDateUtc,
             maxResults,
+            scopedWarehouseIds,
             cancellationToken);
 
     private async Task<List<DeadStockFact>> GetDeadStockFactsCoreAsync(
@@ -132,10 +144,16 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         int daysWithoutOutbound,
         decimal minOnHand,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
         var cutoffDate = referenceDateUtc.Date.AddDays(-daysWithoutOutbound);
-        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, cancellationToken);
+        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
         var filteredStocks = stocks
             .Where(x => x.QuantityOnHand >= minOnHand)
             .ToList();
@@ -175,9 +193,15 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, cancellationToken);
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
         var filteredStocks = stocks
             .Where(x => x.WarehouseType != WarehouseType.InTransit)
             .ToList();
@@ -223,10 +247,16 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         int daysWithoutOutbound,
         decimal minOnHand,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
         var cutoffDate = referenceDateUtc.Date.AddDays(-daysWithoutOutbound);
-        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, cancellationToken);
+        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
         var filteredStocks = stocks
             .Where(x =>
                 x.QuantityOnHand >= minOnHand
@@ -270,9 +300,15 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, cancellationToken);
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
         var filteredStocks = stocks
             .Where(x => x.WarehouseType != WarehouseType.InTransit)
             .ToList();
@@ -320,9 +356,15 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         DateTime fromDateUtc,
         DateTime toDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, cancellationToken);
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
         var filteredStocks = stocks
             .Where(x => x.WarehouseType != WarehouseType.InTransit)
             .ToList();
@@ -370,9 +412,15 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         DateTime previousFromDateUtc,
         DateTime previousToDateUtc,
         int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, cancellationToken);
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var stocks = await LoadStockRowsAsync(warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
         var filteredStocks = stocks
             .Where(x => x.WarehouseType != WarehouseType.InTransit)
             .ToList();
@@ -417,6 +465,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         Guid? warehouseId,
         Guid? brandId,
         string? regionCode,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
         var normalizedRegion = NormalizeRegion(regionCode);
@@ -429,6 +478,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             join warehouse in _dbContext.Warehouses.AsNoTracking()
                 on stock.WarehouseId equals warehouse.Id
             where !warehouseId.HasValue || stock.WarehouseId == warehouseId.Value
+            where scopedWarehouseIds == null || scopedWarehouseIds.Contains(stock.WarehouseId)
             where !brandId.HasValue
                 || warehouse.BrandId == brandId
                 || productVariant.BrandId == brandId

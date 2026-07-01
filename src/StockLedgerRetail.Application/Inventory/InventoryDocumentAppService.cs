@@ -29,6 +29,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     private readonly ApprovalWorkflowHelper _approvalWorkflowHelper;
     private readonly IUnitBarcodeStockService _unitBarcodeStockService;
     private readonly ICurrentUserContext _currentUser;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
     public InventoryDocumentAppService(
         IInventoryDocumentRepository inventoryDocumentRepository,
@@ -43,7 +44,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         IPermissionAuthorizationService permissionAuthorizationService,
         ApprovalWorkflowHelper approvalWorkflowHelper,
         IUnitBarcodeStockService unitBarcodeStockService,
-        ICurrentUserContext currentUser)
+        ICurrentUserContext currentUser,
+        IWarehouseScopeService warehouseScopeService)
     {
         _inventoryDocumentRepository = inventoryDocumentRepository;
         _productVariantRepository = productVariantRepository;
@@ -58,6 +60,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         _approvalWorkflowHelper = approvalWorkflowHelper;
         _unitBarcodeStockService = unitBarcodeStockService;
         _currentUser = currentUser;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     /// <summary>Lấy chi tiết phiếu kèm danh sách dòng hàng.</summary>
@@ -67,6 +70,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
 
+        EnsureDocumentWarehouseAccess(document);
+
         return MapToDto(document);
     }
 
@@ -74,6 +79,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     public async Task<PagedResultDto<InventoryDocumentDto>> GetListAsync(
         InventoryDocumentType? documentType = null,
         InventoryDocumentStatus? status = null,
+        TransferLifecycleStatus? transferLifecycle = null,
         int? page = null,
         int? pageSize = null,
         string? search = null,
@@ -81,8 +87,16 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     {
         await _permissionAuthorizationService.EnsureCanViewInventoryDocumentsAsync(cancellationToken);
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
+        var scopedWarehouseIds = _warehouseScopeService.GetWarehouseFilterForLists();
         var (documents, totalCount) = await _inventoryDocumentRepository.GetPagedListAsync(
-            documentType, status, skip, take, search, cancellationToken);
+            documentType,
+            status,
+            transferLifecycle,
+            skip,
+            take,
+            search,
+            scopedWarehouseIds,
+            cancellationToken);
 
         var items = documents.Select(MapToDtoWithoutLines).ToList();
         return PagingNormalizer.Create(items, totalCount, normalizedPage, normalizedPageSize);
@@ -280,7 +294,7 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
             ProductVariantId = line.ProductVariantId,
             Quantity = line.CountedQuantity,
             Note = line.Note,
-            Barcodes = line.Barcodes
+            Barcodes = line.Barcodes ?? []
         }).ToList();
 
         var now = DateTime.UtcNow;
@@ -314,6 +328,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        EnsureDocumentWarehouseAccess(document);
 
         await _permissionAuthorizationService.EnsureCanUpdateInventoryDocumentAsync(
             document.CreatedBy,
@@ -379,6 +395,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
 
+        EnsureDocumentWarehouseAccess(document);
+
         if (document.Status is not InventoryDocumentStatus.Draft)
         {
             throw new InvalidOperationException("Only draft documents can be submitted for approval.");
@@ -414,6 +432,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        EnsureDocumentWarehouseAccess(document);
 
         if (document.Status is InventoryDocumentStatus.Approved or InventoryDocumentStatus.Completed)
         {
@@ -537,6 +557,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
 
+        EnsureDocumentWarehouseAccess(document);
+
         if (document.DocumentType is not InventoryDocumentType.Transfer)
         {
             throw new InvalidOperationException("Only transfer documents can be received.");
@@ -598,6 +620,8 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
     {
         var document = await _inventoryDocumentRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Inventory document '{id}' was not found.");
+
+        EnsureDocumentWarehouseAccess(document);
 
         await _permissionAuthorizationService.EnsureCanCancelInventoryDocumentAsync(
             document.CreatedBy,
@@ -965,13 +989,39 @@ public class InventoryDocumentAppService : IInventoryDocumentAppService
         }
     }
 
-    /// <summary>Đảm bảo kho nguồn/đích tồn tại.</summary>
+    /// <summary>Đảm bảo kho nguồn/đích tồn tại và user có quyền truy cập.</summary>
     private async Task EnsureWarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken);
         if (warehouse is null)
         {
             throw new InvalidOperationException($"Warehouse '{warehouseId}' was not found.");
+        }
+
+        _warehouseScopeService.EnsureWarehouseAccess(warehouseId);
+    }
+
+    private void EnsureDocumentWarehouseAccess(InventoryDocument document)
+    {
+        var warehouseIds = new List<Guid>();
+        if (document.SourceWarehouseId.HasValue)
+        {
+            warehouseIds.Add(document.SourceWarehouseId.Value);
+        }
+
+        if (document.DestinationWarehouseId.HasValue)
+        {
+            warehouseIds.Add(document.DestinationWarehouseId.Value);
+        }
+
+        if (warehouseIds.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var warehouseId in warehouseIds.Distinct())
+        {
+            _warehouseScopeService.EnsureWarehouseAccess(warehouseId);
         }
     }
 

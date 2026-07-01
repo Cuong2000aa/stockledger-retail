@@ -9,4 +9,6 @@ public interface IPermissionRepository
     Task<List<string>> GetPermissionCodesByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
     Task EnsureSeedAsync(CancellationToken cancellationToken = default);
+
+    Task EnsureMissingPermissionsAsync(CancellationToken cancellationToken = default);
 }

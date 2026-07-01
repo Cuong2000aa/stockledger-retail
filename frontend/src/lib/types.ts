@@ -123,6 +123,8 @@ export interface ProductVariant {
   sellingPriceBeforeVat?: number;
   sellingPriceAfterVat?: number;
   vatRate?: number;
+  marginValueBeforeVat?: number;
+  marginRatePercent?: number;
   costSource?: CostSource;
   currentCostSource?: CostSource;
   trackLotExpiry?: boolean;
@@ -776,8 +778,14 @@ export interface AppUser {
   displayName: string;
   isActive: boolean;
   groupCodes: string[];
+  warehouseAssignments?: UserWarehouseAssignment[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UserWarehouseAssignment {
+  warehouseId: string;
+  isPrimary: boolean;
 }
 
 export interface PermissionGroup {

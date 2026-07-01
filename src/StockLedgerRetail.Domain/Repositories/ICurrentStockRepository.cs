@@ -35,6 +35,7 @@ public interface ICurrentStockRepository
     Task<List<CurrentStock>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<(List<CurrentStock> Items, int TotalCount)> GetPagedListAsync(
@@ -43,6 +44,7 @@ public interface ICurrentStockRepository
         int skip,
         int take,
         string? search = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<CurrentStock>> GetByVariantsAndWarehousesAsync(

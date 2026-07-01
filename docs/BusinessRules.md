@@ -163,6 +163,8 @@ Every inventory transaction must be linked to a business document.
 | BR906 | PO does not affect CurrentStock — stock changes via Goods Receipt only. |
 | BR907 | ReceivedQuantity on PO line is updated when GR is approved. |
 | BR908 | PO status becomes PartiallyReceived or Received based on line quantities. |
+| BR909 | Users only see and act on PO/GR for warehouses they are assigned to (unless admin / all-warehouse scope). |
+| BR910 | Partial receiving: multiple GRs per PO; total received must not exceed ordered quantity. |
 
 ---
 
@@ -207,6 +209,9 @@ Every inventory transaction must be linked to a business document.
 | BR1209 | Updating a current Regular price refreshes the SKU current selling price cache. |
 | BR1210 | Promotion and Markdown prices keep their own effective history and must not overwrite each other's current rows. |
 | BR1211 | InventoryValuationSnapshot stores valuation by SKU / warehouse / snapshot date for reporting and analytics. |
+| BR1212 | **Price before VAT** is the authoritative input when updating selling price; system derives price after VAT. |
+| BR1213 | Backend rejects client payloads when after-VAT price does not match the rounding formula. |
+| BR1214 | Margin on SKU DTOs is computed from cost and before-VAT selling price. |
 
 ---
 
@@ -220,6 +225,8 @@ Every inventory transaction must be linked to a business document.
 | BR1304 | Fulfillment and insights respect optional `brandId` and `regionCode` filters. |
 | BR1305 | Scope headers (`X-Brand-Id`, etc.) apply when request parameters are omitted. |
 | BR1306 | Transfer suggestions pair warehouses with same brand and compatible region. |
+| BR1307 | Each user may be assigned one or more warehouses; one **primary** warehouse for default filters. |
+| BR1308 | Reports, current stock, PO, GR, and inventory documents respect the user's warehouse scope. |
 
 ---
 

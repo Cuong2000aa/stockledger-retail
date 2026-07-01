@@ -23,6 +23,7 @@ public static class StockLedgerRetailEntityFrameworkCoreModule
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IPermissionGroupRepository, PermissionGroupRepository>();
         services.AddScoped<ITeamRepository, TeamRepository>();
+        services.AddScoped<IUserWarehouseAssignmentRepository, UserWarehouseAssignmentRepository>();
         services.AddScoped<IProductVariantRepository, ProductVariantRepository>();
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<ITransactionLogRepository, TransactionLogRepository>();

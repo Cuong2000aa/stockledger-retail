@@ -5,6 +5,7 @@ namespace StockLedgerRetail.HttpApi.Host.Middleware;
 /// <summary>
 /// Đọc phạm vi brand/kho/vùng từ header (Phase 4 RBAC-lite).
 /// X-Brand-Id, X-Warehouse-Ids (comma-separated GUID), X-Region-Code.
+/// Giao với phạm vi kho của user đăng nhập.
 /// </summary>
 public class BrandScopeMiddleware
 {
@@ -19,7 +20,10 @@ public class BrandScopeMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, IBrandScopeContext scopeContext)
+    public async Task InvokeAsync(
+        HttpContext context,
+        IBrandScopeContext scopeContext,
+        IUserWarehouseScopeContext userWarehouseScope)
     {
         if (scopeContext is BrandScopeContext mutable)
         {
@@ -49,8 +53,32 @@ public class BrandScopeMiddleware
             {
                 mutable.RegionCode = regionHeader.ToString().Trim();
             }
+
+            ApplyUserWarehouseScope(mutable, userWarehouseScope);
         }
 
         await _next(context);
+    }
+
+    private static void ApplyUserWarehouseScope(
+        BrandScopeContext brandScope,
+        IUserWarehouseScopeContext userWarehouseScope)
+    {
+        if (userWarehouseScope.AllowedWarehouseIds is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var allowed = userWarehouseScope.AllowedWarehouseIds;
+
+        if (brandScope.WarehouseIds is not { Count: > 0 })
+        {
+            brandScope.WarehouseIds = allowed.ToList();
+            return;
+        }
+
+        brandScope.WarehouseIds = brandScope.WarehouseIds
+            .Intersect(allowed)
+            .ToList();
     }
 }

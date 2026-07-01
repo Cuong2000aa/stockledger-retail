@@ -49,6 +49,7 @@ Lần chạy API đầu tiên sẽ seed quyền/nhóm và tạo admin bootstrap 
 | `inventory.documents.approve` | Duyệt mọi phiếu (admin) |
 | `inventory.documents.approve.team` | Trưởng nhóm duyệt phiếu thành viên |
 | `inventory.documents.receive-transfer` | Nhận chuyển kho |
+| `inventory.scope.all_warehouses` | Xem/thao tác mọi kho (bỏ giới hạn assignment) |
 | `admin.users.manage` | Quản lý user |
 | `admin.groups.manage` | Xem nhóm/quyền |
 | `admin.teams.manage` | Quản lý team |
@@ -88,6 +89,30 @@ Yêu cầu quyền `admin.*` hoặc `system.admin`.
 
 ---
 
+## Phạm vi kho (warehouse assignment)
+
+Mỗi user có thể gán **một hoặc nhiều kho** qua admin UI (`/admin/users`) hoặc API `PUT /api/admin/users/{id}`:
+
+```json
+"warehouseAssignments": [
+  { "warehouseId": "...", "isPrimary": true }
+]
+```
+
+| Trường hợp | Hành vi |
+|------------|---------|
+| `SYSTEM_ADMIN` hoặc quyền `inventory.scope.all_warehouses` | Không giới hạn kho |
+| User có danh sách kho | List/get/mutation chỉ trong các kho được gán |
+| Không gán kho | List trả rỗng; mutation bị từ chối |
+
+Bảng: `user_warehouse_assignments` (migration `AddUserWarehouseAssignments`).
+
+Demo: `clerk@stockledger.local` / `1234` — gán `DOMINOS-ST-Q1` khi seed F&B bật.
+
+Chi tiết kỹ thuật: [Development.md](Development.md#warehouse-scope-iwarehousescopeservice).
+
+---
+
 ## Bảng DB
 
 - `app_users`
@@ -97,8 +122,9 @@ Yêu cầu quyền `admin.*` hoặc `system.admin`.
 - `user_group_assignments`
 - `teams`
 - `team_members`
+- `user_warehouse_assignments`
 
-Migration: `AddIdentityAndPermissions`
+Migration: `AddIdentityAndPermissions`, `AddUserWarehouseAssignments`
 
 ---
 

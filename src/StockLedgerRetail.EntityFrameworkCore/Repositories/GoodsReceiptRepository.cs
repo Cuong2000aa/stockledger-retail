@@ -34,8 +34,15 @@ public class GoodsReceiptRepository : IGoodsReceiptRepository
         GoodsReceiptStatus? status,
         int skip,
         int take,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return ([], 0);
+        }
+
         var query = _dbContext.GoodsReceipts
             .Include(x => x.PurchaseOrder)
             .Include(x => x.Warehouse)
@@ -49,6 +56,15 @@ public class GoodsReceiptRepository : IGoodsReceiptRepository
         if (status.HasValue)
         {
             query = query.Where(x => x.Status == status.Value);
+        }
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         query = query.OrderByDescending(x => x.ReceiptDate).ThenByDescending(x => x.CreatedAt);

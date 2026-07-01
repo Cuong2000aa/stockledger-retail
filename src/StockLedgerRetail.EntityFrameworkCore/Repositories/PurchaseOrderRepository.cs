@@ -33,8 +33,15 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
         int skip,
         int take,
         string? search = null,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return ([], 0);
+        }
+
         var query = _dbContext.PurchaseOrders
             .Include(x => x.Supplier)
             .Include(x => x.Warehouse)
@@ -48,6 +55,15 @@ public class PurchaseOrderRepository : IPurchaseOrderRepository
         if (supplierId.HasValue)
         {
             query = query.Where(x => x.SupplierId == supplierId.Value);
+        }
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         var term = TextSearchHelper.Normalize(search);

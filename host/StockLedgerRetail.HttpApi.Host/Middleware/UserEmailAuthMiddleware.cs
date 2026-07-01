@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using StockLedgerRetail.Audit;
+using StockLedgerRetail.Authorization;
 using StockLedgerRetail.Caching;
 
 namespace StockLedgerRetail.HttpApi.Host.Middleware;
@@ -78,6 +79,21 @@ public class UserEmailAuthMiddleware
             mutable.SetUser(user.UserId, user.Email, user.DisplayName, user.PermissionCodes);
         }
 
+        if (context.RequestServices.GetService(typeof(IUserWarehouseScopeContext)) is UserWarehouseScopeContext warehouseScope)
+        {
+            var unrestricted = user.PermissionCodes.Contains(PermissionCodes.SystemAdmin, StringComparer.OrdinalIgnoreCase)
+                || user.PermissionCodes.Contains(PermissionCodes.InventoryScopeAllWarehouses, StringComparer.OrdinalIgnoreCase);
+
+            if (unrestricted)
+            {
+                warehouseScope.SetUnrestricted();
+            }
+            else
+            {
+                warehouseScope.SetAssignments(user.WarehouseIds, user.PrimaryWarehouseId);
+            }
+        }
+
         _logger.LogDebug(
             "Authenticated {Email} for {Method} {Path} with {PermissionCount} permission(s).",
             user.Email,
@@ -90,6 +106,7 @@ public class UserEmailAuthMiddleware
 
     private static bool ShouldSkip(PathString path) =>
         path.StartsWithSegments("/swagger")
+        || path.StartsWithSegments("/health")
         || path.StartsWithSegments("/api/integration")
         || path.StartsWithSegments("/api/auth/login");
 

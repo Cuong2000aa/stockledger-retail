@@ -48,8 +48,14 @@ public class LotStockRepository : ILotStockRepository
         Guid? productVariantId,
         int skip,
         int take,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return ([], 0);
+        }
+
         var query = _dbContext.LotStocks
             .Include(x => x.StockLot)
             .ThenInclude(x => x!.ProductVariant)
@@ -60,6 +66,10 @@ public class LotStockRepository : ILotStockRepository
         if (warehouseId.HasValue)
         {
             query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
         }
 
         if (productVariantId.HasValue)

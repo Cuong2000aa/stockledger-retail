@@ -22,7 +22,8 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 builder.Services.AddControllers()
-    .AddApplicationPart(typeof(StockLedgerRetail.Controllers.ProductsController).Assembly);
+    .AddApplicationPart(typeof(StockLedgerRetail.Controllers.ProductsController).Assembly)
+    .AddApplicationPart(typeof(StockLedgerRetail.HttpApi.Host.Controllers.HealthController).Assembly);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditContext, HttpAuditContext>();

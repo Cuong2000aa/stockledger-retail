@@ -35,6 +35,9 @@ public class FbDataSeedHostedService : IHostedService
             using var scope = _serviceProvider.CreateScope();
             var seed = scope.ServiceProvider.GetRequiredService<IFbDataSeedService>();
             await seed.EnsureSeedAsync(cancellationToken);
+
+            var demoUserSeed = scope.ServiceProvider.GetRequiredService<IDemoUserSeedService>();
+            await demoUserSeed.EnsureDemoClerkAsync(cancellationToken);
         }
         catch (Exception ex)
         {

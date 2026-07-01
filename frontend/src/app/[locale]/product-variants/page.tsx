@@ -26,11 +26,13 @@ import {
   calcPriceAfterVat,
   calcPriceBeforeVat,
   parsePriceField,
-  recalcFromVatChange,
-  recalcPriceAfterVat,
-  recalcPriceBeforeVat,
 } from "@/lib/pricing";
 import { CostSource, PriceType, ProductStatus, type ProductPrice, type ProductVariant } from "@/lib/types";
+import {
+  emptyPriceForm,
+  PriceEditorCard,
+  type PriceForm,
+} from "@/features/product-variants/PriceEditorCard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { BadgeDollarSign, Layers, Plus, Tags } from "lucide-react";
@@ -56,14 +58,6 @@ type VariantForm = {
   isBarcode: boolean;
 };
 
-type PriceForm = {
-  priceBeforeVat: string;
-  vatRate: string;
-  priceAfterVat: string;
-  effectiveFrom: string;
-  effectiveTo: string;
-};
-
 const emptyForm = (productId = ""): VariantForm => ({
   productId,
   sku: "",
@@ -81,14 +75,6 @@ const emptyForm = (productId = ""): VariantForm => ({
   costSource: "",
   trackLotExpiry: false,
   isBarcode: false,
-});
-
-const emptyPriceForm = (): PriceForm => ({
-  priceBeforeVat: "",
-  vatRate: "",
-  priceAfterVat: "",
-  effectiveFrom: new Date().toISOString().slice(0, 10),
-  effectiveTo: "",
 });
 
 function toOptionalNumber(value: string): number | undefined {
@@ -126,6 +112,18 @@ function priceFormFromProductPrice(price: ProductPrice): PriceForm {
 }
 
 function calcMarginSnapshot(variant: ProductVariant) {
+  if (
+    variant.marginValueBeforeVat != null &&
+    variant.marginRatePercent != null &&
+    variant.sellingPriceBeforeVat != null &&
+    variant.sellingPriceBeforeVat > 0
+  ) {
+    return {
+      marginValue: variant.marginValueBeforeVat,
+      marginRate: variant.marginRatePercent,
+    };
+  }
+
   const cost = variant.currentCostPrice ?? variant.costPrice;
   const sellingBeforeVat = variant.sellingPriceBeforeVat;
   if (cost == null || sellingBeforeVat == null || sellingBeforeVat <= 0) {
@@ -333,7 +331,14 @@ export default function ProductVariantsPage() {
   });
 
   function handleSave() {
-    if (notifyValidation(validateProductVariantForm(form))) {
+    if (notifyValidation(validateProductVariantForm({
+      productId: form.productId,
+      sku: form.sku,
+      costPrice: form.costPrice,
+      sellingPriceBeforeVat: form.sellingPriceBeforeVat,
+      sellingPriceAfterVat: form.sellingPriceAfterVat,
+      vatRate: form.vatRate,
+    }))) {
       return;
     }
     saveMutation.mutate();
@@ -442,177 +447,6 @@ export default function ProductVariantsPage() {
             ((currentPreviewBeforeVat - currentPreviewCost) / currentPreviewBeforeVat) * 100,
         }
       : null;
-
-  const renderPriceHistory = (items: ProductPrice[]) => {
-    if (items.length === 0) {
-      return <div className="text-xs text-slate-400">{tCommon("noData")}</div>;
-    }
-
-    return (
-      <div className="space-y-2">
-        {items.slice(0, 4).map((item) => (
-          <div
-            key={item.id}
-            className="rounded-xl bg-white px-3 py-2 text-xs text-slate-700 ring-1 ring-slate-100"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-medium text-slate-900">
-                {formatNumber(item.priceAfterVat, locale)} {item.currency}
-              </span>
-              <span className="text-slate-500">
-                {item.isCurrent ? t("currentPriceBadge") : t("historyPriceBadge")}
-              </span>
-            </div>
-            <div className="mt-1 text-slate-500">
-              {t("sellingPriceBeforeVat")}: {formatNumber(item.priceBeforeVat, locale)} | {t("vatRate")}: {formatNumber(item.vatRate, locale)}%
-            </div>
-            <div className="mt-1 text-slate-500">
-              {item.effectiveFrom.slice(0, 10)}
-              {item.effectiveTo ? ` → ${item.effectiveTo.slice(0, 10)}` : ` → ${t("openEnded")}`}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const PriceEditorCard = ({
-    title,
-    description,
-    badge,
-    formState,
-    setFormState,
-    priceType,
-    history,
-  }: {
-    title: string;
-    description: string;
-    badge?: string;
-    formState: PriceForm;
-    setFormState: (value: PriceForm) => void;
-    priceType: PriceType;
-    history: ProductPrice[];
-  }) => (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">{title}</p>
-          <p className="mt-1 text-xs text-slate-500">{description}</p>
-        </div>
-        {badge && (
-          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-slate-200">
-            {badge}
-          </span>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="mb-1 block text-sm">{t("sellingPriceBeforeVat")}</label>
-          <input
-            type="number"
-            min={0}
-            step="any"
-            className="input"
-            value={formState.priceBeforeVat}
-            onChange={(e) => {
-              const next = {
-                ...formState,
-                priceBeforeVat: e.target.value,
-                priceAfterVat: recalcPriceAfterVat({
-                  priceBeforeVat: e.target.value,
-                  vatRate: formState.vatRate,
-                }),
-              };
-              setFormState(next);
-            }}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm">{t("vatRate")}</label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step="any"
-            className="input"
-            value={formState.vatRate}
-            onChange={(e) => {
-              const recalced = recalcFromVatChange({
-                ...formState,
-                vatRate: e.target.value,
-              });
-              setFormState({
-                ...formState,
-                vatRate: e.target.value,
-                ...recalced,
-              });
-            }}
-          />
-        </div>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <div>
-          <label className="mb-1 block text-sm">{t("sellingPriceAfterVat")}</label>
-          <input
-            type="number"
-            min={0}
-            step="any"
-            className="input"
-            value={formState.priceAfterVat}
-            onChange={(e) => {
-              const next = {
-                ...formState,
-                priceAfterVat: e.target.value,
-                priceBeforeVat: recalcPriceBeforeVat({
-                  priceAfterVat: e.target.value,
-                  vatRate: formState.vatRate,
-                }),
-              };
-              setFormState(next);
-            }}
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm">{t("effectiveFrom")}</label>
-          <input
-            type="date"
-            className="input"
-            value={formState.effectiveFrom}
-            onChange={(e) => setFormState({ ...formState, effectiveFrom: e.target.value })}
-          />
-        </div>
-      </div>
-      <div className="mt-3">
-        <label className="mb-1 block text-sm">{t("effectiveTo")}</label>
-        <input
-          type="date"
-          className="input"
-          value={formState.effectiveTo}
-          onChange={(e) => setFormState({ ...formState, effectiveTo: e.target.value })}
-        />
-      </div>
-      {editing ? (
-        <button
-          type="button"
-          className="btn-secondary mt-3"
-          disabled={upsertPriceMutation.isPending}
-          onClick={() => upsertPriceMutation.mutate({ priceType, form: formState })}
-        >
-          {t("savePrice")}
-        </button>
-      ) : (
-        <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-500 ring-1 ring-slate-100">
-          {t("createSkuFirst")}
-        </div>
-      )}
-
-      <div className="mt-4">
-        <p className="mb-2 text-xs font-semibold uppercase text-slate-500">{t("priceHistory")}</p>
-        {renderPriceHistory(history)}
-      </div>
-    </div>
-  );
 
   return (
     <div>
@@ -908,6 +742,9 @@ export default function ProductVariantsPage() {
                   setFormState={setRegularPriceFormSynced}
                   priceType={PriceType.Regular}
                   history={groupedPrices.regular}
+                  canSavePrice={!!editing}
+                  savePending={upsertPriceMutation.isPending}
+                  onSave={(priceType, form) => upsertPriceMutation.mutate({ priceType, form })}
                 />
 
                 <PriceEditorCard
@@ -918,6 +755,9 @@ export default function ProductVariantsPage() {
                   setFormState={setPromotionPriceForm}
                   priceType={PriceType.Promotion}
                   history={groupedPrices.promotion}
+                  canSavePrice={!!editing}
+                  savePending={upsertPriceMutation.isPending}
+                  onSave={(priceType, form) => upsertPriceMutation.mutate({ priceType, form })}
                 />
 
                 <PriceEditorCard
@@ -928,6 +768,9 @@ export default function ProductVariantsPage() {
                   setFormState={setMarkdownPriceForm}
                   priceType={PriceType.Markdown}
                   history={groupedPrices.markdown}
+                  canSavePrice={!!editing}
+                  savePending={upsertPriceMutation.isPending}
+                  onSave={(priceType, form) => upsertPriceMutation.mutate({ priceType, form })}
                 />
 
                 <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">

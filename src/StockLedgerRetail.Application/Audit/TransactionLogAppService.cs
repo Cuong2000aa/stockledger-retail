@@ -1,6 +1,7 @@
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Common;
 using StockLedgerRetail.Domain.Repositories;
+using StockLedgerRetail.Enums;
 using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Audit;
@@ -17,6 +18,10 @@ public class TransactionLogAppService : ITransactionLogAppService
     public async Task<PagedResultDto<TransactionLogDto>> GetListAsync(
         string? entityName = null,
         Guid? entityId = null,
+        string? createdBy = null,
+        AuditActionType? action = null,
+        DateTime? createdFrom = null,
+        DateTime? createdTo = null,
         int? page = null,
         int? pageSize = null,
         CancellationToken cancellationToken = default)
@@ -25,6 +30,10 @@ public class TransactionLogAppService : ITransactionLogAppService
         var (items, totalCount) = await _transactionLogRepository.GetPagedListAsync(
             entityName,
             entityId,
+            createdBy,
+            action,
+            createdFrom,
+            createdTo,
             skip,
             take,
             cancellationToken);

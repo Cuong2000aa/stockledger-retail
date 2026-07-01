@@ -11,13 +11,16 @@ public class StockReservationQueryAppService : IStockReservationQueryAppService
 {
     private readonly IStockReservationRepository _stockReservationRepository;
     private readonly IStockReservationService _stockReservationService;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
     public StockReservationQueryAppService(
         IStockReservationRepository stockReservationRepository,
-        IStockReservationService stockReservationService)
+        IStockReservationService stockReservationService,
+        IWarehouseScopeService warehouseScopeService)
     {
         _stockReservationRepository = stockReservationRepository;
         _stockReservationService = stockReservationService;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     public async Task<PagedResultDto<StockReservationListItemDto>> GetListAsync(
@@ -27,9 +30,15 @@ public class StockReservationQueryAppService : IStockReservationQueryAppService
         int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
+        var scope = _warehouseScopeService.ResolveListScope(warehouseId);
         var (skip, take, normalizedPage, normalizedPageSize) = PagingNormalizer.Normalize(page, pageSize);
         var (items, totalCount) = await _stockReservationRepository.GetPagedListAsync(
-            warehouseId, status, skip, take, cancellationToken);
+            scope.WarehouseId,
+            status,
+            skip,
+            take,
+            scope.ScopedWarehouseIds,
+            cancellationToken);
 
         return PagingNormalizer.Create(
             items.Select(MapToDto).ToList(),
@@ -43,6 +52,8 @@ public class StockReservationQueryAppService : IStockReservationQueryAppService
         var reservation = await _stockReservationRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Stock reservation '{id}' was not found.");
 
+        _warehouseScopeService.EnsureWarehouseAccess(reservation.WarehouseId);
+
         return MapToDto(reservation);
     }
 
@@ -50,6 +61,8 @@ public class StockReservationQueryAppService : IStockReservationQueryAppService
     {
         var reservation = await _stockReservationRepository.GetByIdWithLinesAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"Stock reservation '{id}' was not found.");
+
+        _warehouseScopeService.EnsureWarehouseAccess(reservation.WarehouseId);
 
         if (reservation.Status is not StockReservationStatus.Active)
         {

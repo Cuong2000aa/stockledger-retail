@@ -14,31 +14,55 @@ public class AnalyticsAppService : IAnalyticsAppService
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IPurchaseOrderRepository _purchaseOrderRepository;
     private readonly IGoodsReceiptRepository _goodsReceiptRepository;
+    private readonly IWarehouseScopeService _warehouseScopeService;
 
     public AnalyticsAppService(
         ICurrentStockRepository currentStockRepository,
         IStockTransactionRepository stockTransactionRepository,
         IWarehouseRepository warehouseRepository,
         IPurchaseOrderRepository purchaseOrderRepository,
-        IGoodsReceiptRepository goodsReceiptRepository)
+        IGoodsReceiptRepository goodsReceiptRepository,
+        IWarehouseScopeService warehouseScopeService)
     {
         _currentStockRepository = currentStockRepository;
         _stockTransactionRepository = stockTransactionRepository;
         _warehouseRepository = warehouseRepository;
         _purchaseOrderRepository = purchaseOrderRepository;
         _goodsReceiptRepository = goodsReceiptRepository;
+        _warehouseScopeService = warehouseScopeService;
     }
 
     public async Task<InventorySummaryDto> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        var stocks = await _currentStockRepository.GetListAsync(cancellationToken: cancellationToken);
+        var scope = _warehouseScopeService.ResolveListScope(null);
+        var stocks = await _currentStockRepository.GetListAsync(
+            scope.WarehouseId,
+            scopedWarehouseIds: scope.ScopedWarehouseIds,
+            cancellationToken: cancellationToken);
+
+        var scopedWarehouseIds = scope.ScopedWarehouseIds;
         var warehouses = await _warehouseRepository.GetListAsync(cancellationToken);
+        if (scopedWarehouseIds is { Count: > 0 })
+        {
+            warehouses = warehouses.Where(x => scopedWarehouseIds.Contains(x.Id)).ToList();
+        }
+        else if (scope.WarehouseId.HasValue)
+        {
+            warehouses = warehouses.Where(x => x.Id == scope.WarehouseId.Value).ToList();
+        }
+
         var (_, openPoCount) = await _purchaseOrderRepository.GetPagedListAsync(
-            PurchaseOrderStatus.Submitted, null, 0, 1, null, cancellationToken);
+            PurchaseOrderStatus.Submitted, null, 0, 1, null, scope.WarehouseId, scope.ScopedWarehouseIds, cancellationToken);
         var (_, partialPoCount) = await _purchaseOrderRepository.GetPagedListAsync(
-            PurchaseOrderStatus.PartiallyReceived, null, 0, 1, null, cancellationToken);
+            PurchaseOrderStatus.PartiallyReceived, null, 0, 1, null, scope.WarehouseId, scope.ScopedWarehouseIds, cancellationToken);
         var (_, pendingGrCount) = await _goodsReceiptRepository.GetPagedListAsync(
-            null, GoodsReceiptStatus.Draft, 0, 1, cancellationToken);
+            null,
+            GoodsReceiptStatus.Draft,
+            0,
+            1,
+            scope.WarehouseId,
+            scope.ScopedWarehouseIds,
+            cancellationToken);
 
         return new InventorySummaryDto
         {
@@ -54,7 +78,11 @@ public class AnalyticsAppService : IAnalyticsAppService
     public async Task<List<StockByWarehouseDto>> GetStockByWarehouseAsync(
         CancellationToken cancellationToken = default)
     {
-        var stocks = await _currentStockRepository.GetListAsync(cancellationToken: cancellationToken);
+        var scope = _warehouseScopeService.ResolveListScope(null);
+        var stocks = await _currentStockRepository.GetListAsync(
+            scope.WarehouseId,
+            scopedWarehouseIds: scope.ScopedWarehouseIds,
+            cancellationToken: cancellationToken);
 
         return stocks
             .GroupBy(s => new { s.WarehouseId, s.Warehouse.Code, s.Warehouse.Name })
@@ -76,11 +104,14 @@ public class AnalyticsAppService : IAnalyticsAppService
         DateTime? toDate = null,
         CancellationToken cancellationToken = default)
     {
+        var scope = _warehouseScopeService.ResolveListScope(null);
         var dateRange = ReportDateRange.FromOptionalUserInput(fromDate, toDate);
 
         var transactions = await _stockTransactionRepository.GetByDateRangeAsync(
             dateRange.FromInclusiveUtc,
             dateRange.ToExclusiveUtc,
+            scope.WarehouseId,
+            scope.ScopedWarehouseIds,
             cancellationToken);
 
         return new MovementSummaryDto
@@ -97,7 +128,11 @@ public class AnalyticsAppService : IAnalyticsAppService
         decimal threshold = 10,
         CancellationToken cancellationToken = default)
     {
-        var stocks = await _currentStockRepository.GetListAsync(cancellationToken: cancellationToken);
+        var scope = _warehouseScopeService.ResolveListScope(null);
+        var stocks = await _currentStockRepository.GetListAsync(
+            scope.WarehouseId,
+            scopedWarehouseIds: scope.ScopedWarehouseIds,
+            cancellationToken: cancellationToken);
 
         return stocks
             .Where(s => s.QuantityAvailable <= threshold)

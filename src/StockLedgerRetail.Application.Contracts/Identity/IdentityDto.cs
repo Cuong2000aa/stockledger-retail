@@ -13,6 +13,12 @@ public class CurrentUserDto
     public List<string> PermissionCodes { get; set; } = new();
 
     public List<string> GroupCodes { get; set; } = new();
+
+    public List<Guid> WarehouseIds { get; set; } = new();
+
+    public Guid? PrimaryWarehouseId { get; set; }
+
+    public bool HasUnrestrictedWarehouseAccess { get; set; }
 }
 
 public class LoginRequestDto
@@ -34,6 +40,12 @@ public class LoginResponseDto
     public List<string> PermissionCodes { get; set; } = new();
 
     public List<string> GroupCodes { get; set; } = new();
+
+    public List<Guid> WarehouseIds { get; set; } = new();
+
+    public Guid? PrimaryWarehouseId { get; set; }
+
+    public bool HasUnrestrictedWarehouseAccess { get; set; }
 }
 
 public class AppUserDto
@@ -48,9 +60,18 @@ public class AppUserDto
 
     public List<string> GroupCodes { get; set; } = new();
 
+    public List<UserWarehouseAssignmentDto> WarehouseAssignments { get; set; } = new();
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+}
+
+public class UserWarehouseAssignmentDto
+{
+    public Guid WarehouseId { get; set; }
+
+    public bool IsPrimary { get; set; }
 }
 
 public class CreateAppUserDto
@@ -62,6 +83,15 @@ public class CreateAppUserDto
     public string Password { get; set; } = string.Empty;
 
     public List<string> GroupCodes { get; set; } = new();
+
+    public List<UserWarehouseAssignmentInputDto> WarehouseAssignments { get; set; } = new();
+}
+
+public class UserWarehouseAssignmentInputDto
+{
+    public Guid WarehouseId { get; set; }
+
+    public bool IsPrimary { get; set; }
 }
 
 public class UpdateAppUserDto
@@ -73,6 +103,8 @@ public class UpdateAppUserDto
     public string? Password { get; set; }
 
     public List<string> GroupCodes { get; set; } = new();
+
+    public List<UserWarehouseAssignmentInputDto> WarehouseAssignments { get; set; } = new();
 }
 
 public class PermissionDto

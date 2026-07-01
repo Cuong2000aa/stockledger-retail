@@ -15,6 +15,7 @@ public interface IWarehouseRepository
         int skip,
         int take,
         string? search = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
     Task<List<Warehouse>> GetActiveFulfillmentWarehousesAsync(

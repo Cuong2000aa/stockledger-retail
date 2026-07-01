@@ -38,6 +38,8 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IAuditContext, DefaultAuditContext>();
         services.AddScoped<ICurrentUserContext, CurrentUserContext>();
         services.AddScoped<IBrandScopeContext, BrandScopeContext>();
+        services.AddScoped<IUserWarehouseScopeContext, UserWarehouseScopeContext>();
+        services.AddScoped<IWarehouseScopeService, WarehouseScopeService>();
         services.AddScoped<IPermissionAuthorizationService, PermissionAuthorizationService>();
         services.AddScoped<ITransactionAuditService, TransactionAuditService>();
         services.AddScoped<ITransactionLogAppService, TransactionLogAppService>();
@@ -80,6 +82,7 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IStockReservationQueryAppService, StockReservationQueryAppService>();
         services.AddScoped<IInventoryReportsAppService, InventoryReportsAppService>();
         services.AddScoped<IFbDataSeedService, FbDataSeedService>();
+        services.AddScoped<IDemoUserSeedService, DemoUserSeedService>();
 
         if (configuration is not null)
         {

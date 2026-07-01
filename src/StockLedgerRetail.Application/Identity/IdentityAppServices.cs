@@ -5,6 +5,7 @@ using StockLedgerRetail.Authorization;
 using StockLedgerRetail.Caching;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
+using StockLedgerRetail.Enums;
 using StockLedgerRetail.Identity;
 using StockLedgerRetail.Services;
 
@@ -14,15 +15,18 @@ public class AuthAppService : IAuthAppService
 {
     private readonly ICurrentUserContext _currentUser;
     private readonly IAppUserRepository _appUserRepository;
+    private readonly IWarehouseScopeService _warehouseScopeService;
     private readonly LoginOptions _loginOptions;
 
     public AuthAppService(
         ICurrentUserContext currentUser,
         IAppUserRepository appUserRepository,
+        IWarehouseScopeService warehouseScopeService,
         IOptions<LoginOptions> loginOptions)
     {
         _currentUser = currentUser;
         _appUserRepository = appUserRepository;
+        _warehouseScopeService = warehouseScopeService;
         _loginOptions = loginOptions.Value;
     }
 
@@ -71,8 +75,12 @@ public class AuthAppService : IAuthAppService
             throw new UnauthorizedAccessException("Not authenticated.");
         }
 
-        var user = await _appUserRepository.GetByIdAsync(_currentUser.UserId.Value, cancellationToken)
+        var user = await _appUserRepository.GetByIdWithAssignmentsAsync(_currentUser.UserId.Value, cancellationToken)
             ?? throw new UnauthorizedAccessException("User not found.");
+
+        var warehouseIds = user.WarehouseAssignments.Select(x => x.WarehouseId).Distinct().ToList();
+        var primaryWarehouseId = user.WarehouseAssignments.FirstOrDefault(x => x.IsPrimary)?.WarehouseId
+            ?? warehouseIds.FirstOrDefault();
 
         return new CurrentUserDto
         {
@@ -80,25 +88,43 @@ public class AuthAppService : IAuthAppService
             Email = user.Email,
             DisplayName = user.DisplayName,
             PermissionCodes = _currentUser.PermissionCodes.ToList(),
-            GroupCodes = user.GroupAssignments.Select(x => x.Group.Code).ToList()
+            GroupCodes = user.GroupAssignments.Select(x => x.Group.Code).ToList(),
+            WarehouseIds = warehouseIds,
+            PrimaryWarehouseId = primaryWarehouseId == Guid.Empty ? null : primaryWarehouseId,
+            HasUnrestrictedWarehouseAccess = _warehouseScopeService.HasUnrestrictedWarehouseAccess()
         };
     }
 
-    private static LoginResponseDto MapLoginResponse(AppUser user) => new()
+    private static LoginResponseDto MapLoginResponse(AppUser user)
     {
-        Email = user.Email,
-        DisplayName = user.DisplayName,
-        PermissionCodes = user.GroupAssignments
+        var permissionCodes = user.GroupAssignments
             .Where(x => x.Group.IsActive)
             .SelectMany(x => x.Group.Permissions)
             .Select(x => x.Permission.Code)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList(),
-        GroupCodes = user.GroupAssignments
-            .Where(x => x.Group.IsActive)
-            .Select(x => x.Group.Code)
-            .ToList()
-    };
+            .ToList();
+
+        var warehouseIds = user.WarehouseAssignments.Select(x => x.WarehouseId).Distinct().ToList();
+        var primaryWarehouseId = user.WarehouseAssignments.FirstOrDefault(x => x.IsPrimary)?.WarehouseId
+            ?? warehouseIds.FirstOrDefault();
+
+        var unrestricted = permissionCodes.Contains(PermissionCodes.SystemAdmin, StringComparer.OrdinalIgnoreCase)
+            || permissionCodes.Contains(PermissionCodes.InventoryScopeAllWarehouses, StringComparer.OrdinalIgnoreCase);
+
+        return new LoginResponseDto
+        {
+            Email = user.Email,
+            DisplayName = user.DisplayName,
+            PermissionCodes = permissionCodes,
+            GroupCodes = user.GroupAssignments
+                .Where(x => x.Group.IsActive)
+                .Select(x => x.Group.Code)
+                .ToList(),
+            WarehouseIds = warehouseIds,
+            PrimaryWarehouseId = primaryWarehouseId == Guid.Empty ? null : primaryWarehouseId,
+            HasUnrestrictedWarehouseAccess = unrestricted
+        };
+    }
 }
 
 public class AppUserAppService : IAppUserAppService
@@ -107,17 +133,23 @@ public class AppUserAppService : IAppUserAppService
     private readonly IPermissionGroupRepository _permissionGroupRepository;
     private readonly IPermissionAuthorizationService _authorizationService;
     private readonly IUserAuthCacheService _userAuthCacheService;
+    private readonly IUserWarehouseAssignmentRepository _userWarehouseAssignmentRepository;
+    private readonly ITransactionAuditService _transactionAuditService;
 
     public AppUserAppService(
         IAppUserRepository appUserRepository,
         IPermissionGroupRepository permissionGroupRepository,
         IPermissionAuthorizationService authorizationService,
-        IUserAuthCacheService userAuthCacheService)
+        IUserAuthCacheService userAuthCacheService,
+        IUserWarehouseAssignmentRepository userWarehouseAssignmentRepository,
+        ITransactionAuditService transactionAuditService)
     {
         _appUserRepository = appUserRepository;
         _permissionGroupRepository = permissionGroupRepository;
         _authorizationService = authorizationService;
         _userAuthCacheService = userAuthCacheService;
+        _userWarehouseAssignmentRepository = userWarehouseAssignmentRepository;
+        _transactionAuditService = transactionAuditService;
     }
 
     public async Task<List<AppUserDto>> GetListAsync(CancellationToken cancellationToken = default)
@@ -130,7 +162,7 @@ public class AppUserAppService : IAppUserAppService
     public async Task<AppUserDto> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         _authorizationService.EnsureAdminUsersManage();
-        var user = await _appUserRepository.GetByIdAsync(id, cancellationToken)
+        var user = await _appUserRepository.GetByIdWithAssignmentsAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"User '{id}' was not found.");
         return MapToDto(user);
     }
@@ -165,18 +197,23 @@ public class AppUserAppService : IAppUserAppService
 
         await _appUserRepository.InsertAsync(user, cancellationToken);
         await SyncGroupsAsync(user.Id, input.GroupCodes, cancellationToken);
+        await SyncWarehouseAssignmentsAsync(user.Id, input.WarehouseAssignments, cancellationToken);
         await _appUserRepository.SaveChangesAsync(cancellationToken);
         await _userAuthCacheService.InvalidateUserAsync(email, cancellationToken);
 
-        return MapToDto((await _appUserRepository.GetByIdAsync(user.Id, cancellationToken))!);
+        var dto = MapToDto((await _appUserRepository.GetByIdWithAssignmentsAsync(user.Id, cancellationToken))!);
+        await _transactionAuditService.LogAsync(nameof(AppUser), user.Id, AuditActionType.Create, null, dto, cancellationToken);
+        return dto;
     }
 
     public async Task<AppUserDto> UpdateAsync(Guid id, UpdateAppUserDto input, CancellationToken cancellationToken = default)
     {
         _authorizationService.EnsureAdminUsersManage();
 
-        var user = await _appUserRepository.GetByIdAsync(id, cancellationToken)
+        var user = await _appUserRepository.GetByIdWithAssignmentsAsync(id, cancellationToken)
             ?? throw new KeyNotFoundException($"User '{id}' was not found.");
+
+        var oldDto = MapToDto(user);
 
         user.DisplayName = input.DisplayName.Trim();
         user.IsActive = input.IsActive;
@@ -189,10 +226,13 @@ public class AppUserAppService : IAppUserAppService
 
         await _appUserRepository.UpdateAsync(user, cancellationToken);
         await SyncGroupsAsync(user.Id, input.GroupCodes, cancellationToken);
+        await SyncWarehouseAssignmentsAsync(user.Id, input.WarehouseAssignments, cancellationToken);
         await _appUserRepository.SaveChangesAsync(cancellationToken);
         await _userAuthCacheService.InvalidateUserAsync(user.Email, cancellationToken);
 
-        return MapToDto((await _appUserRepository.GetByIdAsync(user.Id, cancellationToken))!);
+        var newDto = MapToDto((await _appUserRepository.GetByIdWithAssignmentsAsync(user.Id, cancellationToken))!);
+        await _transactionAuditService.LogAsync(nameof(AppUser), user.Id, AuditActionType.Update, oldDto, newDto, cancellationToken);
+        return newDto;
     }
 
     private async Task SyncGroupsAsync(Guid userId, List<string> groupCodes, CancellationToken cancellationToken)
@@ -229,6 +269,19 @@ public class AppUserAppService : IAppUserAppService
         await _permissionGroupRepository.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task SyncWarehouseAssignmentsAsync(
+        Guid userId,
+        IReadOnlyCollection<UserWarehouseAssignmentInputDto> assignments,
+        CancellationToken cancellationToken)
+    {
+        var normalized = assignments
+            .Where(x => x.WarehouseId != Guid.Empty)
+            .Select(x => (x.WarehouseId, x.IsPrimary))
+            .ToList();
+
+        await _userWarehouseAssignmentRepository.ReplaceForUserAsync(userId, normalized, cancellationToken);
+    }
+
     private static AppUserDto MapToDto(AppUser user) => new()
     {
         Id = user.Id,
@@ -236,6 +289,13 @@ public class AppUserAppService : IAppUserAppService
         DisplayName = user.DisplayName,
         IsActive = user.IsActive,
         GroupCodes = user.GroupAssignments.Select(x => x.Group.Code).ToList(),
+        WarehouseAssignments = user.WarehouseAssignments
+            .Select(x => new UserWarehouseAssignmentDto
+            {
+                WarehouseId = x.WarehouseId,
+                IsPrimary = x.IsPrimary
+            })
+            .ToList(),
         CreatedAt = user.CreatedAt,
         UpdatedAt = user.UpdatedAt
     };

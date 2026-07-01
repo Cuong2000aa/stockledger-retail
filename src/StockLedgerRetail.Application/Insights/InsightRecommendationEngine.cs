@@ -547,7 +547,8 @@ public class InsightRecommendationEngine : IInsightRecommendationEngine
 
         if (insight.SuggestedMarkdownPriceBeforeVat.HasValue
             && actionCode is InsightActionCodes.DeadStockCriticalMarkdown
-                or InsightActionCodes.DeadStockMarkdownOrTransfer)
+                or InsightActionCodes.DeadStockMarkdownOrTransfer
+                or InsightActionCodes.DeadStockReview)
         {
             AddMarkdownPriceCtas(
                 actions,

@@ -28,6 +28,8 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<UserGroupAssignment> UserGroupAssignments => Set<UserGroupAssignment>();
 
+    public DbSet<UserWarehouseAssignment> UserWarehouseAssignments => Set<UserWarehouseAssignment>();
+
     public DbSet<Team> Teams => Set<Team>();
 
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();

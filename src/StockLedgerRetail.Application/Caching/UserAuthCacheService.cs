@@ -116,7 +116,14 @@ public class UserAuthCacheService : IUserAuthCacheService
             Email = user.Email,
             DisplayName = user.DisplayName,
             IsActive = user.IsActive,
-            PermissionCodes = activePermissionCodes
+            PermissionCodes = activePermissionCodes,
+            WarehouseIds = user.WarehouseAssignments
+                .Select(x => x.WarehouseId)
+                .Distinct()
+                .ToList(),
+            PrimaryWarehouseId = user.WarehouseAssignments
+                .FirstOrDefault(x => x.IsPrimary)?.WarehouseId
+                ?? user.WarehouseAssignments.Select(x => x.WarehouseId).FirstOrDefault()
         };
     }
 }

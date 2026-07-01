@@ -15,6 +15,8 @@ public static class PermissionCodes
     public const string InventoryDocumentsApproveTeam = "inventory.documents.approve.team";
     public const string InventoryDocumentsReceiveTransfer = "inventory.documents.receive-transfer";
 
+    public const string InventoryScopeAllWarehouses = "inventory.scope.all_warehouses";
+
     public const string AdminUsersManage = "admin.users.manage";
     public const string AdminGroupsManage = "admin.groups.manage";
     public const string AdminTeamsManage = "admin.teams.manage";
@@ -29,6 +31,7 @@ public static class PermissionCodes
         InventoryDocumentsApprove,
         InventoryDocumentsApproveTeam,
         InventoryDocumentsReceiveTransfer,
+        InventoryScopeAllWarehouses,
         AdminUsersManage,
         AdminGroupsManage,
         AdminTeamsManage

@@ -61,6 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: string;
         permissionCodes: string[];
         groupCodes: string[];
+        warehouseIds?: string[];
+        primaryWarehouseId?: string | null;
+        hasUnrestrictedWarehouseAccess?: boolean;
       }>("/api/auth/me")
       .then(({ data }) => {
         const nextSession: AuthSession = {
@@ -68,6 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           displayName: data.displayName,
           permissionCodes: data.permissionCodes ?? [],
           groupCodes: data.groupCodes ?? [],
+          warehouseIds: (data.warehouseIds ?? []).map(String),
+          primaryWarehouseId: data.primaryWarehouseId ? String(data.primaryWarehouseId) : null,
+          hasUnrestrictedWarehouseAccess: data.hasUnrestrictedWarehouseAccess ?? false,
         };
         setAuthSession(nextSession);
         setSession(nextSession);
@@ -90,6 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         displayName: data.displayName,
         permissionCodes: data.permissionCodes ?? [],
         groupCodes: data.groupCodes ?? [],
+        warehouseIds: (data.warehouseIds ?? []).map(String),
+        primaryWarehouseId: data.primaryWarehouseId ? String(data.primaryWarehouseId) : null,
+        hasUnrestrictedWarehouseAccess: data.hasUnrestrictedWarehouseAccess ?? false,
       };
       setAuthSession(nextSession);
       setSession(nextSession);

@@ -11,6 +11,7 @@ public interface IInventoryDocumentAppService
     Task<PagedResultDto<InventoryDocumentDto>> GetListAsync(
         InventoryDocumentType? documentType = null,
         InventoryDocumentStatus? status = null,
+        TransferLifecycleStatus? transferLifecycle = null,
         int? page = null,
         int? pageSize = null,
         string? search = null,

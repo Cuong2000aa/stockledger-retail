@@ -14,6 +14,7 @@ import { formatDate } from "@/lib/format";
 import {
   InventoryDocumentStatus,
   InventoryDocumentType,
+  TransferLifecycleStatus,
 } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -73,20 +74,22 @@ export default function InventoryDocumentsPage() {
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<InventoryDocumentType | "">("");
   const [statusFilter, setStatusFilter] = useState<InventoryDocumentStatus | "">("");
+  const [inTransitOnly, setInTransitOnly] = useState(false);
   const { search, setSearch, debouncedSearch, resetSearch, hasSearch } =
     useListSearch(() => setPage(1));
 
-  const hasFilters = hasSearch || typeFilter !== "" || statusFilter !== "";
+  const hasFilters = hasSearch || typeFilter !== "" || statusFilter !== "" || inTransitOnly;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["inventory-documents", page, typeFilter, statusFilter, debouncedSearch],
+    queryKey: ["inventory-documents", page, typeFilter, statusFilter, inTransitOnly, debouncedSearch],
     queryFn: () =>
       fetchInventoryDocuments(
-        typeFilter === "" ? undefined : typeFilter,
+        inTransitOnly ? InventoryDocumentType.Transfer : typeFilter === "" ? undefined : typeFilter,
         statusFilter === "" ? undefined : statusFilter,
         page,
         20,
-        debouncedSearch || undefined
+        debouncedSearch || undefined,
+        inTransitOnly ? TransferLifecycleStatus.Shipped : undefined
       ),
   });
 
@@ -96,6 +99,9 @@ export default function InventoryDocumentsPage() {
       total: data?.totalCount ?? 0,
       draft: items.filter((d) => d.status === InventoryDocumentStatus.Draft).length,
       approved: items.filter((d) => d.status === InventoryDocumentStatus.Approved).length,
+      inTransit: items.filter(
+        (d) => d.transferLifecycleStatus === TransferLifecycleStatus.Shipped
+      ).length,
     };
   }, [data?.items, data?.totalCount]);
 
@@ -103,6 +109,7 @@ export default function InventoryDocumentsPage() {
     resetSearch();
     setTypeFilter("");
     setStatusFilter("");
+    setInTransitOnly(false);
     setPage(1);
   };
 
@@ -131,12 +138,47 @@ export default function InventoryDocumentsPage() {
       {isLoading && !data ? (
         <StatCardsSkeleton />
       ) : (
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <div className="mb-6 grid gap-4 sm:grid-cols-4">
           <StatCard label={t("stats.total")} value={String(stats.total)} icon={FileText} accent="indigo" />
           <StatCard label={t("stats.draft")} value={String(stats.draft)} icon={FileText} accent="amber" />
           <StatCard label={t("stats.approved")} value={String(stats.approved)} icon={FileText} accent="emerald" />
+          <StatCard label={t("stats.inTransit")} value={String(stats.inTransit)} icon={ArrowLeftRight} accent="indigo" />
         </div>
       )}
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setInTransitOnly(false);
+            setPage(1);
+          }}
+          className={clsx(
+            "rounded-lg px-3 py-1.5 text-sm font-medium ring-1 transition",
+            !inTransitOnly
+              ? "bg-brand-600 text-white ring-brand-600"
+              : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"
+          )}
+        >
+          {t("filters.allDocuments")}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setInTransitOnly(true);
+            setTypeFilter("");
+            setPage(1);
+          }}
+          className={clsx(
+            "rounded-lg px-3 py-1.5 text-sm font-medium ring-1 transition",
+            inTransitOnly
+              ? "bg-violet-600 text-white ring-violet-600"
+              : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50"
+          )}
+        >
+          {t("filters.inTransit")}
+        </button>
+      </div>
 
       <ListFilterBar
         variant="enhanced"
@@ -221,7 +263,14 @@ export default function InventoryDocumentsPage() {
                       </td>
                       <td className="text-sm">{formatDate(doc.documentDate, locale)}</td>
                       <td>
-                        <DocStatusBadge status={doc.status} label={statusLabel(doc.status, t)} />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <DocStatusBadge status={doc.status} label={statusLabel(doc.status, t)} />
+                          {doc.transferLifecycleStatus === TransferLifecycleStatus.Shipped ? (
+                            <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+                              {t("transferLifecycle.Shipped")}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="text-sm text-slate-600">{doc.referenceNo ?? "—"}</td>
                       <td>

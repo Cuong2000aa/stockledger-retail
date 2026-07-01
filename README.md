@@ -44,6 +44,9 @@ CurrentStock      ← fast lookup
 | **Markdown policy** | Per-brand markdown tiers, policy engine, insights CTAs, admin UI | ✅ Done |
 | **Admin UI** | Brands, users, teams, permissions, transfer policies, operations | ✅ Done |
 | **Demo seed** | Optional sample multi-brand data (`Seed:Fb:Enabled`) | ✅ Done |
+| **Warehouse scope** | Per-user warehouse assignments; filtered lists & mutations on PO/GR/reports/stock | ✅ Done |
+| **Pricing authority** | Shared `PricingCalculator`; BE validates before-VAT; contract tests BE+FE | ✅ Done |
+| **Ops readiness** | `/health`, `/health/ready`, rollout smoke scripts, integration tests PO→GR→Stock-in | ✅ Done |
 | **AI Copilot** | Natural-language Q&A on insight APIs | 🔜 Planned |
 
 ---
@@ -99,6 +102,8 @@ Supplier → Purchase Order (Draft → Submitted)
 `POST /api/integration/fulfillment/allocate-warehouse` — auto-select ship-from warehouse  
 
 Optional scope headers (RBAC-lite): `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
+
+**Warehouse scope (DB):** assign warehouses per user in Admin → Users; clerks see only their store(s). See [docs/RBAC.md](docs/RBAC.md) and [docs/BusinessRules.vi.md](docs/BusinessRules.vi.md) (BR1307–BR1308).
 
 ### Authorization (email + DB permissions)
 
@@ -328,7 +333,14 @@ UI: [http://localhost:3000/vi](http://localhost:3000/vi) (default locale is Viet
 
 Set `Seed:Fb:Enabled: false` in production.
 
-> After pulling new API code, **restart** the API host so new endpoints (e.g. `/api/reports/*`) are available.
+**7. Verify (optional)**
+
+```powershell
+.\scripts\rollout-smoke.ps1
+dotnet test tests/StockLedgerRetail.Integration.Tests
+```
+
+> After pulling new API code, **restart** the API host so new endpoints (e.g. `/health`, `/api/reports/*`) are available.
 
 ---
 
@@ -362,22 +374,23 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 
 ## Documentation
 
-| File | Content |
-|------|---------|
-| [docs/RBAC.md](docs/RBAC.md) | Email-based RBAC, permission groups, teams |
-| [docs/MultiBrand.md](docs/MultiBrand.md) | Multi-brand phases, in-transit transfer, scope headers (EN) |
-| [docs/MultiBrand.vi.md](docs/MultiBrand.vi.md) | Đa thương hiệu (VI) |
-| [docs/UseCases.md](docs/UseCases.md) | Use cases UC001–UC016 |
-| [docs/BusinessRules.md](docs/BusinessRules.md) | Business rules (EN) |
-| [docs/BusinessRules.vi.md](docs/BusinessRules.vi.md) | Business rules (VI) |
-| [docs/Entities.md](docs/Entities.md) | Entity dictionary (EN) |
-| [docs/Entities.vn.md](docs/Entities.vn.md) | Entity dictionary (VI) |
-| [docs/ERD.md](docs/ERD.md) | Database tables & relationships |
-| [docs/InventoryDomain.md](docs/InventoryDomain.md) | Domain overview |
-| [docs/MarkdownPolicy.md](docs/MarkdownPolicy.md) | Markdown policy engine (EN) |
-| [docs/MarkdownPolicy.vi.md](docs/MarkdownPolicy.vi.md) | Chính sách giảm giá (VI) |
-| [docs/Insights.md](docs/Insights.md) | Inventory insights suite (EN) |
-| [docs/Insights.vi.md](docs/Insights.vi.md) | Phân tích tồn kho / Insights (VI) |
+| File | Audience | Content |
+|------|----------|---------|
+| [docs/Development.md](docs/Development.md) | **Developer / DevOps** | Tests, smoke scripts, health, scope service, pricing contract, migrations |
+| [docs/RBAC.md](docs/RBAC.md) | Admin / Dev | Email RBAC, teams, warehouse assignments |
+| [docs/MultiBrand.md](docs/MultiBrand.md) | Dev / BA | Multi-brand phases, scope headers (EN) |
+| [docs/MultiBrand.vi.md](docs/MultiBrand.vi.md) | BA / User | Đa thương hiệu (VI) |
+| [docs/UseCases.md](docs/UseCases.md) | BA / User | Use cases UC001–UC016 (business flows) |
+| [docs/BusinessRules.md](docs/BusinessRules.md) | BA / User | Business rules (EN) |
+| [docs/BusinessRules.vi.md](docs/BusinessRules.vi.md) | **User / BA** | Quy tắc nghiệp vụ (VI) |
+| [docs/Entities.md](docs/Entities.md) | Dev | Entity dictionary (EN) |
+| [docs/Entities.vn.md](docs/Entities.vn.md) | BA | Từ điển thực thể (VI) |
+| [docs/ERD.md](docs/ERD.md) | Dev | Database tables & relationships |
+| [docs/InventoryDomain.md](docs/InventoryDomain.md) | Dev / BA | Domain overview |
+| [docs/MarkdownPolicy.md](docs/MarkdownPolicy.md) | Dev / BA | Markdown policy engine (EN) |
+| [docs/MarkdownPolicy.vi.md](docs/MarkdownPolicy.vi.md) | User / BA | Chính sách giảm giá (VI) |
+| [docs/Insights.md](docs/Insights.md) | Dev / BA | Inventory insights (EN) |
+| [docs/Insights.vi.md](docs/Insights.vi.md) | User / BA | Phân tích tồn kho (VI) |
 
 ---
 
@@ -387,12 +400,10 @@ Items below are **not done yet** (or only partially done). See the [Implementati
 
 | Item | Notes |
 |------|--------|
-| **JWT / OAuth** | Replace stub login (`admin`/`1234`); keep permissions loaded from DB |
-| **AI Copilot** | Natural-language Q&A on top of insight APIs (optional LLM layer) |
-| **BrandId on master forms** | `BrandId` pickers on product/SKU/warehouse create/edit screens |
 | **PO approval UI** | Approve button for POs in `PendingApproval` status |
 | **GR / NXT demo seed** | Sample goods receipts and stock transactions for movement reports |
 | **Docker deployment** | `docker-compose` for API + PostgreSQL + frontend |
+| **JWT / OAuth** | Replace email header login; permissions still from DB |
 
 ---
 

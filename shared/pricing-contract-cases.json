@@ -1,0 +1,9 @@
+[
+  { "priceBeforeVat": 100, "vatRate": 0, "priceAfterVat": 100 },
+  { "priceBeforeVat": 100, "vatRate": 8, "priceAfterVat": 108 },
+  { "priceBeforeVat": 100, "vatRate": 10, "priceAfterVat": 110 },
+  { "priceBeforeVat": 99.99, "vatRate": 10, "priceAfterVat": 109.989 },
+  { "priceBeforeVat": 12345.6789, "vatRate": 8, "priceAfterVat": 13333.3332 },
+  { "priceAfterVat": 108, "vatRate": 8, "priceBeforeVat": 100 },
+  { "priceAfterVat": 110, "vatRate": 10, "priceBeforeVat": 100 }
+]

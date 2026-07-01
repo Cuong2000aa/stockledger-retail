@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useWarehouseScope } from "@/hooks/useWarehouseScope";
 import {
   createTransferFromCtaPayload,
   createTransferFromSuggestion,
@@ -84,6 +85,7 @@ export default function InsightsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { notifyError } = useNotify();
+  const { defaultWarehouseId, canSelectAllWarehouses } = useWarehouseScope();
 
   const [warehouseId, setWarehouseId] = useState("");
   const [brandId, setBrandId] = useState("");
@@ -249,12 +251,8 @@ export default function InsightsPage() {
     const trendItems = trendSummary ?? [];
 
     return {
-      deadCount: executiveSummary ? executiveSummary.deadStockCount : deadStockFetched ? deadItems.length : null,
-      tiedCapital: executiveSummary
-        ? executiveSummary.tiedCapital
-        : deadStockFetched
-        ? deadItems.reduce((sum, item) => sum + (item.estimatedCostValue ?? 0), 0)
-        : null,
+      deadCount: executiveSummary ? executiveSummary.deadStockCount : null,
+      tiedCapital: executiveSummary ? executiveSummary.tiedCapital : null,
       urgentVelocity: salesVelocityFetched
         ? velocityItems.filter(
             (item) => item.severity === "critical" || item.severity === "warning"
@@ -385,11 +383,17 @@ export default function InsightsPage() {
   };
 
   const handleResetFilters = () => {
-    setWarehouseId("");
+    setWarehouseId(canSelectAllWarehouses ? "" : defaultWarehouseId);
     setBrandId("");
     setDaysWithoutOutbound(60);
     setLookbackDays(30);
   };
+
+  useEffect(() => {
+    if (!warehouseId && defaultWarehouseId) {
+      setWarehouseId(defaultWarehouseId);
+    }
+  }, [defaultWarehouseId, warehouseId]);
 
   const openExplain = useCallback(
     (

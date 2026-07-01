@@ -34,6 +34,7 @@ public class AuthorizationBootstrapHostedService : IHostedService
         var groupRepository = scope.ServiceProvider.GetRequiredService<IPermissionGroupRepository>();
 
         await permissionRepository.EnsureSeedAsync(cancellationToken);
+        await permissionRepository.EnsureMissingPermissionsAsync(cancellationToken);
 
         if (string.IsNullOrWhiteSpace(_bootstrapAdminEmail))
         {

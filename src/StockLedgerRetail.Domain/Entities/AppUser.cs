@@ -15,4 +15,7 @@ public class AppUser : AuditedEntity
     public ICollection<TeamMember> TeamMemberships { get; set; } = new List<TeamMember>();
 
     public ICollection<Team> LedTeams { get; set; } = new List<Team>();
+
+    public ICollection<UserWarehouseAssignment> WarehouseAssignments { get; set; } =
+        new List<UserWarehouseAssignment>();
 }
