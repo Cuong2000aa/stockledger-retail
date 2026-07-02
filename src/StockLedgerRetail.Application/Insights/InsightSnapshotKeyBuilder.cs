@@ -10,6 +10,8 @@ public static class InsightSnapshotKeyBuilder
     public const string KindReorderRisk = "reorder_risk";
     public const string KindTrendSummary = "trend_summary";
     public const string KindExecutiveSummary = "executive_summary";
+    public const string KindBrokenSizeRun = "broken_size_run";
+    public const string KindSeasonClearance = "season_clearance";
 
     public static string BuildDeadStockKey(
         Guid? warehouseId,

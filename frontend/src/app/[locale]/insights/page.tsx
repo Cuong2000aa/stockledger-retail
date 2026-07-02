@@ -10,11 +10,13 @@ import {
   InsightSkuCell,
   InsightTransferRouteCell,
   InsightWarehouseCell,
+  InsightPriorityCell,
   LoadingRow,
 } from "@/features/insights/components/InsightSection";
 import { InsightsExecutiveSummaryStrip } from "@/features/insights/components/InsightsExecutiveSummaryStrip";
 import { InsightsHeroBanner } from "@/features/insights/components/InsightsHeroBanner";
 import { InsightTabBar } from "@/features/insights/components/InsightTabBar";
+import { InsightTabContextBanner } from "@/features/insights/components/InsightTabContextBanner";
 import { RecommendationCard } from "@/features/insights/components/RecommendationCard";
 import { getInsightSummaryKey } from "@/features/insights/insight-explain";
 import {
@@ -33,9 +35,11 @@ import { useRouter } from "@/i18n/routing";
 import {
   ArrowRightLeft,
   BadgeDollarSign,
+  Layers,
   PackageX,
   Percent,
   ShoppingCart,
+  Snowflake,
   TrendingUpDown,
   TrendingUp,
 } from "lucide-react";
@@ -45,22 +49,28 @@ import { useWarehouseScope } from "@/hooks/useWarehouseScope";
 import {
   createTransferFromCtaPayload,
   createTransferFromSuggestion,
+  createBulkTransfersFromInsights,
+  fetchBrokenSizeRuns,
   fetchDeadStockInsights,
   fetchInsightsExecutiveSummary,
   fetchMarkdownCandidates,
   fetchPromotionRiskInsights,
   fetchReorderRiskInsights,
   fetchSalesVelocityInsights,
+  fetchSeasonClearanceInsights,
   fetchTrendSummaryInsights,
   fetchTransferSuggestions,
+  recordInsightAction,
 } from "@/features/insights/api";
 import { insightQueryKeys } from "@/features/insights/queries";
 import type {
+  BrokenSizeRunInsight,
   DeadStockInsight,
   MarkdownCandidateInsight,
   PromotionRiskInsight,
   ReorderRiskInsight,
   SalesVelocityInsight,
+  SeasonClearanceInsight,
   TrendSummaryInsight,
   TransferSuggestion,
 } from "@/lib/types";
@@ -93,6 +103,7 @@ export default function InsightsPage() {
   const [lookbackDays, setLookbackDays] = useState(30);
   const [activeTab, setActiveTab] = useState<InsightTab>("deadStock");
   const [executingActionKey, setExecutingActionKey] = useState<string | null>(null);
+  const [selectedTransferKeys, setSelectedTransferKeys] = useState<string[]>([]);
   const [explainState, setExplainState] = useState<ExplainState | null>(null);
 
   useEffect(() => {
@@ -104,7 +115,9 @@ export default function InsightsPage() {
       tab === "markdown" ||
       tab === "promotionRisk" ||
       tab === "reorderRisk" ||
-      tab === "trend"
+      tab === "trend" ||
+      tab === "brokenSize" ||
+      tab === "seasonClearance"
     ) {
       setActiveTab(tab);
     }
@@ -215,11 +228,41 @@ export default function InsightsPage() {
     staleTime: 2 * 60_000,
   });
 
+  const {
+    data: brokenSizeRuns,
+    isLoading: brokenSizeRunsLoading,
+    isFetched: brokenSizeRunsFetched,
+  } = useQuery({
+    queryKey: insightQueryKeys.brokenSizeRuns(insightScope, lookbackDays),
+    queryFn: () => fetchBrokenSizeRuns(insightScope, lookbackDays, 20),
+    enabled: activeTab === "brokenSize",
+    staleTime: 2 * 60_000,
+  });
+
+  const {
+    data: seasonClearance,
+    isLoading: seasonClearanceLoading,
+    isFetched: seasonClearanceFetched,
+  } = useQuery({
+    queryKey: insightQueryKeys.seasonClearance(insightScope, lookbackDays, daysWithoutOutbound),
+    queryFn: () =>
+      fetchSeasonClearanceInsights(insightScope, lookbackDays, daysWithoutOutbound, 20),
+    enabled: activeTab === "seasonClearance",
+    staleTime: 2 * 60_000,
+  });
+
   const createTransferMutation = useMutation({
     mutationFn: createTransferFromSuggestion,
     onSuccess: (doc) => {
       setExecutingActionKey(null);
       void queryClient.invalidateQueries({ queryKey: ["inventory-documents"] });
+      void recordInsightAction({
+        insightKind: "transfer",
+        actionCode: "transfer_execute",
+        actionStatus: 4,
+        resultEntityId: doc.id,
+        resultEntityType: "inventory_document",
+      }).catch(() => undefined);
       router.push(`/inventory-documents/${doc.id}`);
     },
     onError: (error) => {
@@ -233,7 +276,30 @@ export default function InsightsPage() {
     onSuccess: (doc) => {
       setExecutingActionKey(null);
       void queryClient.invalidateQueries({ queryKey: ["inventory-documents"] });
+      void recordInsightAction({
+        insightKind: "transfer",
+        actionCode: "transfer_execute",
+        actionStatus: 4,
+        resultEntityId: doc.id,
+        resultEntityType: "inventory_document",
+      }).catch(() => undefined);
       router.push(`/inventory-documents/${doc.id}`);
+    },
+    onError: (error) => {
+      setExecutingActionKey(null);
+      notifyError(error);
+    },
+  });
+
+  const bulkTransferMutation = useMutation({
+    mutationFn: createBulkTransfersFromInsights,
+    onSuccess: (result) => {
+      setExecutingActionKey(null);
+      setSelectedTransferKeys([]);
+      void queryClient.invalidateQueries({ queryKey: ["inventory-documents"] });
+      if (result.documents[0]) {
+        router.push(`/inventory-documents/${result.documents[0].documentId}`);
+      }
     },
     onError: (error) => {
       setExecutingActionKey(null);
@@ -249,6 +315,8 @@ export default function InsightsPage() {
     const promotionItems = promotionRisk ?? [];
     const reorderItems = reorderRisk ?? [];
     const trendItems = trendSummary ?? [];
+    const brokenSizeItems = brokenSizeRuns ?? [];
+    const seasonClearanceItems = seasonClearance ?? [];
 
     return {
       deadCount: executiveSummary ? executiveSummary.deadStockCount : null,
@@ -266,6 +334,8 @@ export default function InsightsPage() {
       promotionRiskCount: executiveSummary ? executiveSummary.promotionRiskCount : promotionRiskFetched ? promotionItems.length : null,
       reorderRiskCount: executiveSummary ? executiveSummary.reorderRiskCount : reorderRiskFetched ? reorderItems.length : null,
       trendCount: trendSummaryFetched ? trendItems.length : null,
+      brokenSizeCount: brokenSizeRunsFetched ? brokenSizeItems.length : null,
+      seasonClearanceCount: seasonClearanceFetched ? seasonClearanceItems.length : null,
     };
   }, [
     executiveSummary,
@@ -276,6 +346,8 @@ export default function InsightsPage() {
     promotionRisk,
     reorderRisk,
     trendSummary,
+    brokenSizeRuns,
+    seasonClearance,
     deadStockFetched,
     salesVelocityFetched,
     transferSuggestionsFetched,
@@ -283,6 +355,8 @@ export default function InsightsPage() {
     promotionRiskFetched,
     reorderRiskFetched,
     trendSummaryFetched,
+    brokenSizeRunsFetched,
+    seasonClearanceFetched,
   ]);
 
   const activeTabLoading =
@@ -292,7 +366,9 @@ export default function InsightsPage() {
     (activeTab === "markdown" && markdownCandidatesLoading) ||
     (activeTab === "promotionRisk" && promotionRiskLoading) ||
     (activeTab === "reorderRisk" && reorderRiskLoading) ||
-    (activeTab === "trend" && trendSummaryLoading);
+    (activeTab === "trend" && trendSummaryLoading) ||
+    (activeTab === "brokenSize" && brokenSizeRunsLoading) ||
+    (activeTab === "seasonClearance" && seasonClearanceLoading);
 
   const summaryMeta = getInsightSummaryKey(activeTab, stats);
   let summaryText = "";
@@ -364,6 +440,20 @@ export default function InsightsPage() {
         count: stats.trendCount,
         description: t("tabHints.trend"),
       },
+      {
+        id: "brokenSize" as const,
+        label: t("tabs.brokenSize"),
+        icon: Layers,
+        count: stats.brokenSizeCount,
+        description: t("tabHints.brokenSize"),
+      },
+      {
+        id: "seasonClearance" as const,
+        label: t("tabs.seasonClearance"),
+        icon: Snowflake,
+        count: stats.seasonClearanceCount,
+        description: t("tabHints.seasonClearance"),
+      },
     ],
     [
       t,
@@ -374,6 +464,8 @@ export default function InsightsPage() {
       stats.promotionRiskCount,
       stats.reorderRiskCount,
       stats.trendCount,
+      stats.brokenSizeCount,
+      stats.seasonClearanceCount,
     ]
   );
 
@@ -424,8 +516,15 @@ export default function InsightsPage() {
         }),
         context,
       });
+
+      void recordInsightAction({
+        insightKind: activeTab,
+        actionCode: recommendation.actionCode,
+        actionStatus: 1,
+        payload: recommendation.params,
+      }).catch(() => undefined);
     },
-    [t, tActions]
+    [t, tActions, activeTab]
   );
 
   const handleTransferApiAction = (
@@ -445,12 +544,44 @@ export default function InsightsPage() {
     createTransferMutation.mutate(item);
   };
 
+  const toggleTransferSelection = (rowKey: string) => {
+    setSelectedTransferKeys((current) =>
+      current.includes(rowKey) ? current.filter((key) => key !== rowKey) : [...current, rowKey]
+    );
+  };
+
+  const handleBulkTransfer = () => {
+    const lines = (transferSuggestions ?? [])
+      .map((item, index) => ({
+        item,
+        rowKey: `${item.productVariantId}-${item.sourceWarehouseId}-${item.destinationWarehouseId}-${index}`,
+      }))
+      .filter(({ rowKey }) => selectedTransferKeys.includes(rowKey))
+      .map(({ item }) => ({
+        productVariantId: item.productVariantId,
+        sourceWarehouseId: item.sourceWarehouseId,
+        destinationWarehouseId: item.destinationWarehouseId,
+        quantity: item.suggestedQuantity,
+        sku: item.sku,
+      }));
+
+    if (!lines.length) {
+      return;
+    }
+
+    setExecutingActionKey("bulk-transfer");
+    bulkTransferMutation.mutate({
+      note: "[INSIGHT] Bulk transfer from suggestions",
+      lines,
+    });
+  };
+
   return (
     <div>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
       <InsightsHeroBanner
-        activeTab={activeTab}
+        activeTabLabel={tabs.find((tab) => tab.id === activeTab)?.label ?? t("title")}
         summary={summaryText}
         loading={activeTabLoading}
       />
@@ -476,6 +607,11 @@ export default function InsightsPage() {
 
         <InsightTabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
 
+        <InsightTabContextBanner
+          tab={tabs.find((tab) => tab.id === activeTab)}
+          loading={activeTabLoading}
+        />
+
         {activeTab === "deadStock" && (
           <InsightSection
             title={t("deadStock.title")}
@@ -493,7 +629,7 @@ export default function InsightsPage() {
               />
             }
           >
-            <table className="data-table">
+            <table className="data-table insights-table">
               <thead>
                 <tr>
                   <th>{tStocks("sku")}</th>
@@ -501,12 +637,13 @@ export default function InsightsPage() {
                   <th>{t("deadStock.days")}</th>
                   <th>{tStocks("onHand")}</th>
                   <th>{t("deadStock.costValue")}</th>
-                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
                 {deadStockLoading ? (
-                  <LoadingRow colSpan={6} label={tCommon("loading")} />
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
                 ) : deadStock?.length ? (
                   deadStock.map((item) => {
                     const recommendation = resolveRecommendation(item);
@@ -531,6 +668,9 @@ export default function InsightsPage() {
                           {formatNumber(item.estimatedCostValue ?? 0, locale)}
                         </td>
                         <td>
+                          <InsightPriorityCell severity={item.severity} />
+                        </td>
+                        <td>
                           <RecommendationCard
                             compact
                             recommendation={recommendation}
@@ -549,7 +689,7 @@ export default function InsightsPage() {
                     );
                   })
                 ) : (
-                  <EmptyRow colSpan={6} label={tCommon("noData")} />
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -575,7 +715,7 @@ export default function InsightsPage() {
               />
             }
           >
-            <table className="data-table">
+            <table className="data-table insights-table">
               <thead>
                 <tr>
                   <th>{tStocks("sku")}</th>
@@ -583,12 +723,13 @@ export default function InsightsPage() {
                   <th>{t("salesVelocity.outbound")}</th>
                   <th>{t("salesVelocity.avgDaily")}</th>
                   <th>{t("salesVelocity.coverDays")}</th>
-                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
                 {salesVelocityLoading ? (
-                  <LoadingRow colSpan={6} label={tCommon("loading")} />
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
                 ) : salesVelocity?.length ? (
                   salesVelocity.map((item) => {
                     const recommendation = resolveRecommendation(item);
@@ -615,6 +756,9 @@ export default function InsightsPage() {
                             : t("salesVelocity.noDemand")}
                         </td>
                         <td>
+                          <InsightPriorityCell severity={item.severity} />
+                        </td>
+                        <td>
                           <RecommendationCard
                             compact
                             recommendation={recommendation}
@@ -633,7 +777,7 @@ export default function InsightsPage() {
                     );
                   })
                 ) : (
-                  <EmptyRow colSpan={6} label={tCommon("noData")} />
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -657,19 +801,40 @@ export default function InsightsPage() {
               />
             }
           >
-            <table className="data-table">
+            {selectedTransferKeys.length > 0 ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <p className="text-sm text-slate-600">
+                  {t("transfer.selectedCount", { count: selectedTransferKeys.length })}
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={bulkTransferMutation.isPending}
+                  onClick={handleBulkTransfer}
+                >
+                  {bulkTransferMutation.isPending
+                    ? t("transfer.bulkCreating")
+                    : t("transfer.bulkCreate")}
+                </button>
+              </div>
+            ) : null}
+            <table className="data-table insights-table">
               <thead>
                 <tr>
+                  <th className="w-10">
+                    <span className="sr-only">{t("transfer.selectAll")}</span>
+                  </th>
                   <th>{tStocks("sku")}</th>
                   <th>{t("transfer.route")}</th>
                   <th>{t("transfer.qty")}</th>
                   <th>{t("transfer.coverDays")}</th>
-                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
                 {transferSuggestionsLoading ? (
-                  <LoadingRow colSpan={5} label={tCommon("loading")} />
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
                 ) : transferSuggestions?.length ? (
                   transferSuggestions.map((item, index) => {
                     const rowKey = `${item.productVariantId}-${item.sourceWarehouseId}-${item.destinationWarehouseId}-${index}`;
@@ -677,9 +842,18 @@ export default function InsightsPage() {
                     const executingActionId = executingActionKey?.startsWith(`${rowKey}:`)
                       ? executingActionKey.split(":").pop() ?? null
                       : null;
+                    const isSelected = selectedTransferKeys.includes(rowKey);
 
                     return (
                       <tr key={rowKey}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleTransferSelection(rowKey)}
+                            aria-label={item.sku}
+                          />
+                        </td>
                         <td>
                           <InsightSkuCell sku={item.sku} severity={item.severity} />
                         </td>
@@ -696,6 +870,9 @@ export default function InsightsPage() {
                           {item.destinationDaysOfCover != null
                             ? formatNumber(item.destinationDaysOfCover, locale)
                             : tCommon("noData")}
+                        </td>
+                        <td>
+                          <InsightPriorityCell severity={item.severity} />
                         </td>
                         <td>
                           <RecommendationCard
@@ -720,7 +897,7 @@ export default function InsightsPage() {
                     );
                   })
                 ) : (
-                  <EmptyRow colSpan={5} label={tCommon("noData")} />
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -732,7 +909,7 @@ export default function InsightsPage() {
             title={t("markdown.title")}
             subtitle={t("markdown.subtitle")}
             chartTitle={t("charts.markdownValue")}
-            accent="rose"
+            accent="amber"
             icon={BadgeDollarSign}
             loading={markdownCandidatesLoading}
             chart={
@@ -744,7 +921,7 @@ export default function InsightsPage() {
               />
             }
           >
-            <table className="data-table">
+            <table className="data-table insights-table">
               <thead>
                 <tr>
                   <th>{tStocks("sku")}</th>
@@ -753,7 +930,8 @@ export default function InsightsPage() {
                   <th>{t("deadStock.costValue")}</th>
                   <th>{t("markdown.depth")}</th>
                   <th>{t("markdown.recovery")}</th>
-                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -770,6 +948,9 @@ export default function InsightsPage() {
                         <td className="tabular-nums">{formatNumber(item.estimatedInventoryValue ?? 0, locale)}</td>
                         <td className="tabular-nums">{formatNumber(item.markdownDepthPercent ?? 0, locale)}%</td>
                         <td className="tabular-nums">{formatNumber(item.estimatedRecoveryValue ?? 0, locale)}</td>
+                        <td>
+                          <InsightPriorityCell severity={item.severity} />
+                        </td>
                         <td>
                           <RecommendationCard
                             compact
@@ -801,7 +982,7 @@ export default function InsightsPage() {
             title={t("promotionRisk.title")}
             subtitle={t("promotionRisk.subtitle")}
             chartTitle={t("charts.promotionRisk")}
-            accent="indigo"
+            accent="fuchsia"
             icon={Percent}
             loading={promotionRiskLoading}
             chart={
@@ -813,7 +994,7 @@ export default function InsightsPage() {
               />
             }
           >
-            <table className="data-table">
+            <table className="data-table insights-table">
               <thead>
                 <tr>
                   <th>{tStocks("sku")}</th>
@@ -822,7 +1003,8 @@ export default function InsightsPage() {
                   <th>{t("promotionRisk.regularPrice")}</th>
                   <th>{t("promotionRisk.promoPrice")}</th>
                   <th>{t("promotionRisk.discount")}</th>
-                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -839,6 +1021,9 @@ export default function InsightsPage() {
                         <td className="tabular-nums">{item.regularPriceAfterVat != null ? formatNumber(item.regularPriceAfterVat, locale) : "—"}</td>
                         <td className="tabular-nums">{item.promotionPriceAfterVat != null ? formatNumber(item.promotionPriceAfterVat, locale) : "—"}</td>
                         <td className="tabular-nums">{item.promotionDiscountPercent != null ? `${formatNumber(item.promotionDiscountPercent, locale)}%` : "—"}</td>
+                        <td>
+                          <InsightPriorityCell severity={item.severity} />
+                        </td>
                         <td>
                           <RecommendationCard
                             compact
@@ -870,7 +1055,7 @@ export default function InsightsPage() {
             title={t("reorderRisk.title")}
             subtitle={t("reorderRisk.subtitle")}
             chartTitle={t("charts.reorderRisk")}
-            accent="sky"
+            accent="emerald"
             icon={ShoppingCart}
             loading={reorderRiskLoading}
             chart={
@@ -882,7 +1067,7 @@ export default function InsightsPage() {
               />
             }
           >
-            <table className="data-table">
+            <table className="data-table insights-table">
               <thead>
                 <tr>
                   <th>{tStocks("sku")}</th>
@@ -891,7 +1076,8 @@ export default function InsightsPage() {
                   <th>{t("salesVelocity.coverDays")}</th>
                   <th>{t("reorderRisk.onOrder")}</th>
                   <th>{t("reorderRisk.suggestedQty")}</th>
-                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -908,6 +1094,9 @@ export default function InsightsPage() {
                         <td className="tabular-nums">{item.estimatedDaysOfCover != null ? formatNumber(item.estimatedDaysOfCover, locale) : "—"}</td>
                         <td className="tabular-nums">{formatNumber(item.quantityOnOrder, locale)}</td>
                         <td className="tabular-nums">{item.suggestedReorderQuantity != null ? formatNumber(item.suggestedReorderQuantity, locale) : "—"}</td>
+                        <td>
+                          <InsightPriorityCell severity={item.severity} />
+                        </td>
                         <td>
                           <RecommendationCard
                             compact
@@ -939,7 +1128,7 @@ export default function InsightsPage() {
             title={t("trend.title")}
             subtitle={t("trend.subtitle")}
             chartTitle={t("charts.trendDelta")}
-            accent="indigo"
+            accent="slate"
             icon={TrendingUpDown}
             loading={trendSummaryLoading}
             chart={
@@ -951,7 +1140,7 @@ export default function InsightsPage() {
               />
             }
           >
-            <table className="data-table">
+            <table className="data-table insights-table">
               <thead>
                 <tr>
                   <th>{tStocks("sku")}</th>
@@ -959,12 +1148,13 @@ export default function InsightsPage() {
                   <th>{t("trend.inventoryDelta")}</th>
                   <th>{t("trend.outboundTrend")}</th>
                   <th>{t("trend.priceTrend")}</th>
-                  <th className="min-w-[11rem]">{t("recommendation.label")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
                 </tr>
               </thead>
               <tbody>
                 {trendSummaryLoading ? (
-                  <LoadingRow colSpan={6} label={tCommon("loading")} />
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
                 ) : trendSummary?.length ? (
                   trendSummary.map((item) => {
                     const recommendation = resolveRecommendation(item);
@@ -975,6 +1165,9 @@ export default function InsightsPage() {
                         <td className="tabular-nums">{formatNumber(item.inventoryValueDelta, locale)}</td>
                         <td className="tabular-nums">{formatNumber(item.outboundTrendPercent, locale)}%</td>
                         <td className="tabular-nums">{item.priceTrendPercent != null ? `${formatNumber(item.priceTrendPercent, locale)}%` : "—"}</td>
+                        <td>
+                          <InsightPriorityCell severity={item.severity} />
+                        </td>
                         <td>
                           <RecommendationCard
                             compact
@@ -994,7 +1187,169 @@ export default function InsightsPage() {
                     );
                   })
                 ) : (
-                  <EmptyRow colSpan={6} label={tCommon("noData")} />
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
+                )}
+              </tbody>
+            </table>
+          </InsightSection>
+        )}
+
+        {activeTab === "brokenSize" && (
+          <InsightSection
+            title={t("brokenSize.title")}
+            subtitle={t("brokenSize.subtitle")}
+            chartTitle={t("brokenSize.missingSizes")}
+            accent="violet"
+            icon={Layers}
+            loading={brokenSizeRunsLoading}
+            chart={
+              <MiniBarChart
+                items={buildBrokenSizeChart(brokenSizeRuns)}
+                locale={locale}
+                emptyLabel={tCommon("noData")}
+                valueLabel={(value) => formatNumber(value, locale)}
+              />
+            }
+          >
+            <table className="data-table insights-table">
+              <thead>
+                <tr>
+                  <th>{t("brokenSize.product")}</th>
+                  <th>{tStocks("warehouse")}</th>
+                  <th>{t("brokenSize.sizesInStock")}</th>
+                  <th>{t("brokenSize.missingSizes")}</th>
+                  <th>{t("brokenSize.totalOnHand")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brokenSizeRunsLoading ? (
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
+                ) : brokenSizeRuns?.length ? (
+                  brokenSizeRuns.map((item) => {
+                    const resolved = item.recommendation;
+                    return (
+                      <tr key={`${item.productId}-${item.warehouseId}-${item.color ?? "_"}`}>
+                        <td>
+                          <div className="font-medium text-slate-900">{item.productName}</div>
+                          {item.color ? (
+                            <div className="text-xs text-slate-500">{item.color}</div>
+                          ) : null}
+                        </td>
+                        <td>
+                          <InsightWarehouseCell
+                            code={item.warehouseCode}
+                            name={item.warehouseName}
+                          />
+                        </td>
+                        <td>{item.sizesInStock.join(", ")}</td>
+                        <td className="text-rose-700">{item.missingSizes.join(", ")}</td>
+                        <td className="tabular-nums">{formatNumber(item.totalOnHand, locale)}</td>
+                        <td>
+                          <InsightPriorityCell severity={item.severity} />
+                        </td>
+                        <td>
+                          <RecommendationCard
+                            compact
+                            recommendation={resolved}
+                            severity={item.severity}
+                            locale={locale}
+                            onExplain={() =>
+                              openExplain(resolved, item.severity, {
+                                warehouseCode: item.warehouseCode,
+                                warehouseName: item.warehouseName,
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
+                )}
+              </tbody>
+            </table>
+          </InsightSection>
+        )}
+
+        {activeTab === "seasonClearance" && (
+          <InsightSection
+            title={t("seasonClearance.title")}
+            subtitle={t("seasonClearance.subtitle")}
+            chartTitle={t("seasonClearance.days")}
+            accent="orange"
+            icon={Snowflake}
+            loading={seasonClearanceLoading}
+            chart={
+              <MiniBarChart
+                items={buildSeasonClearanceChart(seasonClearance)}
+                locale={locale}
+                emptyLabel={tCommon("noData")}
+                valueLabel={(value) => formatNumber(value, locale)}
+              />
+            }
+          >
+            <table className="data-table insights-table">
+              <thead>
+                <tr>
+                  <th>{tStocks("sku")}</th>
+                  <th>{tStocks("warehouse")}</th>
+                  <th>{t("seasonClearance.season")}</th>
+                  <th>{t("seasonClearance.days")}</th>
+                  <th>{t("seasonClearance.suggestedPrice")}</th>
+                  <th className="w-28">{t("severity.label")}</th>
+                  <th className="min-w-[14rem]">{t("recommendation.label")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {seasonClearanceLoading ? (
+                  <LoadingRow colSpan={7} label={tCommon("loading")} />
+                ) : seasonClearance?.length ? (
+                  seasonClearance.map((item) => {
+                    const resolved = item.recommendation;
+                    return (
+                      <tr key={`${item.productVariantId}-${item.warehouseId}`}>
+                        <td>
+                          <InsightSkuCell sku={item.sku} severity={item.severity} />
+                        </td>
+                        <td>
+                          <InsightWarehouseCell
+                            code={item.warehouseCode}
+                            name={item.warehouseName}
+                          />
+                        </td>
+                        <td>{item.season ?? "—"}</td>
+                        <td className="tabular-nums">{formatNumber(item.daysWithoutOutbound, locale)}</td>
+                        <td className="tabular-nums">
+                          {item.suggestedMarkdownPriceAfterVat != null
+                            ? formatNumber(item.suggestedMarkdownPriceAfterVat, locale)
+                            : "—"}
+                        </td>
+                        <td>
+                          <InsightPriorityCell severity={item.severity} />
+                        </td>
+                        <td>
+                          <RecommendationCard
+                            compact
+                            recommendation={resolved}
+                            severity={item.severity}
+                            locale={locale}
+                            onExplain={() =>
+                              openExplain(resolved, item.severity, {
+                                sku: item.sku,
+                                warehouseCode: item.warehouseCode,
+                                warehouseName: item.warehouseName,
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <EmptyRow colSpan={7} label={tCommon("noData")} />
                 )}
               </tbody>
             </table>
@@ -1119,6 +1474,34 @@ function buildTrendChart(items: TrendSummaryInsight[] | undefined) {
       label: item.sku,
       sublabel: item.warehouseCode,
       value: Math.abs(item.inventoryValueDelta),
+      severity: item.severity,
+    }));
+}
+
+function buildBrokenSizeChart(items: BrokenSizeRunInsight[] | undefined) {
+  if (!Array.isArray(items) || !items.length) return [];
+  return [...items]
+    .sort((a, b) => b.sizesWithoutStock - a.sizesWithoutStock)
+    .slice(0, TOP_CHART_COUNT)
+    .map((item) => ({
+      id: `${item.productId}-${item.warehouseId}`,
+      label: item.productName,
+      sublabel: item.warehouseCode,
+      value: item.sizesWithoutStock,
+      severity: item.severity,
+    }));
+}
+
+function buildSeasonClearanceChart(items: SeasonClearanceInsight[] | undefined) {
+  if (!Array.isArray(items) || !items.length) return [];
+  return [...items]
+    .sort((a, b) => b.daysWithoutOutbound - a.daysWithoutOutbound)
+    .slice(0, TOP_CHART_COUNT)
+    .map((item) => ({
+      id: `${item.productVariantId}-${item.warehouseId}`,
+      label: item.sku,
+      sublabel: item.season ?? item.warehouseCode,
+      value: item.daysWithoutOutbound,
       severity: item.severity,
     }));
 }

@@ -70,6 +70,8 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<InsightSnapshot> InsightSnapshots => Set<InsightSnapshot>();
 
+    public DbSet<InsightActionLog> InsightActionLogs => Set<InsightActionLog>();
+
     public DbSet<BackgroundJobSetting> BackgroundJobSettings => Set<BackgroundJobSetting>();
 
     public DbSet<BackgroundJobRun> BackgroundJobRuns => Set<BackgroundJobRun>();

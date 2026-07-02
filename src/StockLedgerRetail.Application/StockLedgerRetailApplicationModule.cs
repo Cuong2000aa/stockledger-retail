@@ -75,6 +75,10 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IAnalyticsAppService, AnalyticsAppService>();
         services.AddScoped<IInventoryInsightsAppService, InventoryInsightsAppService>();
         services.AddScoped<IInsightRecommendationEngine, InsightRecommendationEngine>();
+        services.AddScoped<IInsightExplainService, InsightExplainService>();
+        services.AddScoped<IMarkdownWhatIfService, MarkdownWhatIfService>();
+        services.AddScoped<IInsightActionAppService, InsightActionAppService>();
+        services.AddScoped<IInsightAlertService, InsightAlertService>();
         services.AddScoped<IInventoryInsightsSnapshotService, InventoryInsightsSnapshotService>();
         services.AddSingleton<IBackgroundJobCoordinator, BackgroundJobCoordinator>();
         services.AddScoped<IBackgroundJobExecutor, BackgroundJobExecutor>();
@@ -97,6 +101,8 @@ public static class StockLedgerRetailApplicationModule
                 configuration.GetSection(StockReconciliationOptions.SectionName));
             services.Configure<InsightSnapshotOptions>(
                 configuration.GetSection(InsightSnapshotOptions.SectionName));
+            services.Configure<InsightAlertOptions>(
+                configuration.GetSection(InsightAlertOptions.SectionName));
             services.Configure<LoginOptions>(
                 configuration.GetSection(LoginOptions.SectionName));
         }

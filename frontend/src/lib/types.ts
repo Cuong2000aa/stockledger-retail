@@ -747,6 +747,99 @@ export interface TrendSummaryInsight {
   recommendation?: InsightRecommendation;
 }
 
+export interface BrokenSizeRunVariant {
+  productVariantId: string;
+  sku: string;
+  size?: string;
+  quantityOnHand: number;
+}
+
+export interface BrokenSizeRunInsight {
+  productId: string;
+  productName: string;
+  color?: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  brandId?: string;
+  totalSizesInRun: number;
+  sizesWithStock: number;
+  sizesWithoutStock: number;
+  sizesInStock: string[];
+  missingSizes: string[];
+  variants: BrokenSizeRunVariant[];
+  totalOnHand: number;
+  inventoryValue?: number;
+  severity: string;
+  ruleCode: string;
+  recommendation?: InsightRecommendation;
+}
+
+export interface SeasonClearanceInsight {
+  productVariantId: string;
+  sku: string;
+  productName: string;
+  season?: string;
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  brandId?: string;
+  quantityOnHand: number;
+  outboundQuantity: number;
+  daysWithoutOutbound: number;
+  inventoryValue?: number;
+  suggestedMarkdownPriceAfterVat?: number;
+  markdownDepthPercent?: number;
+  severity: string;
+  ruleCode: string;
+  recommendation?: InsightRecommendation;
+}
+
+export interface InsightExplainResponse {
+  summary: string;
+  rationaleParagraphs: string[];
+  evidenceLines: string[];
+  suggestedNextSteps: string[];
+}
+
+export interface BulkTransferLineRequest {
+  productVariantId: string;
+  sourceWarehouseId: string;
+  destinationWarehouseId: string;
+  quantity: number;
+  sku?: string;
+}
+
+export interface MarkdownWhatIfResult {
+  lines: Array<{
+    productVariantId: string;
+    sku: string;
+    quantityOnHand: number;
+    markdownPercent: number;
+    priceBeforeVatAfterMarkdown?: number;
+    priceAfterVatAfterMarkdown?: number;
+    recoveryValueAfterVat?: number;
+    grossMarginPercentAfterMarkdown?: number;
+    inventoryValueAtCost?: number;
+  }>;
+  totalRecoveryValueAfterVat: number;
+  totalInventoryValueAtCost: number;
+  capitalReleasePercent: number;
+}
+
+export interface BulkTransferFromInsightsResult {
+  documents: Array<{
+    documentId: string;
+    documentNo: string;
+    sourceWarehouseId: string;
+    destinationWarehouseId: string;
+    lineCount: number;
+  }>;
+  successCount: number;
+  failureCount: number;
+  errors: string[];
+}
+
 export interface InsightsExecutiveSummary {
   deadStockCount: number;
   tiedCapital: number;

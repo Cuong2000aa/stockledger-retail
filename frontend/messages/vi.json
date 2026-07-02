@@ -78,6 +78,7 @@
     "save": "Lưu",
     "runNow": "Chạy ngay",
     "running": "Đang chạy…",
+    "queued": "Đang chờ…",
     "saved": "Đã lưu cấu hình job.",
     "nextRun": "Lần chạy tiếp",
     "lastRun": "Hoàn thành gần nhất",
@@ -103,6 +104,10 @@
       "stock_reconciliation": {
         "name": "Đối soát tồn kho",
         "description": "So sánh số dư sổ cái với snapshot tồn hiện tại."
+      },
+      "insight_alerts": {
+        "name": "Cảnh báo Insights",
+        "description": "Cảnh báo chủ động khi vượt ngưỡng tồn chết, vốn bị chiếm, hoặc rủi ro nhập hàng."
       }
     },
     "triggers": {
@@ -494,6 +499,11 @@
     "title": "Insights",
     "subtitle": "Tín hiệu tồn kho rule-based, sẵn sàng để nối AI copilot sau này",
     "aiReady": "Sẵn sàng AI copilot",
+    "panel": {
+      "results": "kết quả",
+      "priorityLegend": "Mức độ ưu tiên",
+      "chartLabel": "Tóm tắt trực quan"
+    },
     "stats": {
       "deadSkus": "SKU tồn chết",
       "tiedCapital": "Vốn bị chiếm",
@@ -507,13 +517,17 @@
       "transferValue": "Giá trị điều chuyển"
     },
     "tabs": {
+      "groupOperations": "Vận hành",
+      "groupFashion": "Merchandising thời trang",
       "deadStock": "Tồn chết",
       "velocity": "Tốc độ bán",
       "transfer": "Chuyển kho",
       "markdown": "Markdown",
       "promotionRisk": "Rủi ro khuyến mãi",
       "reorderRisk": "Rủi ro nhập hàng",
-      "trend": "Xu hướng"
+      "trend": "Xu hướng",
+      "brokenSize": "Thiếu size",
+      "seasonClearance": "Xả mùa"
     },
     "charts": {
       "deadStockValue": "Top SKU theo giá trị vốn",
@@ -549,7 +563,9 @@
       "markdown": "SKU đứng lâu cần giảm giá hoặc chuyển clearance",
       "promotionRisk": "SKU đang khuyến mãi nhưng cover thấp hoặc margin yếu",
       "reorderRisk": "Cảnh báo nhập hàng dựa trên nhu cầu và pipeline đang mở",
-      "trend": "Biến động giá trị tồn, giá bán và tốc độ outbound"
+      "trend": "Biến động giá trị tồn, giá bán và tốc độ outbound",
+      "brokenSize": "Dải size không đủ — ảnh hưởng sell-through thời trang",
+      "seasonClearance": "SKU mùa cũ bán chậm — ứng viên clearance"
     },
     "copilot": {
       "bannerTitle": "Tóm tắt Insights",
@@ -572,6 +588,10 @@
       "summaryReorderRiskEmpty": "Rủi ro nhập hàng đang ổn định với bộ lọc hiện tại.",
       "summaryTrend": "Có {count} cặp SKU/kho đang biến động đáng chú ý về tồn, giá hoặc outbound.",
       "summaryTrendEmpty": "Chưa phát hiện biến động xu hướng lớn với bộ lọc hiện tại.",
+      "summaryBrokenSize": "Có {count} dải size bị thiếu tại các kho đang lọc.",
+      "summaryBrokenSizeEmpty": "Chưa phát hiện dải size thiếu với bộ lọc hiện tại.",
+      "summarySeasonClearance": "Có {count} SKU mùa cũ cần xử lý clearance.",
+      "summarySeasonClearanceEmpty": "Chưa có SKU mùa cũ phù hợp để xả với bộ lọc hiện tại.",
       "explainIntro": "Hệ thống đánh giá {location} với mức ưu tiên P{priority}.",
       "locationSkuWarehouse": "{sku} tại kho {warehouse}",
       "locationTransfer": "{sku}: {from} → {to}",
@@ -588,7 +608,9 @@
         "markdownCandidate": "Hàng đứng lâu có thể thu hồi dòng tiền nhanh hơn bằng markdown hoặc clearance.",
         "promotionRisk": "Giá khuyến mãi cộng với cover thấp có thể làm hụt biên lợi nhuận hoặc gây thiếu hàng.",
         "reorderRisk": "Nhu cầu đang vượt tồn gần hạn và pipeline inbound — cần bổ sung trước khi ảnh hưởng phục vụ.",
-        "trend": "Giá trị tồn, outbound hoặc giá bán đã thay đổi đáng kể so với kỳ trước."
+        "trend": "Giá trị tồn, outbound hoặc giá bán đã thay đổi đáng kể so với kỳ trước.",
+        "brokenSize": "Dải size không đủ làm giảm chuyển đổi — nên gom tồn hoặc chuyển kho để hoàn thiện size.",
+        "seasonClearance": "Hàng mùa cũ bán chậm nên xả để giải phóng vốn và nhường chỗ cho mùa mới."
       }
     },
     "deadStock": {
@@ -614,7 +636,26 @@
       "qty": "SL gợi ý",
       "coverDays": "Cover đích",
       "createTransfer": "Tạo chuyển kho",
-      "creating": "Đang tạo..."
+      "creating": "Đang tạo...",
+      "bulkCreate": "Tạo chuyển kho hàng loạt",
+      "bulkCreating": "Đang tạo hàng loạt...",
+      "selectAll": "Chọn tất cả",
+      "selectedCount": "Đã chọn {count}"
+    },
+    "brokenSize": {
+      "title": "Thiếu size",
+      "subtitle": "Sản phẩm còn một phần size — cần gom hoặc chuyển kho để hoàn thiện dải",
+      "product": "Sản phẩm",
+      "sizesInStock": "Còn size",
+      "missingSizes": "Thiếu size",
+      "totalOnHand": "Tổng tồn"
+    },
+    "seasonClearance": {
+      "title": "Xả mùa",
+      "subtitle": "Hàng mùa cũ bán chậm — markdown hoặc chuyển clearance",
+      "season": "Mùa",
+      "days": "Ngày đứng",
+      "suggestedPrice": "Giá gợi ý (VAT)"
     },
     "markdown": {
       "title": "Ứng viên markdown",
@@ -659,7 +700,9 @@
         "promotion_risk_tight_stock": "Khuyến mãi đang căng tồn",
         "reorder_risk_urgent": "Nhập hàng gấp",
         "reorder_risk_plan": "Lên kế hoạch nhập",
-        "trend_review": "Rà soát biến động xu hướng"
+        "trend_review": "Rà soát biến động xu hướng",
+        "broken_size_run_consolidate": "Sửa dải size thiếu",
+        "season_clearance_markdown": "Xả mùa"
       },
       "evidence": {
         "daysIdle": "Đứng yên",
@@ -716,7 +759,9 @@
       "promotion_risk_tight_stock": "Khuyến mãi có thể gây căng cover tồn cho {sku} tại {warehouseCode}.",
       "reorder_risk_urgent": "Cần nhập gấp cho {sku} tại {warehouseCode}; đề xuất {suggestedQty}.",
       "reorder_risk_plan": "Lên kế hoạch nhập cho {sku} tại {warehouseCode}; đề xuất {suggestedQty}.",
-      "trend_review": "Rà soát biến động gần đây của {sku} tại {warehouseCode}."
+      "trend_review": "Rà soát biến động gần đây của {sku} tại {warehouseCode}.",
+      "broken_size_run_consolidate": "Gom dải size thiếu cho {productName} tại {warehouseCode} — thiếu size: {missingSizes}.",
+      "season_clearance_markdown": "Xả mùa {sku} ({season}) tại {warehouseCode} — đứng yên {days} ngày."
     }
   },
   "dialog": {

@@ -3,15 +3,23 @@ import type { InsightRecommendation } from "@/lib/types";
 
 type TranslateInsights = (key: string, values?: Record<string, string | number>) => string;
 
+export type InsightSummaryStats = {
+  deadCount: number | null;
+  tiedCapital: number | null;
+  urgentVelocity: number | null;
+  transferCount: number | null;
+  criticalDead: number | null;
+  markdownCount: number | null;
+  promotionRiskCount: number | null;
+  reorderRiskCount: number | null;
+  trendCount: number | null;
+  brokenSizeCount: number | null;
+  seasonClearanceCount: number | null;
+};
+
 export function getInsightSummaryKey(
   tab: InsightTab,
-  stats: {
-    deadCount: number | null;
-    tiedCapital: number | null;
-    urgentVelocity: number | null;
-    transferCount: number | null;
-    criticalDead: number | null;
-  }
+  stats: InsightSummaryStats
 ): { key: string; values?: Record<string, string | number> } {
   if (tab === "deadStock") {
     return {
@@ -31,26 +39,42 @@ export function getInsightSummaryKey(
   }
   if (tab === "markdown") {
     return {
-      key: stats.deadCount ? "copilot.summaryMarkdown" : "copilot.summaryMarkdownEmpty",
-      values: { count: stats.deadCount ?? 0, capital: stats.tiedCapital ?? 0 },
+      key: stats.markdownCount ? "copilot.summaryMarkdown" : "copilot.summaryMarkdownEmpty",
+      values: { count: stats.markdownCount ?? 0, capital: stats.tiedCapital ?? 0 },
     };
   }
   if (tab === "promotionRisk") {
     return {
-      key: stats.urgentVelocity ? "copilot.summaryPromotionRisk" : "copilot.summaryPromotionRiskEmpty",
-      values: { alerts: stats.urgentVelocity ?? 0 },
+      key: stats.promotionRiskCount
+        ? "copilot.summaryPromotionRisk"
+        : "copilot.summaryPromotionRiskEmpty",
+      values: { alerts: stats.promotionRiskCount ?? 0 },
     };
   }
   if (tab === "reorderRisk") {
     return {
-      key: stats.urgentVelocity ? "copilot.summaryReorderRisk" : "copilot.summaryReorderRiskEmpty",
-      values: { alerts: stats.urgentVelocity ?? 0 },
+      key: stats.reorderRiskCount ? "copilot.summaryReorderRisk" : "copilot.summaryReorderRiskEmpty",
+      values: { alerts: stats.reorderRiskCount ?? 0 },
     };
   }
   if (tab === "trend") {
     return {
-      key: stats.transferCount ? "copilot.summaryTrend" : "copilot.summaryTrendEmpty",
-      values: { count: stats.transferCount ?? 0 },
+      key: stats.trendCount ? "copilot.summaryTrend" : "copilot.summaryTrendEmpty",
+      values: { count: stats.trendCount ?? 0 },
+    };
+  }
+  if (tab === "brokenSize") {
+    return {
+      key: stats.brokenSizeCount ? "copilot.summaryBrokenSize" : "copilot.summaryBrokenSizeEmpty",
+      values: { count: stats.brokenSizeCount ?? 0 },
+    };
+  }
+  if (tab === "seasonClearance") {
+    return {
+      key: stats.seasonClearanceCount
+        ? "copilot.summarySeasonClearance"
+        : "copilot.summarySeasonClearanceEmpty",
+      values: { count: stats.seasonClearanceCount ?? 0 },
     };
   }
   return {
@@ -79,6 +103,8 @@ export function getInsightRationaleKey(
   if (code.startsWith("promotion_risk")) return "copilot.rationale.promotionRisk";
   if (code.startsWith("reorder_risk")) return "copilot.rationale.reorderRisk";
   if (code.startsWith("trend_review")) return "copilot.rationale.trend";
+  if (code.startsWith("broken_size")) return "copilot.rationale.brokenSize";
+  if (code.startsWith("season_clearance")) return "copilot.rationale.seasonClearance";
   return null;
 }
 

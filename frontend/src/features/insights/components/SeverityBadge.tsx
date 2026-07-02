@@ -19,6 +19,8 @@ export function SeverityBadge({
       : "info";
 
   return (
-    <span className={clsx("badge", styles[tone])}>{label}</span>
+    <span className={clsx("badge whitespace-nowrap px-2.5 py-1 text-[11px]", styles[tone])}>
+      {label}
+    </span>
   );
 }

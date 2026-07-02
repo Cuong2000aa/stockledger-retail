@@ -8,9 +8,11 @@ public interface IBackgroundJobCoordinator
 
     bool TryConsumeManualRun(string jobKey);
 
+    void ClearManualRun(string jobKey);
+
     bool IsManualRunPending(string jobKey);
 
-    void MarkRunning(string jobKey);
+    bool TryBeginRun(string jobKey);
 
     void MarkIdle(string jobKey);
 
@@ -26,9 +28,11 @@ public class BackgroundJobCoordinator : IBackgroundJobCoordinator
 
     public bool TryConsumeManualRun(string jobKey) => _manualRuns.TryRemove(jobKey, out _);
 
+    public void ClearManualRun(string jobKey) => _manualRuns.TryRemove(jobKey, out _);
+
     public bool IsManualRunPending(string jobKey) => _manualRuns.ContainsKey(jobKey);
 
-    public void MarkRunning(string jobKey) => _running[jobKey] = 0;
+    public bool TryBeginRun(string jobKey) => _running.TryAdd(jobKey, 0);
 
     public void MarkIdle(string jobKey) => _running.TryRemove(jobKey, out _);
 

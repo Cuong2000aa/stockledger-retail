@@ -10,6 +10,7 @@ import {
   updateBackgroundJob,
   type BackgroundJob,
   type BackgroundJobRun,
+  type OperationsDashboard,
 } from "@/features/operations/api";
 import {
   formatTrigger,
@@ -53,7 +54,10 @@ export default function OperationsPage() {
     queryKey: ["operations-dashboard"],
     queryFn: fetchOperationsDashboard,
     enabled: isSystemAdmin,
-    refetchInterval: 10_000,
+    refetchInterval: (query) => {
+      const jobs = (query.state.data as OperationsDashboard | undefined)?.jobs;
+      return jobs?.some((job) => job.isRunning || job.manualRunRequested) ? 2_000 : 10_000;
+    },
   });
 
   const selectedJob = useMemo(
@@ -65,7 +69,13 @@ export default function OperationsPage() {
     queryKey: ["operations-job-history", selectedJob?.jobKey],
     queryFn: () => fetchJobHistory(selectedJob!.jobKey, 30),
     enabled: Boolean(selectedJob?.jobKey && isSystemAdmin),
-    refetchInterval: 10_000,
+    refetchInterval: (query) => {
+      const dashboardJobs = (
+        queryClient.getQueryData<OperationsDashboard>(["operations-dashboard"])
+      )?.jobs;
+      const selected = dashboardJobs?.find((job) => job.jobKey === selectedJob?.jobKey);
+      return selected?.isRunning || selected?.manualRunRequested ? 2_000 : 10_000;
+    },
   });
 
   const saveMutation = useMutation({
@@ -83,9 +93,13 @@ export default function OperationsPage() {
 
   const runMutation = useMutation({
     mutationFn: triggerBackgroundJob,
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries({ queryKey: ["operations-dashboard"] });
+    onSuccess: async (result, jobKey) => {
       notifySuccess(result.message);
+      await queryClient.invalidateQueries({ queryKey: ["operations-dashboard"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["operations-job-history", jobKey],
+      });
+      await queryClient.refetchQueries({ queryKey: ["operations-dashboard"] });
     },
     onError: notifyError,
   });
@@ -157,7 +171,9 @@ export default function OperationsPage() {
                 }
                 onRun={() => runMutation.mutate(job.jobKey)}
                 isSaving={saveMutation.isPending}
-                isRunning={runMutation.isPending}
+                isRunPending={
+                  runMutation.isPending && runMutation.variables === job.jobKey
+                }
                 t={t}
               />
             ))}
@@ -219,7 +235,7 @@ function JobCard({
   onSave,
   onRun,
   isSaving,
-  isRunning,
+  isRunPending,
   t,
 }: {
   job: BackgroundJob;
@@ -232,9 +248,11 @@ function JobCard({
   onSave: () => void;
   onRun: () => void;
   isSaving: boolean;
-  isRunning: boolean;
+  isRunPending: boolean;
   t: ReturnType<typeof useTranslations<"operations">>;
 }) {
+  const isJobActive = job.isRunning || job.manualRunRequested;
+
   return (
     <div
       className={clsx(
@@ -305,10 +323,14 @@ function JobCard({
             type="button"
             className="btn-primary text-xs"
             onClick={onRun}
-            disabled={isRunning || job.isRunning}
+            disabled={isRunPending || isJobActive}
           >
             <Play className="h-3.5 w-3.5" />
-            {job.isRunning || job.manualRunRequested ? t("running") : t("runNow")}
+            {job.isRunning
+              ? t("running")
+              : job.manualRunRequested
+                ? t("queued")
+                : t("runNow")}
           </button>
         </div>
       </div>

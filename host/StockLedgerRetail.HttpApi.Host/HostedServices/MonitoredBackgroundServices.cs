@@ -35,6 +35,32 @@ public class InventoryInsightsHostedService : BackgroundService
             stoppingToken);
 }
 
+public class InsightAlertsHostedService : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<InsightAlertsHostedService> _logger;
+
+    public InsightAlertsHostedService(
+        IServiceScopeFactory scopeFactory,
+        ILogger<InsightAlertsHostedService> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        BackgroundJobLoop.RunAsync(
+            BackgroundJobKeys.InsightAlerts,
+            _scopeFactory,
+            _logger,
+            async (services, cancellationToken) =>
+            {
+                var alertService = services.GetRequiredService<IInsightAlertService>();
+                await alertService.RunAsync(cancellationToken);
+            },
+            stoppingToken);
+}
+
 public class StockReconciliationHostedService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;

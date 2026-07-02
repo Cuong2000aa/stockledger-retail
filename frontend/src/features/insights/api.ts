@@ -1,14 +1,20 @@
 import { apiClient, createTransfer } from "@/lib/api";
 import type {
+  BrokenSizeRunInsight,
+  BulkTransferFromInsightsResult,
+  BulkTransferLineRequest,
   DeadStockInsight,
+  InsightExplainResponse,
   InsightsExecutiveSummary,
   MarkdownCandidateInsight,
+  MarkdownWhatIfResult,
   PromotionRiskInsight,
   ReorderRiskInsight,
   SalesVelocityInsight,
+  SeasonClearanceInsight,
   TrendSummaryInsight,
   TransferSuggestion,
-} from "./types";
+} from "@/lib/types";
 import { createTransferPayloadFromCta } from "./recommendation-utils";
 
 type InsightScope = {
@@ -122,6 +128,89 @@ export const fetchInsightsExecutiveSummary = (
       params: { ...scopeParams(scope), lookbackDays, daysWithoutOutbound },
     })
     .then((r) => r.data);
+
+export const fetchBrokenSizeRuns = (
+  scope: InsightScope = {},
+  lookbackDays = 30,
+  maxResults = 20
+) =>
+  apiClient
+    .get<BrokenSizeRunInsight[]>("/api/inventory-insights/broken-size-runs", {
+      params: { ...scopeParams(scope), lookbackDays, maxResults },
+    })
+    .then((r) => r.data);
+
+export const fetchSeasonClearanceInsights = (
+  scope: InsightScope = {},
+  lookbackDays = 30,
+  daysWithoutOutbound = 60,
+  maxResults = 20,
+  currentSeason?: string
+) =>
+  apiClient
+    .get<SeasonClearanceInsight[]>("/api/inventory-insights/season-clearance", {
+      params: {
+        ...scopeParams(scope),
+        lookbackDays,
+        daysWithoutOutbound,
+        maxResults,
+        ...(currentSeason ? { currentSeason } : {}),
+      },
+    })
+    .then((r) => r.data);
+
+export const explainInsight = (input: {
+  insightKind: string;
+  actionCode: string;
+  sku?: string;
+  warehouseCode?: string;
+  sourceWarehouseCode?: string;
+  destinationWarehouseCode?: string;
+  priority: number;
+  evidence?: Record<string, string>;
+  params?: Record<string, string>;
+}) =>
+  apiClient
+    .post<InsightExplainResponse>("/api/inventory-insights/explain", input)
+    .then((r) => r.data);
+
+export const simulateMarkdownWhatIf = (input: {
+  vatRate?: number;
+  lines: Array<{
+    productVariantId: string;
+    sku: string;
+    warehouseId: string;
+    quantityOnHand: number;
+    regularPriceBeforeVat?: number;
+    costPrice?: number;
+    markdownPercent: number;
+  }>;
+}) =>
+  apiClient
+    .post<MarkdownWhatIfResult>("/api/inventory-insights/markdown-what-if", input)
+    .then((r) => r.data);
+
+export const createBulkTransfersFromInsights = (input: {
+  note?: string;
+  lines: BulkTransferLineRequest[];
+}) =>
+  apiClient
+    .post<BulkTransferFromInsightsResult>("/api/inventory-insights/bulk-transfers", input)
+    .then((r) => r.data);
+
+export const recordInsightAction = (input: {
+  insightKind: string;
+  actionCode: string;
+  actionStatus: number;
+  productVariantId?: string;
+  warehouseId?: string;
+  sourceWarehouseId?: string;
+  destinationWarehouseId?: string;
+  payload?: Record<string, string>;
+  resultEntityId?: string;
+  resultEntityType?: string;
+}) =>
+  apiClient.post("/api/insight-actions", input).then((r) => r.data);
 
 export const createTransferFromSuggestion = (item: TransferSuggestion) =>
   createTransfer({

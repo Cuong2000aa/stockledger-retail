@@ -1,10 +1,12 @@
 import type {
+  BrokenSizeRunInsight,
   DeadStockInsight,
   InsightsExecutiveSummary,
   MarkdownCandidateInsight,
   PromotionRiskInsight,
   ReorderRiskInsight,
   SalesVelocityInsight,
+  SeasonClearanceInsight,
   TrendSummaryInsight,
   TransferSuggestion,
 } from "@/lib/types";
@@ -16,7 +18,9 @@ export type InsightTab =
   | "markdown"
   | "promotionRisk"
   | "reorderRisk"
-  | "trend";
+  | "trend"
+  | "brokenSize"
+  | "seasonClearance";
 
 export type InsightSeverity = "info" | "warning" | "critical";
 
@@ -35,12 +39,14 @@ export interface InsightFilterState {
 }
 
 export type {
+  BrokenSizeRunInsight,
   DeadStockInsight,
   InsightsExecutiveSummary,
   MarkdownCandidateInsight,
   PromotionRiskInsight,
   ReorderRiskInsight,
   SalesVelocityInsight,
+  SeasonClearanceInsight,
   TrendSummaryInsight,
   TransferSuggestion,
 };

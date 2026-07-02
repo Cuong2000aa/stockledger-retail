@@ -76,6 +76,39 @@ export function getRecommendationTitle(
   }
 }
 
+export function buildActionTranslationParams(
+  recommendation: InsightRecommendation | undefined
+): Record<string, string> {
+  const params = { ...(recommendation?.params ?? {}) };
+  const evidence = recommendation?.evidence ?? {};
+
+  for (const [key, value] of Object.entries(evidence)) {
+    if (params[key] === undefined || params[key] === "") {
+      params[key] = value;
+    }
+  }
+
+  if (params.days === undefined && evidence.daysIdle !== undefined) {
+    params.days = evidence.daysIdle;
+  }
+
+  const defaults: Record<string, string> = {
+    sku: "—",
+    season: "—",
+    warehouseCode: "—",
+    productName: "—",
+    missingSizes: "—",
+    days: "0",
+    coverDays: "0",
+    quantity: "0",
+    suggestedQty: "0",
+    sourceWarehouseCode: "—",
+    destinationWarehouseCode: "—",
+  };
+
+  return { ...defaults, ...params };
+}
+
 export function getRecommendationDetail(
   recommendation: InsightRecommendation | undefined,
   translateAction: (code: string, params?: Record<string, string>) => string
@@ -84,7 +117,10 @@ export function getRecommendationDetail(
     return "";
   }
   try {
-    return translateAction(recommendation.actionCode, recommendation.params ?? {});
+    return translateAction(
+      recommendation.actionCode,
+      buildActionTranslationParams(recommendation)
+    );
   } catch {
     return recommendation.actionCode;
   }
