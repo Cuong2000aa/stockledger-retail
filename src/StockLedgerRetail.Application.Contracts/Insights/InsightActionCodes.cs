@@ -23,4 +23,8 @@ public static class InsightActionCodes
     public const string ReorderRiskPlan = "reorder_risk_plan";
 
     public const string TrendReview = "trend_review";
+
+    public const string BrokenSizeRunConsolidate = "broken_size_run_consolidate";
+
+    public const string SeasonClearanceMarkdown = "season_clearance_markdown";
 }

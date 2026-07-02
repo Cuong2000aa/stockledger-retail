@@ -136,6 +136,122 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             scopedWarehouseIds,
             cancellationToken);
 
+    public Task<List<FashionStockFact>> GetFashionStockFactsAsync(
+        Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
+        DateTime fromDateUtc,
+        DateTime toDateUtc,
+        int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default) =>
+        GetFashionStockFactsCoreAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            fromDateUtc,
+            toDateUtc,
+            maxResults,
+            scopedWarehouseIds,
+            cancellationToken);
+
+    private async Task<List<FashionStockFact>> GetFashionStockFactsCoreAsync(
+        Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
+        DateTime fromDateUtc,
+        DateTime toDateUtc,
+        int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var normalizedRegion = NormalizeRegion(regionCode);
+        var rows = await (
+            from stock in _dbContext.CurrentStocks.AsNoTracking()
+            join productVariant in _dbContext.ProductVariants.AsNoTracking()
+                on stock.ProductVariantId equals productVariant.Id
+            join product in _dbContext.Products.AsNoTracking()
+                on productVariant.ProductId equals product.Id
+            join warehouse in _dbContext.Warehouses.AsNoTracking()
+                on stock.WarehouseId equals warehouse.Id
+            where !warehouseId.HasValue || stock.WarehouseId == warehouseId.Value
+            where scopedWarehouseIds == null || scopedWarehouseIds.Contains(stock.WarehouseId)
+            where !brandId.HasValue
+                || warehouse.BrandId == brandId
+                || productVariant.BrandId == brandId
+                || product.BrandId == brandId
+            where normalizedRegion == null
+                || warehouse.RegionCode == null
+                || warehouse.RegionCode.ToUpper() == normalizedRegion
+            where warehouse.Type != WarehouseType.InTransit
+            select new FashionStockRow
+            {
+                ProductVariantId = stock.ProductVariantId,
+                ProductId = product.Id,
+                ProductName = product.Name,
+                WarehouseId = stock.WarehouseId,
+                Sku = productVariant.Sku,
+                Color = productVariant.Color,
+                Size = productVariant.Size,
+                Season = productVariant.Season,
+                BrandId = warehouse.BrandId ?? productVariant.BrandId ?? product.BrandId,
+                WarehouseCode = warehouse.Code,
+                WarehouseName = warehouse.Name,
+                QuantityOnHand = stock.QuantityOnHand,
+                QuantityAvailable = stock.QuantityAvailable,
+                CostPrice = productVariant.CurrentCostPrice ?? productVariant.CostPrice,
+                CurrentSellingPriceAfterVat = productVariant.CurrentSellingPriceAfterVat
+                    ?? productVariant.CurrentSellingPrice
+                    ?? productVariant.SellingPrice
+            })
+            .ToListAsync(cancellationToken);
+
+        var stockRows = rows.Select(x => new InsightStockRow
+        {
+            ProductVariantId = x.ProductVariantId,
+            WarehouseId = x.WarehouseId
+        }).ToList();
+
+        var outboundFacts = await LoadOutboundWindowAsync(stockRows, fromDateUtc, toDateUtc, cancellationToken);
+        var lastOutbound = await LoadLastOutboundAsync(stockRows, cancellationToken);
+
+        return rows
+            .Select(x =>
+            {
+                outboundFacts.TryGetValue(new InsightKey(x.ProductVariantId, x.WarehouseId), out var outbound);
+                var inventoryValue = (x.CostPrice ?? 0) * x.QuantityOnHand;
+                return new FashionStockFact
+                {
+                    ProductVariantId = x.ProductVariantId,
+                    ProductId = x.ProductId,
+                    ProductName = x.ProductName,
+                    Sku = x.Sku,
+                    Color = x.Color,
+                    Size = x.Size,
+                    Season = x.Season,
+                    WarehouseId = x.WarehouseId,
+                    BrandId = x.BrandId,
+                    WarehouseCode = x.WarehouseCode,
+                    WarehouseName = x.WarehouseName,
+                    QuantityOnHand = x.QuantityOnHand,
+                    QuantityAvailable = x.QuantityAvailable,
+                    OutboundQuantity = outbound?.OutboundQuantity ?? 0,
+                    CostPrice = x.CostPrice,
+                    CurrentSellingPriceAfterVat = x.CurrentSellingPriceAfterVat,
+                    InventoryValue = inventoryValue > 0 ? inventoryValue : null,
+                    LastOutboundAt = lastOutbound.GetValueOrDefault(new InsightKey(x.ProductVariantId, x.WarehouseId))
+                };
+            })
+            .OrderByDescending(x => x.QuantityOnHand)
+            .Take(maxResults)
+            .ToList();
+    }
+
     private async Task<List<DeadStockFact>> GetDeadStockFactsCoreAsync(
         Guid? warehouseId,
         Guid? brandId,
@@ -732,6 +848,25 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         public decimal? CurrentSellingPriceAfterVat { get; set; }
         public decimal? VatRate { get; set; }
         public decimal? InventoryValue { get; set; }
+    }
+
+    private sealed class FashionStockRow
+    {
+        public Guid ProductVariantId { get; set; }
+        public Guid ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public Guid WarehouseId { get; set; }
+        public string Sku { get; set; } = string.Empty;
+        public string? Color { get; set; }
+        public string? Size { get; set; }
+        public string? Season { get; set; }
+        public Guid? BrandId { get; set; }
+        public string WarehouseCode { get; set; } = string.Empty;
+        public string WarehouseName { get; set; } = string.Empty;
+        public decimal QuantityOnHand { get; set; }
+        public decimal QuantityAvailable { get; set; }
+        public decimal? CostPrice { get; set; }
+        public decimal? CurrentSellingPriceAfterVat { get; set; }
     }
 
     private sealed record OutboundWindowStat(decimal OutboundQuantity, DateTime? LastOutboundAt);

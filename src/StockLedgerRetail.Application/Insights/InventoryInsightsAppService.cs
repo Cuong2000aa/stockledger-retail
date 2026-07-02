@@ -12,7 +12,7 @@ namespace StockLedgerRetail.Application.Insights;
 /// <summary>
 /// Rule-based inventory insights with brand/warehouse-aware recommendations and optional snapshot cache.
 /// </summary>
-public class InventoryInsightsAppService : IInventoryInsightsAppService
+public partial class InventoryInsightsAppService : IInventoryInsightsAppService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -30,6 +30,9 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
     private readonly InsightSnapshotOptions _snapshotOptions;
     private readonly ILogger<InventoryInsightsAppService> _logger;
     private readonly IWarehouseScopeService _warehouseScopeService;
+    private readonly IInsightExplainService _insightExplainService;
+    private readonly IMarkdownWhatIfService _markdownWhatIfService;
+    private readonly IInventoryDocumentAppService _inventoryDocumentAppService;
 
     public InventoryInsightsAppService(
         IInventoryInsightReadRepository inventoryInsightReadRepository,
@@ -42,7 +45,10 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         IInsightRecommendationEngine recommendationEngine,
         IOptions<InsightSnapshotOptions> snapshotOptions,
         ILogger<InventoryInsightsAppService> logger,
-        IWarehouseScopeService warehouseScopeService)
+        IWarehouseScopeService warehouseScopeService,
+        IInsightExplainService insightExplainService,
+        IMarkdownWhatIfService markdownWhatIfService,
+        IInventoryDocumentAppService inventoryDocumentAppService)
     {
         _inventoryInsightReadRepository = inventoryInsightReadRepository;
         _brandScopeContext = brandScopeContext;
@@ -55,6 +61,9 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
         _snapshotOptions = snapshotOptions.Value;
         _logger = logger;
         _warehouseScopeService = warehouseScopeService;
+        _insightExplainService = insightExplainService;
+        _markdownWhatIfService = markdownWhatIfService;
+        _inventoryDocumentAppService = inventoryDocumentAppService;
     }
 
     public async Task<List<DeadStockInsightDto>> GetDeadStockAsync(
@@ -831,11 +840,11 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
             }
         }
 
-        var deadStock = await GetDeadStockAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, forceRefresh: true);
-        var promotionRisk = await GetPromotionRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, forceRefresh: true);
-        var reorderRisk = await GetReorderRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, forceRefresh: true);
-        var transfer = await GetTransferSuggestionsAsync(null, warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 14, 7, 200, cancellationToken, forceRefresh: true);
-        var markdown = await GetMarkdownCandidatesAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, forceRefresh: true);
+        var deadStock = await GetDeadStockAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, forceRefresh);
+        var promotionRisk = await GetPromotionRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, forceRefresh);
+        var reorderRisk = await GetReorderRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, forceRefresh);
+        var transfer = await GetTransferSuggestionsAsync(null, warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 14, 7, 200, cancellationToken, forceRefresh);
+        var markdown = await GetMarkdownCandidatesAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, forceRefresh);
 
         var summary = new InsightsExecutiveSummaryDto
         {
@@ -853,6 +862,29 @@ public class InventoryInsightsAppService : IInventoryInsightsAppService
 
         await SaveSnapshotAsync(snapshotKey, InsightSnapshotKeyBuilder.KindExecutiveSummary, summary, cancellationToken);
         return summary;
+    }
+
+    public Task<InsightsExecutiveSummaryDto?> TryGetExecutiveSummarySnapshotAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int lookbackDays = 30,
+        int daysWithoutOutbound = 60,
+        CancellationToken cancellationToken = default)
+    {
+        var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
+        var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
+        var snapshotKey = InsightSnapshotKeyBuilder.BuildExecutiveSummaryKey(
+            warehouseId,
+            scopedBrandId,
+            scopedRegionCode,
+            lookbackDays,
+            daysWithoutOutbound);
+
+        return TryReadSnapshotAsync<InsightsExecutiveSummaryDto>(
+            snapshotKey,
+            InsightSnapshotKeyBuilder.KindExecutiveSummary,
+            cancellationToken);
     }
 
     private async Task<List<TransferSuggestionDto>> ComputeTransferSuggestionsAsync(

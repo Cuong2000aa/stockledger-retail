@@ -1,3 +1,4 @@
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Insights;
 
 namespace StockLedgerRetail.Services;
@@ -80,4 +81,52 @@ public interface IInventoryInsightsAppService
         int daysWithoutOutbound = 60,
         CancellationToken cancellationToken = default,
         bool forceRefresh = false);
+
+    Task<InsightsExecutiveSummaryDto?> TryGetExecutiveSummarySnapshotAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int lookbackDays = 30,
+        int daysWithoutOutbound = 60,
+        CancellationToken cancellationToken = default);
+
+    Task<PagedResultDto<DeadStockInsightDto>> GetDeadStockPagedAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int daysWithoutOutbound = 60,
+        decimal minOnHand = 1,
+        int? page = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default);
+
+    Task<List<BrokenSizeRunInsightDto>> GetBrokenSizeRunsAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        int lookbackDays = 30,
+        int maxResults = 50,
+        CancellationToken cancellationToken = default);
+
+    Task<List<SeasonClearanceInsightDto>> GetSeasonClearanceAsync(
+        Guid? warehouseId = null,
+        Guid? brandId = null,
+        string? regionCode = null,
+        string? currentSeason = null,
+        int lookbackDays = 30,
+        int daysWithoutOutbound = 60,
+        int maxResults = 50,
+        CancellationToken cancellationToken = default);
+
+    Task<MarkdownWhatIfResultDto> SimulateMarkdownWhatIfAsync(
+        MarkdownWhatIfRequestDto input,
+        CancellationToken cancellationToken = default);
+
+    Task<InsightExplainResponseDto> ExplainAsync(
+        InsightExplainRequestDto input,
+        CancellationToken cancellationToken = default);
+
+    Task<BulkTransferFromInsightsResultDto> CreateBulkTransfersAsync(
+        BulkTransferFromInsightsRequestDto input,
+        CancellationToken cancellationToken = default);
 }

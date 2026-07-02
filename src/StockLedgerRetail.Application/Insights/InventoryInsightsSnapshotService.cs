@@ -46,34 +46,33 @@ public class InventoryInsightsSnapshotService : IInventoryInsightsSnapshotServic
     private async Task RefreshScopeAsync(Guid? brandId, string? regionCode, CancellationToken cancellationToken)
     {
         await _inventoryInsightsAppService.GetDeadStockAsync(
-            null,
-            brandId,
-            regionCode,
-            60,
-            1,
-            50,
-            cancellationToken,
-            forceRefresh: true);
+            null, brandId, regionCode, 60, 1, 50, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetSalesVelocityAsync(
-            null,
-            brandId,
-            regionCode,
-            30,
-            100,
-            cancellationToken,
-            forceRefresh: true);
+            null, brandId, regionCode, 30, 100, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetTransferSuggestionsAsync(
-            null,
-            null,
-            brandId,
-            regionCode,
-            30,
-            14,
-            7,
-            20,
-            cancellationToken,
-            forceRefresh: true);
+            null, null, brandId, regionCode, 30, 14, 7, 20, cancellationToken, forceRefresh: true);
+
+        await _inventoryInsightsAppService.GetMarkdownCandidatesAsync(
+            null, brandId, regionCode, 60, 1, 50, cancellationToken, forceRefresh: true);
+
+        await _inventoryInsightsAppService.GetPromotionRiskAsync(
+            null, brandId, regionCode, 30, 50, cancellationToken, forceRefresh: true);
+
+        await _inventoryInsightsAppService.GetReorderRiskAsync(
+            null, brandId, regionCode, 30, 50, cancellationToken, forceRefresh: true);
+
+        await _inventoryInsightsAppService.GetTrendSummaryAsync(
+            null, brandId, regionCode, 30, 50, cancellationToken, forceRefresh: true);
+
+        await _inventoryInsightsAppService.GetExecutiveSummaryAsync(
+            null, brandId, regionCode, 30, 60, cancellationToken, forceRefresh: true);
+
+        await _inventoryInsightsAppService.GetBrokenSizeRunsAsync(
+            null, brandId, regionCode, 30, 50, cancellationToken);
+
+        await _inventoryInsightsAppService.GetSeasonClearanceAsync(
+            null, brandId, regionCode, null, 30, 60, 50, cancellationToken);
     }
 }

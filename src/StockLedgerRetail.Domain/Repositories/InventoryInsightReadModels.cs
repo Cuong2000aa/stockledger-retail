@@ -217,3 +217,42 @@ public class TrendSummaryFact
 
     public decimal? PreviousSellingPriceAfterVat { get; set; }
 }
+
+public class FashionStockFact
+{
+    public Guid ProductVariantId { get; set; }
+
+    public Guid ProductId { get; set; }
+
+    public string ProductName { get; set; } = string.Empty;
+
+    public string Sku { get; set; } = string.Empty;
+
+    public string? Color { get; set; }
+
+    public string? Size { get; set; }
+
+    public string? Season { get; set; }
+
+    public Guid WarehouseId { get; set; }
+
+    public Guid? BrandId { get; set; }
+
+    public string WarehouseCode { get; set; } = string.Empty;
+
+    public string WarehouseName { get; set; } = string.Empty;
+
+    public decimal QuantityOnHand { get; set; }
+
+    public decimal QuantityAvailable { get; set; }
+
+    public decimal OutboundQuantity { get; set; }
+
+    public decimal? CostPrice { get; set; }
+
+    public decimal? CurrentSellingPriceAfterVat { get; set; }
+
+    public decimal? InventoryValue { get; set; }
+
+    public DateTime? LastOutboundAt { get; set; }
+}

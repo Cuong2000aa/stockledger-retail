@@ -3,6 +3,7 @@ namespace StockLedgerRetail.Operations;
 public static class BackgroundJobKeys
 {
     public const string InsightSnapshots = "insight_snapshots";
+    public const string InsightAlerts = "insight_alerts";
     public const string StockReconciliation = "stock_reconciliation";
     public const string ReservationExpiry = "reservation_expiry";
 }

@@ -3,6 +3,7 @@
 import { Link } from "@/i18n/routing";
 import { SeverityBadge } from "@/features/insights/components/SeverityBadge";
 import {
+  buildActionTranslationParams,
   buildNavigateHref,
 } from "@/features/insights/recommendation-utils";
 import type { InsightRecommendation } from "@/lib/types";
@@ -112,7 +113,10 @@ export function RecommendationCard({
 
   let detail = "";
   try {
-    detail = tActions(recommendation.actionCode as never, recommendation.params ?? {});
+    detail = tActions(
+      recommendation.actionCode as never,
+      buildActionTranslationParams(recommendation) as never
+    );
   } catch {
     detail = recommendation.actionCode;
   }
@@ -133,18 +137,21 @@ export function RecommendationCard({
         : sortedActions.slice(0, 1);
 
     return (
-      <div className="flex max-w-[18rem] flex-col gap-1.5">
-        <div className="flex items-center gap-1.5">
-          <SeverityBadge severity={severity} label={severityLabel(t, severity)} />
-          <p className="truncate text-xs font-semibold text-slate-800" title={title}>
-            {title}
-          </p>
+      <div className="flex max-w-[20rem] flex-col gap-2">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <SeverityBadge severity={severity} label={severityLabel(t, severity)} />
+            <p className="text-sm font-bold leading-snug text-slate-900" title={title}>
+              {title}
+            </p>
+          </div>
+          <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">{detail}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
           {onExplain ? (
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md bg-violet-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-violet-500"
+              className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-violet-500"
               onClick={onExplain}
             >
               <MessageCircle className="h-3 w-3" />
@@ -307,7 +314,7 @@ function CtaIcon({ labelKey }: { labelKey: string }) {
 
 function compactCtaClass(isPrimary: boolean) {
   return clsx(
-    "inline-flex max-w-full items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition-all",
+    "inline-flex max-w-full items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all",
     isPrimary
       ? "bg-slate-900 text-white hover:bg-slate-800"
       : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"

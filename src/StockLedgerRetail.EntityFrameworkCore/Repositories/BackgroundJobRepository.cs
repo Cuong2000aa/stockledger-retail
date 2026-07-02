@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
+using StockLedgerRetail.Operations;
 
 namespace StockLedgerRetail.EntityFrameworkCore.Repositories;
 
@@ -93,4 +94,97 @@ public class BackgroundJobRepository : IBackgroundJobRepository
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<int> RecoverAbandonedRunsAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var openRuns = await _dbContext.BackgroundJobRuns
+            .Where(x => x.Status == BackgroundJobStatuses.Running)
+            .ToListAsync(cancellationToken);
+
+        foreach (var run in openRuns)
+        {
+            run.Status = BackgroundJobStatuses.Failed;
+            run.Message = "Run abandoned (host restarted or worker lost).";
+            run.CompletedAtUtc = now;
+            run.DurationMs = (long)Math.Max(0, (now - run.StartedAtUtc).TotalMilliseconds);
+        }
+
+        var stuckSettings = await _dbContext.BackgroundJobSettings
+            .Where(x => x.LastStatus == BackgroundJobStatuses.Running)
+            .ToListAsync(cancellationToken);
+
+        foreach (var setting in stuckSettings)
+        {
+            setting.LastStatus = BackgroundJobStatuses.Idle;
+            setting.LastMessage = "Previous run was interrupted; scheduler reset on startup.";
+            setting.LastRunCompletedAtUtc = now;
+            setting.NextRunAtUtc = now.AddMinutes(1);
+            setting.UpdatedAtUtc = now;
+        }
+
+        if (openRuns.Count == 0 && stuckSettings.Count == 0)
+        {
+            return 0;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return openRuns.Count;
+    }
+
+    public async Task<IReadOnlyList<string>> RecoverStaleActiveRunsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var openRuns = await _dbContext.BackgroundJobRuns
+            .Where(x => x.Status == BackgroundJobStatuses.Running)
+            .ToListAsync(cancellationToken);
+
+        var recoveredJobKeys = new List<string>();
+
+        foreach (var run in openRuns)
+        {
+            var maxAge = ResolveMaxRunAge(run.JobKey);
+            if (now - run.StartedAtUtc < maxAge)
+            {
+                continue;
+            }
+
+            run.Status = BackgroundJobStatuses.Failed;
+            run.Message = $"Timed out after {maxAge.TotalMinutes:0.#} minutes.";
+            run.CompletedAtUtc = now;
+            run.DurationMs = (long)Math.Max(0, (now - run.StartedAtUtc).TotalMilliseconds);
+            recoveredJobKeys.Add(run.JobKey);
+        }
+
+        if (recoveredJobKeys.Count == 0)
+        {
+            return recoveredJobKeys;
+        }
+
+        var jobKeys = recoveredJobKeys.Distinct().ToList();
+        var stuckSettings = await _dbContext.BackgroundJobSettings
+            .Where(x => jobKeys.Contains(x.JobKey) && x.LastStatus == BackgroundJobStatuses.Running)
+            .ToListAsync(cancellationToken);
+
+        foreach (var setting in stuckSettings)
+        {
+            setting.LastStatus = BackgroundJobStatuses.Failed;
+            setting.LastMessage = "Run exceeded maximum duration and was stopped.";
+            setting.LastRunCompletedAtUtc = now;
+            setting.NextRunAtUtc = now.AddMinutes(Math.Max(5, setting.IntervalMinutes));
+            setting.UpdatedAtUtc = now;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return jobKeys;
+    }
+
+    private static TimeSpan ResolveMaxRunAge(string jobKey) =>
+        jobKey switch
+        {
+            BackgroundJobKeys.InsightAlerts => TimeSpan.FromSeconds(30),
+            BackgroundJobKeys.InsightSnapshots => TimeSpan.FromMinutes(45),
+            _ => TimeSpan.FromMinutes(20)
+        };
 }

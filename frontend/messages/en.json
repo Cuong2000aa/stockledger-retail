@@ -67,6 +67,7 @@
     "save": "Save",
     "runNow": "Run now",
     "running": "Running…",
+    "queued": "Queued…",
     "saved": "Job settings saved.",
     "nextRun": "Next run",
     "lastRun": "Last completed",
@@ -92,6 +93,10 @@
       "stock_reconciliation": {
         "name": "Stock reconciliation",
         "description": "Compares ledger balances with current stock snapshots."
+      },
+      "insight_alerts": {
+        "name": "Insight alerts",
+        "description": "Proactive threshold alerts for dead stock, tied capital, and reorder risk."
       }
     },
     "triggers": {
@@ -473,6 +478,11 @@
     "title": "Insights",
     "subtitle": "Rule-based inventory signals that can later feed an AI copilot",
     "aiReady": "AI copilot ready",
+    "panel": {
+      "results": "results",
+      "priorityLegend": "Priority levels",
+      "chartLabel": "Visual summary"
+    },
     "stats": {
       "deadSkus": "Dead stock SKUs",
       "tiedCapital": "Capital tied up",
@@ -486,13 +496,17 @@
       "transferValue": "Transfer value"
     },
     "tabs": {
+      "groupOperations": "Operations",
+      "groupFashion": "Fashion merchandising",
       "deadStock": "Dead stock",
       "velocity": "Sales velocity",
       "transfer": "Transfers",
       "markdown": "Markdown",
       "promotionRisk": "Promotion risk",
       "reorderRisk": "Reorder risk",
-      "trend": "Trend"
+      "trend": "Trend",
+      "brokenSize": "Broken size run",
+      "seasonClearance": "Season clearance"
     },
     "charts": {
       "deadStockValue": "Top SKUs by tied capital",
@@ -528,7 +542,9 @@
       "markdown": "Idle SKUs that need markdown or clearance action",
       "promotionRisk": "Promotions with low cover or margin pressure",
       "reorderRisk": "Demand-driven reorder warnings with open pipeline context",
-      "trend": "Inventory value, price, and outbound movement shifts"
+      "trend": "Inventory value, price, and outbound movement shifts",
+      "brokenSize": "Incomplete size curves that hurt sell-through in fashion assortments",
+      "seasonClearance": "Past-season SKUs with slow movement — clearance candidates"
     },
     "copilot": {
       "bannerTitle": "Insights summary",
@@ -550,6 +566,10 @@
       "summaryReorderRisk": "{alerts} SKUs need reorder attention based on demand and pipeline.",
       "summaryReorderRiskEmpty": "Reorder risk looks stable for the current filters.",
       "summaryTrend": "{count} SKU/warehouse pairs show notable inventory or price trend shifts.",
+      "summaryBrokenSize": "{count} product runs have broken size curves at the selected warehouses.",
+      "summaryBrokenSizeEmpty": "No broken size runs detected for the current filters.",
+      "summarySeasonClearance": "{count} past-season SKUs need clearance attention.",
+      "summarySeasonClearanceEmpty": "No season clearance candidates for the current filters.",
       "summaryTrendEmpty": "No major trend shifts detected for the current filters.",
       "explainIntro": "The system rated {location} at priority P{priority}.",
       "locationSkuWarehouse": "{sku} at warehouse {warehouse}",
@@ -567,7 +587,9 @@
         "markdownCandidate": "Long-idle inventory can recover cash faster through markdown or clearance routing.",
         "promotionRisk": "Promotion pricing and low cover can compress margin or create stock-out risk.",
         "reorderRisk": "Demand exceeds near-term stock and inbound pipeline — replenish before service drops.",
-        "trend": "Inventory value, outbound speed, or price shifted materially versus the prior window."
+        "trend": "Inventory value, outbound speed, or price shifted materially versus the prior window.",
+        "brokenSize": "Incomplete size curves reduce conversion — consolidate stock or transfer to complete the run.",
+        "seasonClearance": "Past-season units with slow movement should be cleared to release capital."
       }
     },
     "deadStock": {
@@ -593,7 +615,26 @@
       "qty": "Suggested qty",
       "coverDays": "Dest cover",
       "createTransfer": "Create transfer",
-      "creating": "Creating..."
+      "creating": "Creating...",
+      "bulkCreate": "Create bulk transfer",
+      "bulkCreating": "Creating bulk transfer...",
+      "selectAll": "Select all",
+      "selectedCount": "{count} selected"
+    },
+    "brokenSize": {
+      "title": "Broken size runs",
+      "subtitle": "Products with partial size availability — consolidate or transfer to complete the curve",
+      "product": "Product",
+      "sizesInStock": "In stock",
+      "missingSizes": "Missing sizes",
+      "totalOnHand": "Total on hand"
+    },
+    "seasonClearance": {
+      "title": "Season clearance",
+      "subtitle": "Past-season inventory with slow movement — markdown or route to clearance",
+      "season": "Season",
+      "days": "Days idle",
+      "suggestedPrice": "Suggested price (VAT)"
     },
     "markdown": {
       "title": "Markdown candidates",
@@ -638,7 +679,9 @@
         "promotion_risk_tight_stock": "Promotion stock pressure",
         "reorder_risk_urgent": "Urgent reorder",
         "reorder_risk_plan": "Plan reorder",
-        "trend_review": "Review trend shift"
+        "trend_review": "Review trend shift",
+        "broken_size_run_consolidate": "Fix broken size run",
+        "season_clearance_markdown": "Season clearance"
       },
       "evidence": {
         "daysIdle": "Idle",
@@ -695,7 +738,9 @@
       "promotion_risk_tight_stock": "Promotion may pressure stock cover for {sku} at {warehouseCode}.",
       "reorder_risk_urgent": "Reorder urgently for {sku} at {warehouseCode}; suggested qty {suggestedQty}.",
       "reorder_risk_plan": "Plan reorder for {sku} at {warehouseCode}; suggested qty {suggestedQty}.",
-      "trend_review": "Review recent trend shift for {sku} at {warehouseCode}."
+      "trend_review": "Review recent trend shift for {sku} at {warehouseCode}.",
+      "broken_size_run_consolidate": "Consolidate broken size run for {productName} at {warehouseCode} — missing sizes: {missingSizes}.",
+      "season_clearance_markdown": "Clear past-season {sku} ({season}) at {warehouseCode} — idle {days} days."
     }
   },
   "dialog": {

@@ -45,4 +45,18 @@ export const insightQueryKeys = {
       lookbackDays,
       daysWithoutOutbound,
     ] as const,
+  brokenSizeRuns: (scope: InsightScopeKey = {}, lookbackDays = 30) =>
+    ["insights", "broken-size-runs", ...scopeKey(scope), lookbackDays] as const,
+  seasonClearance: (
+    scope: InsightScopeKey = {},
+    lookbackDays = 30,
+    daysWithoutOutbound = 60
+  ) =>
+    [
+      "insights",
+      "season-clearance",
+      ...scopeKey(scope),
+      lookbackDays,
+      daysWithoutOutbound,
+    ] as const,
 };

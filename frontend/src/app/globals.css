@@ -84,6 +84,22 @@ body {
     @apply border-b-0;
   }
 
+  .insights-table th {
+    @apply bg-slate-100 px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-slate-600;
+  }
+
+  .insights-table td {
+    @apply px-4 py-4 align-top;
+  }
+
+  .insights-table tbody tr:nth-child(even) {
+    @apply bg-slate-50/40;
+  }
+
+  .insights-table tbody tr:hover {
+    @apply bg-brand-50/30;
+  }
+
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset;
   }

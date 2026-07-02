@@ -60,6 +60,11 @@ public class AdminOperationsAppService : IAdminOperationsAppService
         setting.IsEnabled = input.IsEnabled;
         setting.IntervalMinutes = Math.Clamp(input.IntervalMinutes, 5, 24 * 60);
 
+        if (!input.IsEnabled)
+        {
+            _backgroundJobCoordinator.ClearManualRun(jobKey);
+        }
+
         if (setting.LastRunCompletedAtUtc.HasValue)
         {
             setting.NextRunAtUtc = setting.LastRunCompletedAtUtc.Value
@@ -87,6 +92,16 @@ public class AdminOperationsAppService : IAdminOperationsAppService
                 JobKey = jobKey,
                 Accepted = false,
                 Message = "Job is already running."
+            });
+        }
+
+        if (_backgroundJobCoordinator.IsManualRunPending(jobKey))
+        {
+            return Task.FromResult(new TriggerBackgroundJobResponseDto
+            {
+                JobKey = jobKey,
+                Accepted = false,
+                Message = "A manual run is already queued."
             });
         }
 

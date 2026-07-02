@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using StockLedgerRetail.Common;
 using StockLedgerRetail.Insights;
 using StockLedgerRetail.Services;
 
@@ -170,4 +171,78 @@ public class InventoryInsightsController : ControllerBase
             lookbackDays,
             daysWithoutOutbound,
             cancellationToken);
+
+    [HttpGet("dead-stock/paged")]
+    public Task<PagedResultDto<DeadStockInsightDto>> GetDeadStockPagedAsync(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
+        [FromQuery] int daysWithoutOutbound = 60,
+        [FromQuery] decimal minOnHand = 1,
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.GetDeadStockPagedAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            daysWithoutOutbound,
+            minOnHand,
+            page,
+            pageSize,
+            cancellationToken);
+
+    [HttpGet("broken-size-runs")]
+    public Task<List<BrokenSizeRunInsightDto>> GetBrokenSizeRunsAsync(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
+        [FromQuery] int lookbackDays = 30,
+        [FromQuery] int maxResults = 50,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.GetBrokenSizeRunsAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            lookbackDays,
+            maxResults,
+            cancellationToken);
+
+    [HttpGet("season-clearance")]
+    public Task<List<SeasonClearanceInsightDto>> GetSeasonClearanceAsync(
+        [FromQuery] Guid? warehouseId,
+        [FromQuery] Guid? brandId,
+        [FromQuery] string? regionCode,
+        [FromQuery] string? currentSeason,
+        [FromQuery] int lookbackDays = 30,
+        [FromQuery] int daysWithoutOutbound = 60,
+        [FromQuery] int maxResults = 50,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.GetSeasonClearanceAsync(
+            warehouseId,
+            brandId,
+            regionCode,
+            currentSeason,
+            lookbackDays,
+            daysWithoutOutbound,
+            maxResults,
+            cancellationToken);
+
+    [HttpPost("markdown-what-if")]
+    public Task<MarkdownWhatIfResultDto> SimulateMarkdownWhatIfAsync(
+        [FromBody] MarkdownWhatIfRequestDto input,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.SimulateMarkdownWhatIfAsync(input, cancellationToken);
+
+    [HttpPost("explain")]
+    public Task<InsightExplainResponseDto> ExplainAsync(
+        [FromBody] InsightExplainRequestDto input,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.ExplainAsync(input, cancellationToken);
+
+    [HttpPost("bulk-transfers")]
+    public Task<BulkTransferFromInsightsResultDto> CreateBulkTransfersAsync(
+        [FromBody] BulkTransferFromInsightsRequestDto input,
+        CancellationToken cancellationToken = default) =>
+        _inventoryInsightsAppService.CreateBulkTransfersAsync(input, cancellationToken);
 }

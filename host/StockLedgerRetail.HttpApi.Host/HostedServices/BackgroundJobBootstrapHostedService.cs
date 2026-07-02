@@ -46,6 +46,17 @@ public class BackgroundJobBootstrapHostedService : IHostedService
             new()
             {
                 Id = Guid.NewGuid(),
+                JobKey = BackgroundJobKeys.InsightAlerts,
+                DisplayName = "Insight alerts",
+                Description = "Proactive threshold alerts for dead stock, tied capital, and reorder risk.",
+                IsEnabled = true,
+                IntervalMinutes = 60,
+                LastStatus = BackgroundJobStatuses.Idle,
+                NextRunAtUtc = DateTime.UtcNow.AddMinutes(3)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
                 JobKey = BackgroundJobKeys.StockReconciliation,
                 DisplayName = "Stock reconciliation",
                 Description = "Compares ledger balances with current stock snapshots.",
@@ -68,6 +79,15 @@ public class BackgroundJobBootstrapHostedService : IHostedService
         };
 
         await repository.EnsureDefaultSettingsAsync(defaults, cancellationToken);
+
+        var recovered = await repository.RecoverAbandonedRunsAsync(cancellationToken);
+        if (recovered > 0)
+        {
+            _logger.LogWarning(
+                "Recovered {RecoveredCount} abandoned background job run(s) on startup.",
+                recovered);
+        }
+
         _logger.LogInformation("Background job settings initialized.");
     }
 

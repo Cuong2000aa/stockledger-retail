@@ -22,4 +22,8 @@ public interface IBackgroundJobRepository
     Task EnsureDefaultSettingsAsync(
         IReadOnlyList<BackgroundJobSetting> defaults,
         CancellationToken cancellationToken = default);
+
+    Task<int> RecoverAbandonedRunsAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> RecoverStaleActiveRunsAsync(CancellationToken cancellationToken = default);
 }

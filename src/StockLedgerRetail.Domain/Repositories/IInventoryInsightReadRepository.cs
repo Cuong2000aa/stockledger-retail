@@ -65,4 +65,14 @@ public interface IInventoryInsightReadRepository
         int maxResults,
         IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
+
+    Task<List<FashionStockFact>> GetFashionStockFactsAsync(
+        Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
+        DateTime fromDateUtc,
+        DateTime toDateUtc,
+        int maxResults,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default);
 }
