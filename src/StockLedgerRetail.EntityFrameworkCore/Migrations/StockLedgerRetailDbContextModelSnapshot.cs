@@ -240,10 +240,12 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasIndex("LastTransactionId");
 
-                    b.HasIndex("WarehouseId");
-
                     b.HasIndex("ProductVariantId", "WarehouseId")
                         .IsUnique();
+
+                    b.HasIndex("WarehouseId", "ProductVariantId")
+                        .HasDatabaseName("IX_current_stocks_on_hand_pairs")
+                        .HasFilter("\"QuantityOnHand\" > 0");
 
                     b.ToTable("current_stocks", (string)null);
                 });
@@ -506,6 +508,57 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("InsightKind", "GeneratedAtUtc");
 
                     b.ToTable("insight_snapshots", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDailyRollup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("GeneratedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("OutboundQty30d")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("RegionCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("SkuCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("SnapshotDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("TotalAvailable")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("TotalInventoryValue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("TotalOnHand")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "SnapshotDate");
+
+                    b.HasIndex("SnapshotDate", "BrandId", "WarehouseId", "RegionCode")
+                        .IsUnique();
+
+                    b.ToTable("inventory_daily_rollups", (string)null);
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.InventoryDocument", b =>
@@ -1607,6 +1660,11 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .IsUnique();
 
                     b.HasIndex("WarehouseId");
+
+                    b.HasIndex("ProductVariantId", "WarehouseId", "TransactionDate")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("IX_stock_transactions_outbound_pairs")
+                        .HasFilter("\"TransactionType\" = 2");
 
                     b.HasIndex("WarehouseId", "TransactionDate", "CreatedAt")
                         .IsDescending(false, true, true);

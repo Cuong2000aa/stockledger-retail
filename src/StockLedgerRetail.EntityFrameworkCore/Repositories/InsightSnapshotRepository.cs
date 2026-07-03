@@ -33,6 +33,25 @@ public class InsightSnapshotRepository : IInsightSnapshotRepository
             .ToDictionaryAsync(x => x.SnapshotKey, x => x.GeneratedAtUtc, cancellationToken);
     }
 
+    public Task<List<InsightSnapshot>> GetBrandExecutiveSummariesAsync(
+        int lookbackDays,
+        int daysWithoutOutbound,
+        CancellationToken cancellationToken = default)
+    {
+        var globalMarker = "|b:all|";
+        var brandMarker = "|b:";
+
+        return _dbContext.InsightSnapshots
+            .AsNoTracking()
+            .Where(x =>
+                x.InsightKind == "executive_summary"
+                && x.SnapshotKey.Contains(brandMarker)
+                && !x.SnapshotKey.Contains(globalMarker)
+                && x.SnapshotKey.Contains($"l:{lookbackDays}")
+                && x.SnapshotKey.Contains($"d:{daysWithoutOutbound}"))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task UpsertAsync(InsightSnapshot snapshot, CancellationToken cancellationToken = default)
     {
         var existing = await _dbContext.InsightSnapshots

@@ -37,6 +37,11 @@ public class StockTransactionConfiguration : IEntityTypeConfiguration<StockTrans
         builder.HasIndex(x => new { x.ProductVariantId, x.WarehouseId, x.TransactionDate, x.CreatedAt })
             .IsDescending(false, false, true, true);
 
+        builder.HasIndex(x => new { x.ProductVariantId, x.WarehouseId, x.TransactionDate })
+            .IsDescending(false, false, true)
+            .HasFilter("\"TransactionType\" = 2")
+            .HasDatabaseName("IX_stock_transactions_outbound_pairs");
+
         builder.HasOne(x => x.Document)
             .WithMany(x => x.StockTransactions)
             .HasForeignKey(x => x.DocumentId)

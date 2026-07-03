@@ -51,6 +51,16 @@ public static class CacheKeys
         return $"{ReportNxtPrefix}{from:yyyyMMdd}:{to:yyyyMMdd}:{warehouseId}:p{page}:s{pageSize}:scope:{scopePart}";
     }
 
+    public const string AnalyticsSummaryPrefix = "analytics:summary:";
+
+    public const string AnalyticsStockByWarehousePrefix = "analytics:stock-by-wh:";
+
+    public static string AnalyticsSummary(Guid? warehouseId, IReadOnlyCollection<Guid>? scopedWarehouseIds) =>
+        $"{AnalyticsSummaryPrefix}{warehouseId}:{FormatScope(scopedWarehouseIds)}";
+
+    public static string AnalyticsStockByWarehouse(Guid? warehouseId, IReadOnlyCollection<Guid>? scopedWarehouseIds) =>
+        $"{AnalyticsStockByWarehousePrefix}{warehouseId}:{FormatScope(scopedWarehouseIds)}";
+
     private static string FormatScope(IReadOnlyCollection<Guid>? scopedWarehouseIds) =>
         scopedWarehouseIds is null
             ? "all"

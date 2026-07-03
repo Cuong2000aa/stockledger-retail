@@ -181,6 +181,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
                 on stock.WarehouseId equals warehouse.Id
             where !warehouseId.HasValue || stock.WarehouseId == warehouseId.Value
             where scopedWarehouseIds == null || scopedWarehouseIds.Contains(stock.WarehouseId)
+            where stock.QuantityOnHand > 0
             where !brandId.HasValue
                 || warehouse.BrandId == brandId
                 || productVariant.BrandId == brandId
@@ -211,14 +212,10 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             })
             .ToListAsync(cancellationToken);
 
-        var stockRows = rows.Select(x => new InsightStockRow
-        {
-            ProductVariantId = x.ProductVariantId,
-            WarehouseId = x.WarehouseId
-        }).ToList();
-
-        var outboundFacts = await LoadOutboundWindowAsync(stockRows, fromDateUtc, toDateUtc, cancellationToken);
-        var lastOutbound = await LoadLastOutboundAsync(stockRows, cancellationToken);
+        var outboundFacts = await LoadOutboundWindowAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, fromDateUtc, toDateUtc, cancellationToken);
+        var lastOutbound = await LoadLastOutboundAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
 
         return rows
             .Select(x =>
@@ -273,7 +270,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         var filteredStocks = stocks
             .Where(x => x.QuantityOnHand >= minOnHand)
             .ToList();
-        var outboundFacts = await LoadLastOutboundAsync(filteredStocks, cancellationToken);
+        var outboundFacts = await LoadLastOutboundAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
 
         return filteredStocks
             .Select(x => new DeadStockFact
@@ -321,7 +319,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         var filteredStocks = stocks
             .Where(x => x.WarehouseType != WarehouseType.InTransit)
             .ToList();
-        var outboundFacts = await LoadOutboundWindowAsync(filteredStocks, fromDateUtc, toDateUtc, cancellationToken);
+        var outboundFacts = await LoadOutboundWindowAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, fromDateUtc, toDateUtc, cancellationToken);
 
         return filteredStocks
             .Select(x =>
@@ -380,7 +379,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
                 && x.CurrentSellingPriceBeforeVat.HasValue
                 && x.CostPrice.HasValue)
             .ToList();
-        var outboundFacts = await LoadLastOutboundAsync(filteredStocks, cancellationToken);
+        var outboundFacts = await LoadLastOutboundAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, cancellationToken);
 
         return filteredStocks
             .Select(x => new MarkdownCandidateFact
@@ -428,7 +428,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         var filteredStocks = stocks
             .Where(x => x.WarehouseType != WarehouseType.InTransit)
             .ToList();
-        var outboundFacts = await LoadOutboundWindowAsync(filteredStocks, fromDateUtc, toDateUtc, cancellationToken);
+        var outboundFacts = await LoadOutboundWindowAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, fromDateUtc, toDateUtc, cancellationToken);
         var promoPrices = await LoadCurrentPricesAsync(PriceType.Promotion, cancellationToken);
 
         return filteredStocks
@@ -484,7 +485,8 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         var filteredStocks = stocks
             .Where(x => x.WarehouseType != WarehouseType.InTransit)
             .ToList();
-        var outboundFacts = await LoadOutboundWindowAsync(filteredStocks, fromDateUtc, toDateUtc, cancellationToken);
+        var outboundFacts = await LoadOutboundWindowAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, fromDateUtc, toDateUtc, cancellationToken);
         var pipeline = await LoadPurchasePipelineAsync(filteredStocks, cancellationToken);
 
         return filteredStocks
@@ -540,8 +542,10 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
         var filteredStocks = stocks
             .Where(x => x.WarehouseType != WarehouseType.InTransit)
             .ToList();
-        var currentOutbound = await LoadOutboundWindowAsync(filteredStocks, currentFromDateUtc, currentToDateUtc, cancellationToken);
-        var previousOutbound = await LoadOutboundWindowAsync(filteredStocks, previousFromDateUtc, previousToDateUtc, cancellationToken);
+        var currentOutbound = await LoadOutboundWindowAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, currentFromDateUtc, currentToDateUtc, cancellationToken);
+        var previousOutbound = await LoadOutboundWindowAsync(
+            warehouseId, brandId, regionCode, scopedWarehouseIds, previousFromDateUtc, previousToDateUtc, cancellationToken);
         var previousInventoryValues = await LoadHistoricalInventoryValuesAsync(filteredStocks, previousToDateUtc, cancellationToken);
         var previousRegularPrices = await LoadHistoricalPriceValuesAsync(filteredStocks, previousToDateUtc, cancellationToken);
 
@@ -595,6 +599,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
                 on stock.WarehouseId equals warehouse.Id
             where !warehouseId.HasValue || stock.WarehouseId == warehouseId.Value
             where scopedWarehouseIds == null || scopedWarehouseIds.Contains(stock.WarehouseId)
+            where stock.QuantityOnHand > 0
             where !brandId.HasValue
                 || warehouse.BrandId == brandId
                 || productVariant.BrandId == brandId
@@ -602,6 +607,7 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
             where normalizedRegion == null
                 || warehouse.RegionCode == null
                 || warehouse.RegionCode.ToUpper() == normalizedRegion
+            where warehouse.Type != WarehouseType.InTransit
             select new InsightStockRow
             {
                 ProductVariantId = stock.ProductVariantId,
@@ -636,20 +642,38 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
     }
 
     private async Task<Dictionary<InsightKey, DateTime?>> LoadLastOutboundAsync(
-        List<InsightStockRow> stocks,
+        Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        var variantIds = stocks.Select(x => x.ProductVariantId).Distinct().ToList();
-        var warehouseIds = stocks.Select(x => x.WarehouseId).Distinct().ToList();
+        var normalizedRegion = NormalizeRegion(regionCode);
 
-        return await _dbContext.StockTransactions
-            .AsNoTracking()
-            .Where(x =>
-                x.TransactionType == StockTransactionType.Out
-                && variantIds.Contains(x.ProductVariantId)
-                && warehouseIds.Contains(x.WarehouseId))
-            .GroupBy(x => new { x.ProductVariantId, x.WarehouseId })
-            .Select(g => new
+        return await (
+            from tx in _dbContext.StockTransactions.AsNoTracking()
+            join stock in _dbContext.CurrentStocks.AsNoTracking()
+                on new { tx.ProductVariantId, tx.WarehouseId } equals new { stock.ProductVariantId, stock.WarehouseId }
+            join productVariant in _dbContext.ProductVariants.AsNoTracking()
+                on stock.ProductVariantId equals productVariant.Id
+            join product in _dbContext.Products.AsNoTracking()
+                on productVariant.ProductId equals product.Id
+            join warehouse in _dbContext.Warehouses.AsNoTracking()
+                on stock.WarehouseId equals warehouse.Id
+            where tx.TransactionType == StockTransactionType.Out
+            where !warehouseId.HasValue || stock.WarehouseId == warehouseId.Value
+            where scopedWarehouseIds == null || scopedWarehouseIds.Contains(stock.WarehouseId)
+            where stock.QuantityOnHand > 0
+            where !brandId.HasValue
+                || warehouse.BrandId == brandId
+                || productVariant.BrandId == brandId
+                || product.BrandId == brandId
+            where normalizedRegion == null
+                || warehouse.RegionCode == null
+                || warehouse.RegionCode.ToUpper() == normalizedRegion
+            where warehouse.Type != WarehouseType.InTransit
+            group tx by new { tx.ProductVariantId, tx.WarehouseId } into g
+            select new
             {
                 g.Key.ProductVariantId,
                 g.Key.WarehouseId,
@@ -662,24 +686,42 @@ public class InventoryInsightReadRepository : IInventoryInsightReadRepository
     }
 
     private async Task<Dictionary<InsightKey, OutboundWindowStat>> LoadOutboundWindowAsync(
-        List<InsightStockRow> stocks,
+        Guid? warehouseId,
+        Guid? brandId,
+        string? regionCode,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
         DateTime fromDateUtc,
         DateTime toDateUtc,
         CancellationToken cancellationToken)
     {
-        var variantIds = stocks.Select(x => x.ProductVariantId).Distinct().ToList();
-        var warehouseIds = stocks.Select(x => x.WarehouseId).Distinct().ToList();
+        var normalizedRegion = NormalizeRegion(regionCode);
 
-        return await _dbContext.StockTransactions
-            .AsNoTracking()
-            .Where(x =>
-                x.TransactionType == StockTransactionType.Out
-                && x.TransactionDate >= fromDateUtc
-                && x.TransactionDate <= toDateUtc
-                && variantIds.Contains(x.ProductVariantId)
-                && warehouseIds.Contains(x.WarehouseId))
-            .GroupBy(x => new { x.ProductVariantId, x.WarehouseId })
-            .Select(g => new
+        return await (
+            from tx in _dbContext.StockTransactions.AsNoTracking()
+            join stock in _dbContext.CurrentStocks.AsNoTracking()
+                on new { tx.ProductVariantId, tx.WarehouseId } equals new { stock.ProductVariantId, stock.WarehouseId }
+            join productVariant in _dbContext.ProductVariants.AsNoTracking()
+                on stock.ProductVariantId equals productVariant.Id
+            join product in _dbContext.Products.AsNoTracking()
+                on productVariant.ProductId equals product.Id
+            join warehouse in _dbContext.Warehouses.AsNoTracking()
+                on stock.WarehouseId equals warehouse.Id
+            where tx.TransactionType == StockTransactionType.Out
+            where tx.TransactionDate >= fromDateUtc
+            where tx.TransactionDate <= toDateUtc
+            where !warehouseId.HasValue || stock.WarehouseId == warehouseId.Value
+            where scopedWarehouseIds == null || scopedWarehouseIds.Contains(stock.WarehouseId)
+            where stock.QuantityOnHand > 0
+            where !brandId.HasValue
+                || warehouse.BrandId == brandId
+                || productVariant.BrandId == brandId
+                || product.BrandId == brandId
+            where normalizedRegion == null
+                || warehouse.RegionCode == null
+                || warehouse.RegionCode.ToUpper() == normalizedRegion
+            where warehouse.Type != WarehouseType.InTransit
+            group tx by new { tx.ProductVariantId, tx.WarehouseId } into g
+            select new
             {
                 g.Key.ProductVariantId,
                 g.Key.WarehouseId,

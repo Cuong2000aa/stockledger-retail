@@ -173,6 +173,95 @@ public class CurrentStockRepository : ICurrentStockRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<CurrentStockSummaryStats> GetSummaryStatsAsync(
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return new CurrentStockSummaryStats();
+        }
+
+        var query = ApplyScopeFilter(_dbContext.CurrentStocks.AsNoTracking(), warehouseId, scopedWarehouseIds, includeDetails: false)
+            .Where(x => x.QuantityOnHand > 0);
+
+        var stats = await query
+            .GroupBy(_ => 1)
+            .Select(g => new CurrentStockSummaryStats
+            {
+                TotalSkus = g.Count(),
+                TotalOnHand = g.Sum(x => x.QuantityOnHand),
+                TotalAvailable = g.Sum(x => x.QuantityAvailable)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return stats ?? new CurrentStockSummaryStats();
+    }
+
+    public async Task<List<StockByWarehouseStats>> GetStockByWarehouseStatsAsync(
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var stocks = ApplyScopeFilter(_dbContext.CurrentStocks.AsNoTracking(), warehouseId, scopedWarehouseIds, includeDetails: false)
+            .Where(x => x.QuantityOnHand > 0);
+
+        return await (
+            from stock in stocks
+            join warehouse in _dbContext.Warehouses.AsNoTracking() on stock.WarehouseId equals warehouse.Id
+            group stock by new { stock.WarehouseId, warehouse.Code, warehouse.Name } into grouped
+            orderby grouped.Key.Code
+            select new StockByWarehouseStats
+            {
+                WarehouseId = grouped.Key.WarehouseId,
+                WarehouseCode = grouped.Key.Code,
+                WarehouseName = grouped.Key.Name,
+                SkuCount = grouped.Count(),
+                TotalOnHand = grouped.Sum(x => x.QuantityOnHand),
+                TotalAvailable = grouped.Sum(x => x.QuantityAvailable)
+            }).ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<LowStockItemStats>> GetLowStockItemsAsync(
+        decimal threshold,
+        int limit,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var normalizedLimit = Math.Clamp(limit, 1, 200);
+        var stocks = ApplyScopeFilter(_dbContext.CurrentStocks.AsNoTracking(), warehouseId, scopedWarehouseIds, includeDetails: false)
+            .Where(x => x.QuantityAvailable <= threshold);
+
+        return await (
+            from stock in stocks
+            join variant in _dbContext.ProductVariants.AsNoTracking() on stock.ProductVariantId equals variant.Id
+            join warehouse in _dbContext.Warehouses.AsNoTracking() on stock.WarehouseId equals warehouse.Id
+            orderby stock.QuantityAvailable, warehouse.Code
+            select new LowStockItemStats
+            {
+                ProductVariantId = stock.ProductVariantId,
+                Sku = variant.Sku,
+                WarehouseId = stock.WarehouseId,
+                WarehouseCode = warehouse.Code,
+                QuantityOnHand = stock.QuantityOnHand,
+                QuantityAvailable = stock.QuantityAvailable
+            })
+            .Take(normalizedLimit)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<List<CurrentStock>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,
@@ -277,4 +366,30 @@ public class CurrentStockRepository : ICurrentStockRepository
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _dbContext.SaveChangesAsync(cancellationToken);
+
+    private IQueryable<CurrentStock> ApplyScopeFilter(
+        IQueryable<CurrentStock> query,
+        Guid? warehouseId,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds,
+        bool includeDetails = true)
+    {
+        if (includeDetails)
+        {
+            query = query
+                .Include(x => x.ProductVariant)
+                .Include(x => x.Warehouse);
+        }
+
+        if (warehouseId.HasValue)
+        {
+            return query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+
+        if (scopedWarehouseIds is { Count: > 0 })
+        {
+            return query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
+        }
+
+        return query;
+    }
 }

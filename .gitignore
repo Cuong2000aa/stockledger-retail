@@ -22,3 +22,7 @@ Thumbs.db
 ## Secrets
 appsettings.*.local.json
 .cursor-temp/
+
+## Local dev runtime
+dump.rdb
+tools/redis/

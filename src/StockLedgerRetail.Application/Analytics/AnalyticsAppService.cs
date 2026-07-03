@@ -1,7 +1,11 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using StockLedgerRetail.Analytics;
 using StockLedgerRetail.Application.Reports;
+using StockLedgerRetail.Caching;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
+using StockLedgerRetail.Inventory;
 using StockLedgerRetail.Services;
 
 namespace StockLedgerRetail.Application.Analytics;
@@ -15,6 +19,8 @@ public class AnalyticsAppService : IAnalyticsAppService
     private readonly IPurchaseOrderRepository _purchaseOrderRepository;
     private readonly IGoodsReceiptRepository _goodsReceiptRepository;
     private readonly IWarehouseScopeService _warehouseScopeService;
+    private readonly ICacheService _cacheService;
+    private readonly CacheOptions _cacheOptions;
 
     public AnalyticsAppService(
         ICurrentStockRepository currentStockRepository,
@@ -22,7 +28,9 @@ public class AnalyticsAppService : IAnalyticsAppService
         IWarehouseRepository warehouseRepository,
         IPurchaseOrderRepository purchaseOrderRepository,
         IGoodsReceiptRepository goodsReceiptRepository,
-        IWarehouseScopeService warehouseScopeService)
+        IWarehouseScopeService warehouseScopeService,
+        ICacheService cacheService,
+        Microsoft.Extensions.Options.IOptions<CacheOptions> cacheOptions)
     {
         _currentStockRepository = currentStockRepository;
         _stockTransactionRepository = stockTransactionRepository;
@@ -30,26 +38,30 @@ public class AnalyticsAppService : IAnalyticsAppService
         _purchaseOrderRepository = purchaseOrderRepository;
         _goodsReceiptRepository = goodsReceiptRepository;
         _warehouseScopeService = warehouseScopeService;
+        _cacheService = cacheService;
+        _cacheOptions = cacheOptions.Value;
     }
 
     public async Task<InventorySummaryDto> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
         var scope = _warehouseScopeService.ResolveListScope(null);
-        var stocks = await _currentStockRepository.GetListAsync(
+        var cacheKey = CacheKeys.AnalyticsSummary(scope.WarehouseId, scope.ScopedWarehouseIds);
+        if (_cacheOptions.Enabled)
+        {
+            var cached = await _cacheService.GetAsync<InventorySummaryDto>(cacheKey, cancellationToken);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
+        var stats = await _currentStockRepository.GetSummaryStatsAsync(
             scope.WarehouseId,
-            scopedWarehouseIds: scope.ScopedWarehouseIds,
-            cancellationToken: cancellationToken);
+            scope.ScopedWarehouseIds,
+            cancellationToken);
 
         var scopedWarehouseIds = scope.ScopedWarehouseIds;
-        var warehouses = await _warehouseRepository.GetListAsync(cancellationToken);
-        if (scopedWarehouseIds is { Count: > 0 })
-        {
-            warehouses = warehouses.Where(x => scopedWarehouseIds.Contains(x.Id)).ToList();
-        }
-        else if (scope.WarehouseId.HasValue)
-        {
-            warehouses = warehouses.Where(x => x.Id == scope.WarehouseId.Value).ToList();
-        }
+        var warehouseCount = await ResolveWarehouseCountAsync(scope, cancellationToken);
 
         var (_, openPoCount) = await _purchaseOrderRepository.GetPagedListAsync(
             PurchaseOrderStatus.Submitted, null, 0, 1, null, scope.WarehouseId, scope.ScopedWarehouseIds, cancellationToken);
@@ -64,39 +76,69 @@ public class AnalyticsAppService : IAnalyticsAppService
             scope.ScopedWarehouseIds,
             cancellationToken);
 
-        return new InventorySummaryDto
+        var summary = new InventorySummaryDto
         {
-            TotalSkus = stocks.Count,
-            TotalOnHand = stocks.Sum(s => s.QuantityOnHand),
-            TotalAvailable = stocks.Sum(s => s.QuantityAvailable),
-            WarehouseCount = warehouses.Count,
+            TotalSkus = stats.TotalSkus,
+            TotalOnHand = stats.TotalOnHand,
+            TotalAvailable = stats.TotalAvailable,
+            WarehouseCount = warehouseCount,
             OpenPurchaseOrders = openPoCount + partialPoCount,
             PendingGoodsReceipts = pendingGrCount
         };
+
+        if (_cacheOptions.Enabled)
+        {
+            await _cacheService.SetAsync(
+                cacheKey,
+                summary,
+                TimeSpan.FromMinutes(_cacheOptions.ReportCurrentPeriodTtlMinutes),
+                cancellationToken);
+        }
+
+        return summary;
     }
 
     public async Task<List<StockByWarehouseDto>> GetStockByWarehouseAsync(
         CancellationToken cancellationToken = default)
     {
         var scope = _warehouseScopeService.ResolveListScope(null);
-        var stocks = await _currentStockRepository.GetListAsync(
-            scope.WarehouseId,
-            scopedWarehouseIds: scope.ScopedWarehouseIds,
-            cancellationToken: cancellationToken);
-
-        return stocks
-            .GroupBy(s => new { s.WarehouseId, s.Warehouse.Code, s.Warehouse.Name })
-            .Select(g => new StockByWarehouseDto
+        var cacheKey = CacheKeys.AnalyticsStockByWarehouse(scope.WarehouseId, scope.ScopedWarehouseIds);
+        if (_cacheOptions.Enabled)
+        {
+            var cached = await _cacheService.GetAsync<List<StockByWarehouseDto>>(cacheKey, cancellationToken);
+            if (cached is not null)
             {
-                WarehouseId = g.Key.WarehouseId,
-                WarehouseCode = g.Key.Code,
-                WarehouseName = g.Key.Name,
-                SkuCount = g.Count(),
-                TotalOnHand = g.Sum(x => x.QuantityOnHand),
-                TotalAvailable = g.Sum(x => x.QuantityAvailable)
+                return cached;
+            }
+        }
+
+        var stats = await _currentStockRepository.GetStockByWarehouseStatsAsync(
+            scope.WarehouseId,
+            scope.ScopedWarehouseIds,
+            cancellationToken);
+
+        var items = stats
+            .Select(x => new StockByWarehouseDto
+            {
+                WarehouseId = x.WarehouseId,
+                WarehouseCode = x.WarehouseCode,
+                WarehouseName = x.WarehouseName,
+                SkuCount = x.SkuCount,
+                TotalOnHand = x.TotalOnHand,
+                TotalAvailable = x.TotalAvailable
             })
-            .OrderBy(x => x.WarehouseCode)
             .ToList();
+
+        if (_cacheOptions.Enabled)
+        {
+            await _cacheService.SetAsync(
+                cacheKey,
+                items,
+                TimeSpan.FromMinutes(_cacheOptions.ReportCurrentPeriodTtlMinutes),
+                cancellationToken);
+        }
+
+        return items;
     }
 
     public async Task<MovementSummaryDto> GetMovementSummaryAsync(
@@ -145,25 +187,41 @@ public class AnalyticsAppService : IAnalyticsAppService
         CancellationToken cancellationToken = default)
     {
         var scope = _warehouseScopeService.ResolveListScope(null);
-        var stocks = await _currentStockRepository.GetListAsync(
+        var items = await _currentStockRepository.GetLowStockItemsAsync(
+            threshold,
+            50,
             scope.WarehouseId,
-            scopedWarehouseIds: scope.ScopedWarehouseIds,
-            cancellationToken: cancellationToken);
+            scope.ScopedWarehouseIds,
+            cancellationToken);
 
-        return stocks
-            .Where(s => s.QuantityAvailable <= threshold)
-            .OrderBy(s => s.QuantityAvailable)
-            .ThenBy(s => s.Warehouse.Code)
+        return items
             .Select(s => new LowStockItemDto
             {
                 ProductVariantId = s.ProductVariantId,
-                Sku = s.ProductVariant.Sku,
+                Sku = s.Sku,
                 WarehouseId = s.WarehouseId,
-                WarehouseCode = s.Warehouse.Code,
+                WarehouseCode = s.WarehouseCode,
                 QuantityOnHand = s.QuantityOnHand,
                 QuantityAvailable = s.QuantityAvailable
             })
-            .Take(50)
             .ToList();
+    }
+
+    private async Task<int> ResolveWarehouseCountAsync(
+        WarehouseListScope scope,
+        CancellationToken cancellationToken)
+    {
+        if (scope.ScopedWarehouseIds is { Count: > 0 })
+        {
+            return scope.ScopedWarehouseIds.Count;
+        }
+
+        if (scope.WarehouseId.HasValue)
+        {
+            return 1;
+        }
+
+        var warehouses = await _warehouseRepository.GetListAsync(cancellationToken);
+        return warehouses.Count;
     }
 }

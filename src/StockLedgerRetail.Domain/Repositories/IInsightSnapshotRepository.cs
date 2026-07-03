@@ -10,6 +10,11 @@ public interface IInsightSnapshotRepository
         IReadOnlyList<string> snapshotKeys,
         CancellationToken cancellationToken = default);
 
+    Task<List<InsightSnapshot>> GetBrandExecutiveSummariesAsync(
+        int lookbackDays,
+        int daysWithoutOutbound,
+        CancellationToken cancellationToken = default);
+
     Task UpsertAsync(InsightSnapshot snapshot, CancellationToken cancellationToken = default);
 
     Task DeleteByInsightKindAsync(string insightKind, CancellationToken cancellationToken = default);

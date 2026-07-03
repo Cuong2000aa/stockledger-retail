@@ -26,6 +26,7 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
     private readonly IMarkdownPolicyRepository _markdownPolicyRepository;
     private readonly IMarkdownPolicyEngine _markdownPolicyEngine;
     private readonly IInsightSnapshotRepository _insightSnapshotRepository;
+    private readonly IGlobalExecutiveSummaryAggregator _globalExecutiveSummaryAggregator;
     private readonly IInsightRecommendationEngine _recommendationEngine;
     private readonly InsightSnapshotOptions _snapshotOptions;
     private readonly ILogger<InventoryInsightsAppService> _logger;
@@ -42,6 +43,7 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
         IMarkdownPolicyRepository markdownPolicyRepository,
         IMarkdownPolicyEngine markdownPolicyEngine,
         IInsightSnapshotRepository insightSnapshotRepository,
+        IGlobalExecutiveSummaryAggregator globalExecutiveSummaryAggregator,
         IInsightRecommendationEngine recommendationEngine,
         IOptions<InsightSnapshotOptions> snapshotOptions,
         ILogger<InventoryInsightsAppService> logger,
@@ -57,6 +59,7 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
         _markdownPolicyRepository = markdownPolicyRepository;
         _markdownPolicyEngine = markdownPolicyEngine;
         _insightSnapshotRepository = insightSnapshotRepository;
+        _globalExecutiveSummaryAggregator = globalExecutiveSummaryAggregator;
         _recommendationEngine = recommendationEngine;
         _snapshotOptions = snapshotOptions.Value;
         _logger = logger;
@@ -829,13 +832,27 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
             lookbackDays,
             daysWithoutOutbound);
 
+        if (!forceRefresh && IsGlobalInsightScope(warehouseId, scopedBrandId, scopedRegionCode))
+        {
+            var aggregated = await _globalExecutiveSummaryAggregator.TryGetAggregatedAsync(
+                lookbackDays,
+                daysWithoutOutbound,
+                cancellationToken);
+            if (aggregated is not null)
+            {
+                return aggregated;
+            }
+        }
+
         if (!forceRefresh)
         {
             var cached = await TryReadSnapshotAsync<InsightsExecutiveSummaryDto>(
                 snapshotKey,
                 InsightSnapshotKeyBuilder.KindExecutiveSummary,
                 cancellationToken);
-            if (cached is not null)
+            if (cached is not null
+                && (!IsGlobalInsightScope(warehouseId, scopedBrandId, scopedRegionCode)
+                    || HasExecutiveSummarySignal(cached)))
             {
                 return cached;
             }
@@ -1230,6 +1247,21 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
         insight.RecommendedActionCode = recommendation.ActionCode;
         insight.RecommendationParams = recommendation.Params;
     }
+
+    private static bool IsGlobalInsightScope(Guid? warehouseId, Guid? brandId, string? regionCode) =>
+        !warehouseId.HasValue && !brandId.HasValue && string.IsNullOrWhiteSpace(regionCode);
+
+    private static bool HasExecutiveSummarySignal(InsightsExecutiveSummaryDto summary) =>
+        summary.DeadStockCount > 0
+        || summary.TiedCapital > 0
+        || summary.InventoryValueAtRisk > 0
+        || summary.MarginAtRisk > 0
+        || summary.PromotionRiskCount > 0
+        || summary.ReorderRiskCount > 0
+        || summary.TransferOpportunityCount > 0
+        || summary.TransferOpportunityValue > 0
+        || summary.MarkdownCandidateCount > 0
+        || summary.MarkdownRecoveryValue > 0;
 
     private async Task<T?> TryReadSnapshotAsync<T>(
         string snapshotKey,

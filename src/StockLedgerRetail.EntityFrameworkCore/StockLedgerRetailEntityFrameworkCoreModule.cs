@@ -45,6 +45,7 @@ public static class StockLedgerRetailEntityFrameworkCoreModule
         services.AddScoped<ILotStockRepository, LotStockRepository>();
         services.AddScoped<IVariantUnitBarcodeRepository, VariantUnitBarcodeRepository>();
         services.AddScoped<IInventoryReportReadRepository, InventoryReportReadRepository>();
+        services.AddScoped<IInventoryDailyRollupRepository, InventoryDailyRollupRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IDocumentNumberGenerator, DocumentNumberGenerator>();
 

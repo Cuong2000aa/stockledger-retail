@@ -84,6 +84,37 @@ dotnet test tests/StockLedgerRetail.Integration.Tests
 
 Dữ liệu test dùng reference `IT-PO-*` / `IT-GR-*` — không xóa sau test (shared dev DB).
 
+### Redis / caching tests
+
+Project: `tests/StockLedgerRetail.Caching.Tests`
+
+**Yêu cầu:** Redis chạy tại `127.0.0.1:6379` (local hoặc Docker).
+
+```powershell
+# Dựng Redis dev (Docker)
+.\scripts\dev-up.ps1
+
+# Chạy automation test Redis
+.\scripts\run-redis-tests.ps1
+```
+
+Hoặc thủ công:
+
+```powershell
+$env:STOCKLEDGER_REDIS_CONNECTION = "127.0.0.1:6379"
+dotnet test tests/StockLedgerRetail.Caching.Tests
+```
+
+| Test | Assert |
+|------|--------|
+| `Redis_Ping_ReturnsSuccess` | Kết nối Redis OK |
+| `Redis_UsesConfiguredInstanceNamePrefix` | Key có prefix `test:` (StackExchange instance name) |
+| `DistributedCacheService_*` | Get/Set/Remove qua Redis |
+| `UserAuthCacheService_*` | Auth cache hit/miss + invalidate |
+| `WhenCacheDisabled_*` | `Cache:Enabled=false` → luôn miss (không cần Redis) |
+
+Nếu Redis không chạy, các test Redis sẽ **skip** (không fail). Config test: `tests/StockLedgerRetail.Caching.Tests/appsettings.Testing.json` — `InstanceName: test:` để tách khỏi dev `stockledger:`.
+
 ---
 
 ## Smoke scripts (PowerShell)
@@ -141,6 +172,7 @@ dotnet ef database update \
 | Next.js Internal Server Error sau build | `cd frontend && npm run dev:fresh` |
 | Clerk không thấy dữ liệu kho | Restart API (seed clerk warehouse); kiểm tra assignment trong admin users |
 | Integration test skip DB | Kiểm tra Postgres + connection string |
+| Redis test skip | Chạy `.\scripts\dev-up.ps1` hoặc bật Redis local port 6379 |
 
 ---
 
