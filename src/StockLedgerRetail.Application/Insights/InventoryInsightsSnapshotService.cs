@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StockLedgerRetail.Domain.Repositories;
@@ -22,22 +22,25 @@ public class InventoryInsightsSnapshotService : IInventoryInsightsSnapshotServic
     private const int TransferMaxResults = 200;
     private const int FashionMaxResults = 50;
 
-    private readonly IInventoryInsightsAppService _inventoryInsightsAppService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IBrandRepository _brandRepository;
     private readonly IInsightSnapshotRepository _insightSnapshotRepository;
+    private readonly IGlobalExecutiveSummaryAggregator _globalExecutiveSummaryAggregator;
     private readonly InsightSnapshotOptions _options;
     private readonly ILogger<InventoryInsightsSnapshotService> _logger;
 
     public InventoryInsightsSnapshotService(
-        IInventoryInsightsAppService inventoryInsightsAppService,
+        IServiceScopeFactory scopeFactory,
         IBrandRepository brandRepository,
         IInsightSnapshotRepository insightSnapshotRepository,
+        IGlobalExecutiveSummaryAggregator globalExecutiveSummaryAggregator,
         IOptions<InsightSnapshotOptions> options,
         ILogger<InventoryInsightsSnapshotService> logger)
     {
-        _inventoryInsightsAppService = inventoryInsightsAppService;
+        _scopeFactory = scopeFactory;
         _brandRepository = brandRepository;
         _insightSnapshotRepository = insightSnapshotRepository;
+        _globalExecutiveSummaryAggregator = globalExecutiveSummaryAggregator;
         _options = options.Value;
         _logger = logger;
     }
@@ -47,13 +50,16 @@ public class InventoryInsightsSnapshotService : IInventoryInsightsSnapshotServic
         var refreshedScopes = 0;
         var skippedScopes = 0;
 
-        if (await TryRefreshScopeAsync(null, null, cancellationToken))
+        if (_options.RefreshGlobalScope)
         {
-            refreshedScopes++;
-        }
-        else
-        {
-            skippedScopes++;
+            if (await TryRefreshScopeAsync(null, null, cancellationToken))
+            {
+                refreshedScopes++;
+            }
+            else
+            {
+                skippedScopes++;
+            }
         }
 
         var brandIds = await ResolveBrandIdsAsync(cancellationToken);
@@ -68,23 +74,41 @@ public class InventoryInsightsSnapshotService : IInventoryInsightsSnapshotServic
             brandIds = brandIds.Take(_options.MaxBrandsPerRun).ToList();
         }
 
-        foreach (var brandId in brandIds)
+        var maxConcurrency = Math.Max(1, _options.MaxConcurrentBrandScopes);
+        using var gate = new SemaphoreSlim(maxConcurrency, maxConcurrency);
+        var refreshTasks = brandIds.Select(async brandId =>
         {
-            if (await TryRefreshScopeAsync(brandId, null, cancellationToken))
+            await gate.WaitAsync(cancellationToken);
+            try
             {
-                refreshedScopes++;
+                using var scope = _scopeFactory.CreateScope();
+                var snapshotService = scope.ServiceProvider.GetRequiredService<BrandScopeSnapshotRefresher>();
+                return await snapshotService.TryRefreshAsync(brandId, null, cancellationToken);
             }
-            else
+            finally
             {
-                skippedScopes++;
+                gate.Release();
             }
+        });
+
+        var results = await Task.WhenAll(refreshTasks);
+        refreshedScopes += results.Count(x => x);
+        skippedScopes += results.Count(x => !x);
+
+        if (!_options.RefreshGlobalScope)
+        {
+            await _globalExecutiveSummaryAggregator.RefreshAsync(
+                LookbackDays,
+                DaysWithoutOutbound,
+                cancellationToken);
         }
 
         _logger.LogInformation(
-            "Insight snapshot refresh finished. Refreshed {RefreshedScopes} scopes, skipped {SkippedScopes} fresh scopes, processed {BrandCount} brand candidates.",
+            "Insight snapshot refresh finished. Refreshed {RefreshedScopes} scopes, skipped {SkippedScopes} fresh scopes, processed {BrandCount} brand candidates, globalScope={RefreshGlobalScope}.",
             refreshedScopes,
             skippedScopes,
-            brandIds.Count);
+            brandIds.Count,
+            _options.RefreshGlobalScope);
     }
 
     private async Task<List<Guid>> ResolveBrandIdsAsync(CancellationToken cancellationToken)
@@ -144,16 +168,9 @@ public class InventoryInsightsSnapshotService : IInventoryInsightsSnapshotServic
             return false;
         }
 
-        var stopwatch = Stopwatch.StartNew();
-        await RefreshScopeAsync(brandId, regionCode, cancellationToken);
-        stopwatch.Stop();
-
-        _logger.LogInformation(
-            "Refreshed insight snapshots for scope brandId={BrandId}, regionCode={RegionCode} in {ElapsedMs} ms.",
-            brandId,
-            regionCode,
-            stopwatch.ElapsedMilliseconds);
-        return true;
+        using var scope = _scopeFactory.CreateScope();
+        var refresher = scope.ServiceProvider.GetRequiredService<BrandScopeSnapshotRefresher>();
+        return await refresher.RefreshAsync(brandId, regionCode, cancellationToken);
     }
 
     private async Task<bool> IsExecutiveSnapshotStaleAsync(Guid? brandId, CancellationToken cancellationToken)
@@ -180,6 +197,62 @@ public class InventoryInsightsSnapshotService : IInventoryInsightsSnapshotServic
             null,
             LookbackDays,
             DaysWithoutOutbound);
+}
+
+internal class BrandScopeSnapshotRefresher
+{
+    private const int LookbackDays = 30;
+    private const int DaysWithoutOutbound = 60;
+    private const int DeadStockMaxResults = 200;
+    private const int SalesVelocityMaxResults = 100;
+    private const int RiskMaxResults = 200;
+    private const int TransferMaxResults = 200;
+    private const int FashionMaxResults = 50;
+
+    private readonly IInventoryInsightsAppService _inventoryInsightsAppService;
+    private readonly ILogger<BrandScopeSnapshotRefresher> _logger;
+
+    public BrandScopeSnapshotRefresher(
+        IInventoryInsightsAppService inventoryInsightsAppService,
+        ILogger<BrandScopeSnapshotRefresher> logger)
+    {
+        _inventoryInsightsAppService = inventoryInsightsAppService;
+        _logger = logger;
+    }
+
+    public async Task<bool> TryRefreshAsync(
+        Guid brandId,
+        string? regionCode,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        await RefreshScopeAsync(brandId, regionCode, cancellationToken);
+        stopwatch.Stop();
+
+        _logger.LogInformation(
+            "Refreshed insight snapshots for scope brandId={BrandId}, regionCode={RegionCode} in {ElapsedMs} ms.",
+            brandId,
+            regionCode,
+            stopwatch.ElapsedMilliseconds);
+        return true;
+    }
+
+    public async Task<bool> RefreshAsync(
+        Guid? brandId,
+        string? regionCode,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        await RefreshScopeAsync(brandId, regionCode, cancellationToken);
+        stopwatch.Stop();
+
+        _logger.LogInformation(
+            "Refreshed insight snapshots for scope brandId={BrandId}, regionCode={RegionCode} in {ElapsedMs} ms.",
+            brandId,
+            regionCode,
+            stopwatch.ElapsedMilliseconds);
+        return true;
+    }
 
     private async Task RefreshScopeAsync(Guid? brandId, string? regionCode, CancellationToken cancellationToken)
     {

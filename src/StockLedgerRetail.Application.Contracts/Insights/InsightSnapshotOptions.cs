@@ -26,4 +26,14 @@ public class InsightSnapshotOptions
     /// Maximum brand scopes refreshed per job run. 0 means no limit.
     /// </summary>
     public int MaxBrandsPerRun { get; set; } = 100;
+
+    /// <summary>
+    /// When false, the global scope is not fully recomputed; global executive summary is aggregated from brand snapshots.
+    /// </summary>
+    public bool RefreshGlobalScope { get; set; }
+
+    /// <summary>
+    /// Number of brand scopes processed concurrently. Each worker uses its own DI scope.
+    /// </summary>
+    public int MaxConcurrentBrandScopes { get; set; } = 2;
 }

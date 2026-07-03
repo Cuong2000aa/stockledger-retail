@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using StockLedgerRetail.EntityFrameworkCore;
@@ -11,9 +12,11 @@ using StockLedgerRetail.EntityFrameworkCore;
 namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 {
     [DbContext(typeof(StockLedgerRetailDbContext))]
-    partial class StockLedgerRetailDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260703042533_AddScaleOptimizationsPhase1Phase2")]
+    partial class AddScaleOptimizationsPhase1Phase2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -240,10 +243,10 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasIndex("LastTransactionId");
 
-                    b.HasIndex("ProductVariantId", "WarehouseId")
-                        .IsUnique();
+                    b.HasIndex("WarehouseId");
 
-                    b.HasIndex("WarehouseId", "ProductVariantId")
+                    b.HasIndex("ProductVariantId", "WarehouseId")
+                        .IsUnique()
                         .HasDatabaseName("IX_current_stocks_on_hand_pairs")
                         .HasFilter("\"QuantityOnHand\" > 0");
 

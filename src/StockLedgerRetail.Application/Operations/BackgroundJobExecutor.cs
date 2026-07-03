@@ -146,6 +146,7 @@ public class BackgroundJobExecutor : IBackgroundJobExecutor
         {
             BackgroundJobKeys.InsightAlerts => TimeSpan.FromSeconds(30),
             BackgroundJobKeys.InsightSnapshots => TimeSpan.FromMinutes(45),
+            BackgroundJobKeys.InventoryDailyRollups => TimeSpan.FromMinutes(30),
             _ => DefaultRunTimeout
         };
 

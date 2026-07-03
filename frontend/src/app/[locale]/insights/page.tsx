@@ -318,9 +318,24 @@ export default function InsightsPage() {
     const brokenSizeItems = brokenSizeRuns ?? [];
     const seasonClearanceItems = seasonClearance ?? [];
 
+    const deadCapitalFromList = deadStockFetched
+      ? deadItems.reduce((sum, item) => sum + (item.estimatedCostValue ?? 0), 0)
+      : null;
+    const deadCountFromList = deadStockFetched ? deadItems.length : null;
+    const executiveDeadCount = executiveSummary?.deadStockCount ?? null;
+    const executiveTiedCapital = executiveSummary?.tiedCapital ?? null;
+    const useDeadStockListFallback =
+      deadStockFetched &&
+      (deadCountFromList ?? 0) > 0 &&
+      (executiveDeadCount ?? 0) === 0;
+
     return {
-      deadCount: executiveSummary ? executiveSummary.deadStockCount : null,
-      tiedCapital: executiveSummary ? executiveSummary.tiedCapital : null,
+      deadCount: useDeadStockListFallback
+        ? deadCountFromList
+        : executiveDeadCount,
+      tiedCapital: useDeadStockListFallback
+        ? deadCapitalFromList
+        : executiveTiedCapital,
       urgentVelocity: salesVelocityFetched
         ? velocityItems.filter(
             (item) => item.severity === "critical" || item.severity === "warning"
@@ -358,6 +373,47 @@ export default function InsightsPage() {
     brokenSizeRunsFetched,
     seasonClearanceFetched,
   ]);
+
+  const displayExecutiveSummary = useMemo(() => {
+    if (!executiveSummary && stats.deadCount === null && stats.tiedCapital === null) {
+      return undefined;
+    }
+
+    const base = executiveSummary ?? {
+      deadStockCount: 0,
+      tiedCapital: 0,
+      inventoryValueAtRisk: 0,
+      marginAtRisk: 0,
+      promotionRiskCount: 0,
+      reorderRiskCount: 0,
+      transferOpportunityCount: 0,
+      transferOpportunityValue: 0,
+      markdownCandidateCount: 0,
+      markdownRecoveryValue: 0,
+    };
+
+    const deadItems = deadStock ?? [];
+    const marginFromList = deadStockFetched
+      ? deadItems.reduce((sum, item) => sum + (item.estimatedMarginValue ?? 0), 0)
+      : null;
+    const revenueFromList = deadStockFetched
+      ? deadItems.reduce((sum, item) => sum + (item.estimatedRevenueValue ?? 0), 0)
+      : null;
+    const useFallback =
+      deadStockFetched &&
+      deadItems.length > 0 &&
+      base.deadStockCount === 0;
+
+    return {
+      ...base,
+      deadStockCount: stats.deadCount ?? base.deadStockCount,
+      tiedCapital: stats.tiedCapital ?? base.tiedCapital,
+      marginAtRisk: useFallback ? (marginFromList ?? base.marginAtRisk) : base.marginAtRisk,
+      inventoryValueAtRisk: useFallback
+        ? (revenueFromList ?? base.inventoryValueAtRisk)
+        : base.inventoryValueAtRisk,
+    };
+  }, [executiveSummary, stats.deadCount, stats.tiedCapital, deadStock, deadStockFetched]);
 
   const activeTabLoading =
     (activeTab === "deadStock" && deadStockLoading) ||
@@ -587,7 +643,7 @@ export default function InsightsPage() {
       />
 
       <InsightsExecutiveSummaryStrip
-        summary={executiveSummary}
+        summary={displayExecutiveSummary}
         locale={locale}
       />
 

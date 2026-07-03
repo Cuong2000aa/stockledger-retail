@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StockLedgerRetail.Application.Insights;
 using StockLedgerRetail.Application.Operations;
+using StockLedgerRetail.Application.Analytics;
 using StockLedgerRetail.Inventory;
 using StockLedgerRetail.Operations;
 using StockLedgerRetail.Services;
@@ -109,6 +110,32 @@ public class StockReservationExpiryHostedService : BackgroundService
             {
                 var reservationService = services.GetRequiredService<IStockReservationService>();
                 await reservationService.RefreshExpiredReservationsAsync(cancellationToken);
+            },
+            stoppingToken);
+}
+
+public class InventoryDailyRollupHostedService : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<InventoryDailyRollupHostedService> _logger;
+
+    public InventoryDailyRollupHostedService(
+        IServiceScopeFactory scopeFactory,
+        ILogger<InventoryDailyRollupHostedService> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        BackgroundJobLoop.RunAsync(
+            BackgroundJobKeys.InventoryDailyRollups,
+            _scopeFactory,
+            _logger,
+            async (services, cancellationToken) =>
+            {
+                var rollupService = services.GetRequiredService<IInventoryDailyRollupService>();
+                await rollupService.RefreshAsync(cancellationToken: cancellationToken);
             },
             stoppingToken);
 }

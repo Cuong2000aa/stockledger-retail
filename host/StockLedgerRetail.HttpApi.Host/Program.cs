@@ -83,6 +83,9 @@ builder.Services.AddHostedService<StockReconciliationHostedService>();
 builder.Services.AddHostedService<StockReservationExpiryHostedService>();
 builder.Services.AddHostedService<InventoryInsightsHostedService>();
 builder.Services.AddHostedService<InsightAlertsHostedService>();
+builder.Services.AddHostedService<InventoryDailyRollupHostedService>();
+builder.Services.Configure<InventoryRollupOptions>(
+    builder.Configuration.GetSection(InventoryRollupOptions.SectionName));
 builder.Services.AddHostedService<AuthorizationBootstrapHostedService>();
 builder.Services.AddHostedService<FbDataSeedHostedService>();
 

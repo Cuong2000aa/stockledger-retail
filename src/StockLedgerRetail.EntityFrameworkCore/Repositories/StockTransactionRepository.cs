@@ -170,6 +170,70 @@ public class StockTransactionRepository : IStockTransactionRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<StockLedgerAggregate>> GetAggregatedQuantitiesForPairsAsync(
+        IReadOnlyCollection<(Guid ProductVariantId, Guid WarehouseId)> pairs,
+        CancellationToken cancellationToken = default)
+    {
+        if (pairs.Count == 0)
+        {
+            return [];
+        }
+
+        var variantIds = pairs.Select(x => x.ProductVariantId).Distinct().ToList();
+        var warehouseIds = pairs.Select(x => x.WarehouseId).Distinct().ToList();
+        var pairSet = pairs.ToHashSet();
+
+        var aggregates = await _dbContext.StockTransactions
+            .AsNoTracking()
+            .Where(x => variantIds.Contains(x.ProductVariantId) && warehouseIds.Contains(x.WarehouseId))
+            .GroupBy(x => new { x.ProductVariantId, x.WarehouseId })
+            .Select(g => new StockLedgerAggregate
+            {
+                ProductVariantId = g.Key.ProductVariantId,
+                WarehouseId = g.Key.WarehouseId,
+                LedgerQuantity = g.Sum(x => x.QuantityDelta)
+            })
+            .ToListAsync(cancellationToken);
+
+        return aggregates
+            .Where(x => pairSet.Contains((x.ProductVariantId, x.WarehouseId)))
+            .ToList();
+    }
+
+    public async Task<List<StockActivityPair>> GetActivePairsSinceAsync(
+        DateTime sinceUtc,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!warehouseId.HasValue && scopedWarehouseIds is { Count: 0 })
+        {
+            return [];
+        }
+
+        var query = _dbContext.StockTransactions
+            .AsNoTracking()
+            .Where(x => x.TransactionDate >= sinceUtc || x.CreatedAt >= sinceUtc);
+
+        if (warehouseId.HasValue)
+        {
+            query = query.Where(x => x.WarehouseId == warehouseId.Value);
+        }
+        else if (scopedWarehouseIds is { Count: > 0 })
+        {
+            query = query.Where(x => scopedWarehouseIds.Contains(x.WarehouseId));
+        }
+
+        return await query
+            .Select(x => new StockActivityPair
+            {
+                ProductVariantId = x.ProductVariantId,
+                WarehouseId = x.WarehouseId
+            })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _dbContext.SaveChangesAsync(cancellationToken);
 }

@@ -35,5 +35,15 @@ public interface IStockTransactionRepository
         IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
         CancellationToken cancellationToken = default);
 
+    Task<List<StockLedgerAggregate>> GetAggregatedQuantitiesForPairsAsync(
+        IReadOnlyCollection<(Guid ProductVariantId, Guid WarehouseId)> pairs,
+        CancellationToken cancellationToken = default);
+
+    Task<List<StockActivityPair>> GetActivePairsSinceAsync(
+        DateTime sinceUtc,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -6,6 +6,7 @@ public static class BackgroundJobKeys
     public const string InsightAlerts = "insight_alerts";
     public const string StockReconciliation = "stock_reconciliation";
     public const string ReservationExpiry = "reservation_expiry";
+    public const string InventoryDailyRollups = "inventory_daily_rollups";
 }
 
 public static class BackgroundJobStatuses

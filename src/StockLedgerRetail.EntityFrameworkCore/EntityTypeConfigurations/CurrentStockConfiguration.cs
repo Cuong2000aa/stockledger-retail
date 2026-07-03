@@ -22,6 +22,10 @@ public class CurrentStockConfiguration : IEntityTypeConfiguration<CurrentStock>
 
         builder.HasIndex(x => new { x.ProductVariantId, x.WarehouseId }).IsUnique();
 
+        builder.HasIndex(x => new { x.WarehouseId, x.ProductVariantId })
+            .HasFilter("\"QuantityOnHand\" > 0")
+            .HasDatabaseName("IX_current_stocks_on_hand_pairs");
+
         builder.HasOne(x => x.ProductVariant)
             .WithMany(x => x.CurrentStocks)
             .HasForeignKey(x => x.ProductVariantId)

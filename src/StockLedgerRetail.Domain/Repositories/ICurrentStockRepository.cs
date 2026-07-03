@@ -52,6 +52,23 @@ public interface ICurrentStockRepository
         IReadOnlyCollection<Guid> warehouseIds,
         CancellationToken cancellationToken = default);
 
+    Task<CurrentStockSummaryStats> GetSummaryStatsAsync(
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default);
+
+    Task<List<StockByWarehouseStats>> GetStockByWarehouseStatsAsync(
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default);
+
+    Task<List<LowStockItemStats>> GetLowStockItemsAsync(
+        decimal threshold,
+        int limit,
+        Guid? warehouseId = null,
+        IReadOnlyCollection<Guid>? scopedWarehouseIds = null,
+        CancellationToken cancellationToken = default);
+
     Task InsertAsync(CurrentStock currentStock, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(CurrentStock currentStock, CancellationToken cancellationToken = default);

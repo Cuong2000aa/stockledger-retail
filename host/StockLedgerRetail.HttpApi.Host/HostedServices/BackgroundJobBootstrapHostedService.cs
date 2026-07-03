@@ -29,6 +29,7 @@ public class BackgroundJobBootstrapHostedService : IHostedService
         var repository = scope.ServiceProvider.GetRequiredService<IBackgroundJobRepository>();
         var insightOptions = scope.ServiceProvider.GetService<IOptions<InsightSnapshotOptions>>()?.Value;
         var reconciliationOptions = scope.ServiceProvider.GetService<IOptions<StockReconciliationOptions>>()?.Value;
+        var rollupOptions = scope.ServiceProvider.GetService<IOptions<InventoryRollupOptions>>()?.Value;
 
         var defaults = new List<BackgroundJobSetting>
         {
@@ -75,6 +76,17 @@ public class BackgroundJobBootstrapHostedService : IHostedService
                 IntervalMinutes = 5,
                 LastStatus = BackgroundJobStatuses.Idle,
                 NextRunAtUtc = DateTime.UtcNow.AddMinutes(1)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                JobKey = BackgroundJobKeys.InventoryDailyRollups,
+                DisplayName = "Inventory daily rollups",
+                Description = "Pre-aggregates stock and outbound metrics by brand and warehouse.",
+                IsEnabled = rollupOptions?.Enabled ?? true,
+                IntervalMinutes = Math.Max(60, rollupOptions?.IntervalMinutes ?? 360),
+                LastStatus = BackgroundJobStatuses.Idle,
+                NextRunAtUtc = DateTime.UtcNow.AddMinutes(5)
             }
         };
 
