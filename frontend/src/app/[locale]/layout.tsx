@@ -25,6 +25,10 @@ export async function generateMetadata({
   return {
     title: `${t("appBrand")} | ${t("appTagline")}`,
     description: t("appName"),
+    icons: {
+      icon: [{ url: "/favicon.png?v=3", type: "image/png" }],
+      apple: [{ url: "/favicon.png?v=3", type: "image/png" }],
+    },
   };
 }
 

@@ -817,7 +817,8 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
         int lookbackDays = 30,
         int daysWithoutOutbound = 60,
         CancellationToken cancellationToken = default,
-        bool forceRefresh = false)
+        bool forceRefresh = false,
+        bool aggregateFromSnapshots = false)
     {
         var scopedBrandId = _brandScopeContext.BrandId ?? brandId;
         var scopedRegionCode = _brandScopeContext.RegionCode ?? regionCode;
@@ -840,11 +841,13 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
             }
         }
 
-        var deadStock = await GetDeadStockAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, forceRefresh);
-        var promotionRisk = await GetPromotionRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, forceRefresh);
-        var reorderRisk = await GetReorderRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, forceRefresh);
-        var transfer = await GetTransferSuggestionsAsync(null, warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 14, 7, 200, cancellationToken, forceRefresh);
-        var markdown = await GetMarkdownCandidatesAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, forceRefresh);
+        var childForceRefresh = forceRefresh && !aggregateFromSnapshots;
+
+        var deadStock = await GetDeadStockAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, childForceRefresh);
+        var promotionRisk = await GetPromotionRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, childForceRefresh);
+        var reorderRisk = await GetReorderRiskAsync(warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 200, cancellationToken, childForceRefresh);
+        var transfer = await GetTransferSuggestionsAsync(null, warehouseId, scopedBrandId, scopedRegionCode, lookbackDays, 14, 7, 200, cancellationToken, childForceRefresh);
+        var markdown = await GetMarkdownCandidatesAsync(warehouseId, scopedBrandId, scopedRegionCode, daysWithoutOutbound, 1, 200, cancellationToken, childForceRefresh);
 
         var summary = new InsightsExecutiveSummaryDto
         {

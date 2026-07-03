@@ -32,6 +32,10 @@ public class StockTransactionConfiguration : IEntityTypeConfiguration<StockTrans
         builder.HasIndex(x => x.TransactionDate);
         builder.HasIndex(x => x.DocumentId);
         builder.HasIndex(x => x.DocumentLineId);
+        builder.HasIndex(x => new { x.WarehouseId, x.TransactionDate, x.CreatedAt })
+            .IsDescending(false, true, true);
+        builder.HasIndex(x => new { x.ProductVariantId, x.WarehouseId, x.TransactionDate, x.CreatedAt })
+            .IsDescending(false, false, true, true);
 
         builder.HasOne(x => x.Document)
             .WithMany(x => x.StockTransactions)

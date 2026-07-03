@@ -1,8 +1,6 @@
-using System.Text.Json;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using StockLedgerRetail.Audit;
-using StockLedgerRetail.Domain.Entities;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Insights;
 using StockLedgerRetail.Services;
@@ -16,63 +14,210 @@ public interface IInventoryInsightsSnapshotService
 
 public class InventoryInsightsSnapshotService : IInventoryInsightsSnapshotService
 {
+    private const int LookbackDays = 30;
+    private const int DaysWithoutOutbound = 60;
+    private const int DeadStockMaxResults = 200;
+    private const int SalesVelocityMaxResults = 100;
+    private const int RiskMaxResults = 200;
+    private const int TransferMaxResults = 200;
+    private const int FashionMaxResults = 50;
+
     private readonly IInventoryInsightsAppService _inventoryInsightsAppService;
     private readonly IBrandRepository _brandRepository;
+    private readonly IInsightSnapshotRepository _insightSnapshotRepository;
+    private readonly InsightSnapshotOptions _options;
     private readonly ILogger<InventoryInsightsSnapshotService> _logger;
 
     public InventoryInsightsSnapshotService(
         IInventoryInsightsAppService inventoryInsightsAppService,
         IBrandRepository brandRepository,
+        IInsightSnapshotRepository insightSnapshotRepository,
+        IOptions<InsightSnapshotOptions> options,
         ILogger<InventoryInsightsSnapshotService> logger)
     {
         _inventoryInsightsAppService = inventoryInsightsAppService;
         _brandRepository = brandRepository;
+        _insightSnapshotRepository = insightSnapshotRepository;
+        _options = options.Value;
         _logger = logger;
     }
 
     public async Task RefreshAllScopesAsync(CancellationToken cancellationToken = default)
     {
-        await RefreshScopeAsync(null, null, cancellationToken);
+        var refreshedScopes = 0;
+        var skippedScopes = 0;
 
-        var brands = await _brandRepository.GetListAsync(cancellationToken);
-        foreach (var brand in brands)
+        if (await TryRefreshScopeAsync(null, null, cancellationToken))
         {
-            await RefreshScopeAsync(brand.Id, null, cancellationToken);
+            refreshedScopes++;
+        }
+        else
+        {
+            skippedScopes++;
         }
 
-        _logger.LogInformation("Insight snapshots refreshed for global scope and {BrandCount} brands.", brands.Count);
+        var brandIds = await ResolveBrandIdsAsync(cancellationToken);
+        brandIds = await FilterStaleBrandIdsAsync(brandIds, cancellationToken);
+
+        if (_options.MaxBrandsPerRun > 0 && brandIds.Count > _options.MaxBrandsPerRun)
+        {
+            _logger.LogInformation(
+                "Insight snapshot refresh capped at {MaxBrandsPerRun} of {CandidateBrandCount} stale brands with stock.",
+                _options.MaxBrandsPerRun,
+                brandIds.Count);
+            brandIds = brandIds.Take(_options.MaxBrandsPerRun).ToList();
+        }
+
+        foreach (var brandId in brandIds)
+        {
+            if (await TryRefreshScopeAsync(brandId, null, cancellationToken))
+            {
+                refreshedScopes++;
+            }
+            else
+            {
+                skippedScopes++;
+            }
+        }
+
+        _logger.LogInformation(
+            "Insight snapshot refresh finished. Refreshed {RefreshedScopes} scopes, skipped {SkippedScopes} fresh scopes, processed {BrandCount} brand candidates.",
+            refreshedScopes,
+            skippedScopes,
+            brandIds.Count);
     }
+
+    private async Task<List<Guid>> ResolveBrandIdsAsync(CancellationToken cancellationToken)
+    {
+        if (_options.RefreshOnlyBrandsWithStock)
+        {
+            return await _brandRepository.GetActiveBrandIdsWithStockAsync(cancellationToken);
+        }
+
+        var brands = await _brandRepository.GetListAsync(cancellationToken);
+        return brands.Select(x => x.Id).ToList();
+    }
+
+    private async Task<List<Guid>> FilterStaleBrandIdsAsync(
+        IReadOnlyList<Guid> brandIds,
+        CancellationToken cancellationToken)
+    {
+        if (!_options.SkipFreshSnapshots || brandIds.Count == 0)
+        {
+            return brandIds.ToList();
+        }
+
+        var keys = brandIds
+            .Select(id => BuildExecutiveSummaryKey(id))
+            .ToList();
+        var generatedAtByKey = await _insightSnapshotRepository.GetGeneratedAtUtcByKeysAsync(keys, cancellationToken);
+        var maxAge = GetMaxSnapshotAge();
+
+        return brandIds
+            .Select(id =>
+            {
+                var key = BuildExecutiveSummaryKey(id);
+                generatedAtByKey.TryGetValue(key, out var generatedAtUtc);
+                return new
+                {
+                    BrandId = id,
+                    GeneratedAtUtc = generatedAtUtc
+                };
+            })
+            .Where(x => x.GeneratedAtUtc == default || DateTime.UtcNow - x.GeneratedAtUtc > maxAge)
+            .OrderBy(x => x.GeneratedAtUtc == default ? DateTime.MinValue : x.GeneratedAtUtc)
+            .Select(x => x.BrandId)
+            .ToList();
+    }
+
+    private async Task<bool> TryRefreshScopeAsync(
+        Guid? brandId,
+        string? regionCode,
+        CancellationToken cancellationToken)
+    {
+        if (_options.SkipFreshSnapshots && !await IsExecutiveSnapshotStaleAsync(brandId, cancellationToken))
+        {
+            _logger.LogDebug(
+                "Skipping fresh insight snapshot scope (brandId={BrandId}, regionCode={RegionCode}).",
+                brandId,
+                regionCode);
+            return false;
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        await RefreshScopeAsync(brandId, regionCode, cancellationToken);
+        stopwatch.Stop();
+
+        _logger.LogInformation(
+            "Refreshed insight snapshots for scope brandId={BrandId}, regionCode={RegionCode} in {ElapsedMs} ms.",
+            brandId,
+            regionCode,
+            stopwatch.ElapsedMilliseconds);
+        return true;
+    }
+
+    private async Task<bool> IsExecutiveSnapshotStaleAsync(Guid? brandId, CancellationToken cancellationToken)
+    {
+        var snapshot = await _insightSnapshotRepository.GetByKeyAsync(
+            BuildExecutiveSummaryKey(brandId),
+            cancellationToken);
+
+        if (snapshot is null)
+        {
+            return true;
+        }
+
+        return DateTime.UtcNow - snapshot.GeneratedAtUtc > GetMaxSnapshotAge();
+    }
+
+    private TimeSpan GetMaxSnapshotAge() =>
+        TimeSpan.FromMinutes(Math.Max(5, _options.MaxSnapshotAgeMinutes));
+
+    private static string BuildExecutiveSummaryKey(Guid? brandId) =>
+        InsightSnapshotKeyBuilder.BuildExecutiveSummaryKey(
+            null,
+            brandId,
+            null,
+            LookbackDays,
+            DaysWithoutOutbound);
 
     private async Task RefreshScopeAsync(Guid? brandId, string? regionCode, CancellationToken cancellationToken)
     {
         await _inventoryInsightsAppService.GetDeadStockAsync(
-            null, brandId, regionCode, 60, 1, 50, cancellationToken, forceRefresh: true);
+            null, brandId, regionCode, DaysWithoutOutbound, 1, DeadStockMaxResults, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetSalesVelocityAsync(
-            null, brandId, regionCode, 30, 100, cancellationToken, forceRefresh: true);
+            null, brandId, regionCode, LookbackDays, SalesVelocityMaxResults, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetTransferSuggestionsAsync(
-            null, null, brandId, regionCode, 30, 14, 7, 20, cancellationToken, forceRefresh: true);
+            null, null, brandId, regionCode, LookbackDays, 14, 7, TransferMaxResults, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetMarkdownCandidatesAsync(
-            null, brandId, regionCode, 60, 1, 50, cancellationToken, forceRefresh: true);
+            null, brandId, regionCode, DaysWithoutOutbound, 1, DeadStockMaxResults, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetPromotionRiskAsync(
-            null, brandId, regionCode, 30, 50, cancellationToken, forceRefresh: true);
+            null, brandId, regionCode, LookbackDays, RiskMaxResults, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetReorderRiskAsync(
-            null, brandId, regionCode, 30, 50, cancellationToken, forceRefresh: true);
+            null, brandId, regionCode, LookbackDays, RiskMaxResults, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetTrendSummaryAsync(
-            null, brandId, regionCode, 30, 50, cancellationToken, forceRefresh: true);
+            null, brandId, regionCode, LookbackDays, RiskMaxResults, cancellationToken, forceRefresh: true);
 
         await _inventoryInsightsAppService.GetExecutiveSummaryAsync(
-            null, brandId, regionCode, 30, 60, cancellationToken, forceRefresh: true);
+            null,
+            brandId,
+            regionCode,
+            LookbackDays,
+            DaysWithoutOutbound,
+            cancellationToken,
+            forceRefresh: true,
+            aggregateFromSnapshots: true);
 
         await _inventoryInsightsAppService.GetBrokenSizeRunsAsync(
-            null, brandId, regionCode, 30, 50, cancellationToken);
+            null, brandId, regionCode, LookbackDays, FashionMaxResults, cancellationToken);
 
         await _inventoryInsightsAppService.GetSeasonClearanceAsync(
-            null, brandId, regionCode, null, 30, 60, 50, cancellationToken);
+            null, brandId, regionCode, null, LookbackDays, DaysWithoutOutbound, FashionMaxResults, cancellationToken);
     }
 }

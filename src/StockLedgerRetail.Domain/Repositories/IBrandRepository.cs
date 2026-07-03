@@ -10,6 +10,8 @@ public interface IBrandRepository
 
     Task<List<Brand>> GetListAsync(CancellationToken cancellationToken = default);
 
+    Task<List<Guid>> GetActiveBrandIdsWithStockAsync(CancellationToken cancellationToken = default);
+
     Task InsertAsync(Brand brand, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Brand brand, CancellationToken cancellationToken = default);

@@ -34,35 +34,37 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       <div className="relative hidden w-1/2 overflow-hidden bg-surface-sidebar lg:flex lg:flex-col lg:justify-between">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-950 via-surface-sidebar to-slate-900" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-950 via-surface-sidebar to-brand-900" />
         <div
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-35"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 20% 80%, rgb(99 102 241 / 0.4) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgb(56 189 248 / 0.2) 0%, transparent 40%)",
+              "radial-gradient(circle at 20% 80%, rgb(200 16 46 / 0.45) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgb(255 255 255 / 0.08) 0%, transparent 40%)",
           }}
         />
         <div className="relative z-10 p-10">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <Image
-              src="/logo.png"
+              src="/logo-icon.png?v=3"
               alt={tCommon("appName")}
-              width={48}
-              height={48}
-              className="h-12 w-12 object-contain"
+              width={72}
+              height={72}
+              className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-lg ring-1 ring-white/25"
               priority
             />
             <div>
-              <p className="text-xl font-bold text-white">{tCommon("appBrand")}</p>
-              <p className="text-sm text-slate-400">{tCommon("appTagline")}</p>
+              <p className="text-2xl font-bold uppercase tracking-wide text-white">Stock Ledger</p>
+              <p className="mt-1 text-sm font-medium uppercase tracking-wider text-white/75">
+                Accurate · Control · Grow
+              </p>
             </div>
           </div>
         </div>
         <div className="relative z-10 p-10">
-          <blockquote className="max-w-md text-lg font-medium leading-relaxed text-slate-300">
+          <blockquote className="max-w-md text-lg font-medium leading-relaxed text-white/90">
             {t("loginTagline")}
           </blockquote>
-          <p className="mt-4 text-sm text-slate-500">StockLedger Retail Platform</p>
+          <p className="mt-4 text-sm text-white/65">StockLedger Retail Platform</p>
         </div>
       </div>
 
@@ -70,14 +72,14 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-slide-up">
           <div className="mb-8 text-center lg:hidden">
             <Image
-              src="/logo.png"
+              src="/logo-icon.png?v=3"
               alt={tCommon("appName")}
-              width={56}
-              height={56}
-              className="mx-auto mb-4 h-14 w-14 object-contain"
+              width={64}
+              height={64}
+              className="mx-auto mb-3 h-16 w-16 rounded-2xl object-cover shadow-card ring-1 ring-slate-200/80"
               priority
             />
-            <h1 className="text-2xl font-bold text-slate-900">{tCommon("appBrand")}</h1>
+            <h1 className="text-xl font-bold uppercase tracking-wide text-slate-900">Stock Ledger</h1>
           </div>
 
           <div className="card p-8 shadow-glow">

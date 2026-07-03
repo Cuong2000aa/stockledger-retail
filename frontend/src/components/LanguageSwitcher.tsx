@@ -40,10 +40,10 @@ export function LanguageSwitcher({
               compact ? "px-2 py-0.5" : "rounded-md px-2.5 py-1",
               active
                 ? isDark
-                  ? "bg-white/15 text-white shadow-sm"
+                  ? "bg-white/20 text-white shadow-sm"
                   : "bg-white text-brand-700 shadow-sm"
                 : isDark
-                  ? "text-slate-400 hover:text-slate-200"
+                  ? "text-white/75 hover:text-white"
                   : "text-slate-500 hover:text-slate-700"
             )}
           >

@@ -18,6 +18,21 @@ public class InsightSnapshotRepository : IInsightSnapshotRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.SnapshotKey == snapshotKey, cancellationToken);
 
+    public async Task<Dictionary<string, DateTime>> GetGeneratedAtUtcByKeysAsync(
+        IReadOnlyList<string> snapshotKeys,
+        CancellationToken cancellationToken = default)
+    {
+        if (snapshotKeys.Count == 0)
+        {
+            return new Dictionary<string, DateTime>();
+        }
+
+        return await _dbContext.InsightSnapshots
+            .AsNoTracking()
+            .Where(x => snapshotKeys.Contains(x.SnapshotKey))
+            .ToDictionaryAsync(x => x.SnapshotKey, x => x.GeneratedAtUtc, cancellationToken);
+    }
+
     public async Task UpsertAsync(InsightSnapshot snapshot, CancellationToken cancellationToken = default)
     {
         var existing = await _dbContext.InsightSnapshots

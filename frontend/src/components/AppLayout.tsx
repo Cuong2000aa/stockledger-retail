@@ -4,7 +4,7 @@ import { useLinkStatus } from "next/link";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { prefetchRouteData } from "@/lib/nav-prefetch";
+import { prefetchHotNavRoutes, prefetchRouteData } from "@/lib/nav-prefetch";
 import {
   Boxes,
   FileText,
@@ -76,19 +76,26 @@ function NavItemLabel({
   return (
     <>
       {active && (
-        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-brand-400" />
+        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-white" />
       )}
       {pending ? (
-        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand-300" />
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/90" />
       ) : (
         <Icon
           className={clsx(
             "h-4 w-4 shrink-0",
-            active ? "text-brand-300" : "text-slate-500"
+            active ? "text-white" : "text-white/85"
           )}
         />
       )}
-      <span className={pending ? "opacity-80" : undefined}>{label}</span>
+      <span
+        className={clsx(
+          pending && "opacity-80",
+          !active && "text-white/90"
+        )}
+      >
+        {label}
+      </span>
     </>
   );
 }
@@ -117,49 +124,44 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const run = () => {
-      navItems.forEach(({ href }) => warmRoute(href));
-      if (!isLoading && isSystemAdmin) {
-        adminNavItems.forEach(({ href }) => warmRoute(href));
-      }
+      prefetchHotNavRoutes(queryClient);
     };
 
     if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(run);
+      const id = window.requestIdleCallback(run, { timeout: 2500 });
       return () => window.cancelIdleCallback(id);
     }
 
-    const id = globalThis.setTimeout(run, 800);
+    const id = globalThis.setTimeout(run, 1500);
     return () => globalThis.clearTimeout(id);
-  }, [warmRoute, isSystemAdmin, isLoading]);
+  }, [queryClient]);
 
   return (
     <div className="flex min-h-screen bg-slate-100">
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] flex-col border-r border-slate-800/50 bg-surface-sidebar text-slate-300 shadow-xl">
-        <div className="border-b border-white/10 px-5 py-5">
-          <Link href="/" prefetch className="flex items-center gap-3 group">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/10 transition group-hover:bg-white/15">
-              <Image
-                src="/logo.png"
-                alt={tCommon("appName")}
-                width={32}
-                height={32}
-                className="h-8 w-8 object-contain"
-                priority
-              />
-            </div>
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] flex-col border-r border-black/25 bg-surface-sidebar text-white shadow-xl">
+        <div className="border-b border-white/12 px-4 py-4">
+          <Link href="/" prefetch className="group flex items-center gap-3">
+            <Image
+              src="/logo-icon.png?v=3"
+              alt={tCommon("appName")}
+              width={48}
+              height={48}
+              className="h-11 w-11 shrink-0 rounded-xl object-cover shadow-sm ring-1 ring-white/20 transition group-hover:ring-white/35"
+              priority
+            />
             <div className="min-w-0 flex flex-col">
-              <span className="text-base font-bold leading-tight text-white">
-                {tCommon("appBrand")}
+              <span className="text-sm font-bold uppercase leading-tight tracking-wide text-white">
+                Stock Ledger
               </span>
-              <span className="text-[11px] font-medium leading-tight text-slate-400">
-                {tCommon("appTagline")}
+              <span className="text-[10px] font-medium uppercase leading-tight tracking-wider text-white/75">
+                Accurate · Control · Grow
               </span>
             </div>
           </Link>
         </div>
 
         <nav className="scrollbar-thin flex-1 space-y-0.5 overflow-y-auto p-3">
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-white/55">
             Menu
           </p>
           {navItems.map(({ href, icon: Icon, key }) => {
@@ -175,8 +177,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 className={clsx(
                   "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   active
-                    ? "bg-brand-600/20 text-white shadow-sm ring-1 ring-brand-500/30"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                    ? "bg-white/18 font-semibold text-white shadow-sm ring-1 ring-white/25"
+                    : "text-white/90 hover:bg-white/12 hover:text-white"
                 )}
               >
                 <NavItemLabel icon={Icon} label={t(key)} active={active} />
@@ -185,7 +187,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           })}
           {!isLoading && isSystemAdmin && (
             <>
-              <p className="mb-2 mt-4 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              <p className="mb-2 mt-4 px-3 text-[10px] font-bold uppercase tracking-widest text-white/55">
                 {t("adminSection")}
               </p>
               {adminNavItems.map(({ href, icon: Icon, key }) => {
@@ -200,8 +202,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     className={clsx(
                       "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                       active
-                        ? "bg-brand-600/20 text-white shadow-sm ring-1 ring-brand-500/30"
-                        : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                        ? "bg-white/18 font-semibold text-white shadow-sm ring-1 ring-white/25"
+                        : "text-white/90 hover:bg-white/12 hover:text-white"
                     )}
                   >
                     <NavItemLabel icon={Icon} label={t(key)} active={active} />
@@ -212,17 +214,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </nav>
 
-        <div className="shrink-0 border-t border-white/10 px-2.5 py-2">
+        <div className="shrink-0 border-t border-white/12 px-2.5 py-2">
           {session && (
-            <div className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1.5 ring-1 ring-white/10">
+            <div className="flex items-center gap-2 rounded-lg bg-black/25 px-2 py-1.5 ring-1 ring-white/12">
               <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-[10px] font-bold text-white"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-white/90 to-red-100 text-[10px] font-bold text-brand-700"
                 title={session.email}
               >
                 {(session.displayName || session.email).charAt(0).toUpperCase()}
               </div>
               <p
-                className="min-w-0 flex-1 truncate text-xs font-medium text-slate-200"
+                className="min-w-0 flex-1 truncate text-xs font-medium text-white/95"
                 title={session.email}
               >
                 {session.email}
@@ -231,14 +233,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={logout}
                 title={tAuth("signOut")}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/80 transition hover:bg-white/12 hover:text-white"
               >
                 <LogOut className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
           <div className="mt-1.5 flex items-center justify-between gap-2 px-0.5">
-            <span className="text-[10px] text-slate-500">{tCommon("language")}</span>
+            <span className="text-[10px] font-medium text-white/75">{tCommon("language")}</span>
             <LanguageSwitcher variant="dark" compact />
           </div>
         </div>
