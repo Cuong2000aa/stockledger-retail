@@ -25,6 +25,11 @@ public class GoodsReceiptConfiguration : IEntityTypeConfiguration<GoodsReceipt>
         builder.HasIndex(x => x.GrNo).IsUnique();
         builder.HasIndex(x => x.PurchaseOrderId);
         builder.HasIndex(x => x.WarehouseId);
+        builder.HasIndex(x => x.Status);
+        builder.HasIndex(x => new { x.WarehouseId, x.ReceiptDate, x.CreatedAt })
+            .IsDescending(false, true, true);
+        builder.HasIndex(x => new { x.Status, x.ReceiptDate, x.CreatedAt })
+            .IsDescending(false, true, true);
 
         builder.HasOne(x => x.PurchaseOrder)
             .WithMany(x => x.GoodsReceipts)

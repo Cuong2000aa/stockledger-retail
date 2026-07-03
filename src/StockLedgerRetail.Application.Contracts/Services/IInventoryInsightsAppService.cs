@@ -80,7 +80,8 @@ public interface IInventoryInsightsAppService
         int lookbackDays = 30,
         int daysWithoutOutbound = 60,
         CancellationToken cancellationToken = default,
-        bool forceRefresh = false);
+        bool forceRefresh = false,
+        bool aggregateFromSnapshots = false);
 
     Task<InsightsExecutiveSummaryDto?> TryGetExecutiveSummarySnapshotAsync(
         Guid? warehouseId = null,

@@ -25,6 +25,10 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
         builder.HasIndex(x => x.SupplierId);
         builder.HasIndex(x => x.WarehouseId);
         builder.HasIndex(x => x.Status);
+        builder.HasIndex(x => new { x.Status, x.OrderDate, x.CreatedAt })
+            .IsDescending(false, true, true);
+        builder.HasIndex(x => new { x.WarehouseId, x.OrderDate, x.CreatedAt })
+            .IsDescending(false, true, true);
 
         builder.HasOne(x => x.Supplier)
             .WithMany(x => x.PurchaseOrders)

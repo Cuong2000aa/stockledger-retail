@@ -313,7 +313,15 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasIndex("PurchaseOrderId");
 
+                    b.HasIndex("Status");
+
                     b.HasIndex("WarehouseId");
+
+                    b.HasIndex("Status", "ReceiptDate", "CreatedAt")
+                        .IsDescending(false, true, true);
+
+                    b.HasIndex("WarehouseId", "ReceiptDate", "CreatedAt")
+                        .IsDescending(false, true, true);
 
                     b.ToTable("goods_receipts", (string)null);
                 });
@@ -1329,6 +1337,12 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
 
                     b.HasIndex("WarehouseId");
 
+                    b.HasIndex("Status", "OrderDate", "CreatedAt")
+                        .IsDescending(false, true, true);
+
+                    b.HasIndex("WarehouseId", "OrderDate", "CreatedAt")
+                        .IsDescending(false, true, true);
+
                     b.ToTable("purchase_orders", (string)null);
                 });
 
@@ -1593,6 +1607,12 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                         .IsUnique();
 
                     b.HasIndex("WarehouseId");
+
+                    b.HasIndex("WarehouseId", "TransactionDate", "CreatedAt")
+                        .IsDescending(false, true, true);
+
+                    b.HasIndex("ProductVariantId", "WarehouseId", "TransactionDate", "CreatedAt")
+                        .IsDescending(false, false, true, true);
 
                     b.ToTable("stock_transactions", (string)null);
                 });

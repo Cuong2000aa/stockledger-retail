@@ -110,7 +110,7 @@ body {
 
   .main-gradient {
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgb(99 102 241 / 0.08), transparent),
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgb(200 16 46 / 0.06), transparent),
       linear-gradient(to bottom, #f8fafc, #f1f5f9);
   }
 }
@@ -118,7 +118,7 @@ body {
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+    scrollbar-color: rgb(254 202 202 / 0.45) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -127,7 +127,7 @@ body {
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgb(148 163 184 / 0.5);
+    background: rgb(254 202 202 / 0.45);
     border-radius: 9999px;
   }
 }
