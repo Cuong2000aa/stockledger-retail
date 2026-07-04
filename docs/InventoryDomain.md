@@ -112,10 +112,15 @@ Physical receipt against a submitted PO. On **approve**:
 External sales systems (POS, OMS, marketplaces) call integration APIs instead of managing stock directly.
 
 - **Check availability** — read-only (single warehouse)
+- **Reserve / release** — cart holds via `QuantityReserved` (does not deduct on-hand)
 - **Multi-warehouse ATP** — optional `brandId`, `regionCode`
 - **Allocate warehouse** — ship-from-store / DC selection with brand scope
 - **Confirm sale** — Stock Out, auto-approved, idempotent by `sourceSystem + orderReference`
 - **Confirm return** — Stock In, auto-approved, idempotent by `sourceSystem + returnReference`
+
+**API prefix:** `/api/integration/sales/*`
+
+When `Integration:Sales:ApiKey` is set, requests require header `X-Integration-Api-Key`.
 
 Optional API scope headers: `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
 
@@ -127,7 +132,7 @@ Pricing-aware, rule-based decision support — **read-only**, no stock posting.
 
 **Executive layer:** `GET /api/inventory-insights/executive-summary` aggregates KPIs (dead stock value, velocity count, transfer/markdown/promotion/reorder risk, trend deltas).
 
-**Seven analytics views:**
+**Nine analytics views** (7 operations + 2 fashion):
 
 | View | Endpoint |
 |------|----------|
@@ -138,10 +143,14 @@ Pricing-aware, rule-based decision support — **read-only**, no stock posting.
 | Promotion risk | `.../promotion-risk` |
 | Reorder risk | `.../reorder-risk` |
 | Trend summary | `.../trend-summary` |
+| Broken size runs | `.../broken-size-runs` |
+| Season clearance | `.../season-clearance` |
+
+**Interactive APIs:** `POST .../explain`, `markdown-what-if`, `bulk-transfers`; action tracking via `/api/insight-actions`.
 
 DTOs include selling price (before/after VAT), cost, margin, and inventory value from `ProductPrice`, SKU cache, and `InventoryValuationSnapshot`. `InsightRecommendationEngine` attaches drill-down CTAs (stock history, SKU, reports, draft transfer/PO).
 
-Filterable by `warehouseId`, `brandId`, `regionCode`. Results may be served from `InsightSnapshot` cache (refresh via admin operations).
+Filterable by `warehouseId`, `brandId`, `regionCode`. Results may be served from `InsightSnapshot` cache (refresh via admin operations — job keys: `insight_snapshots`, `insight_alerts`, `inventory_daily_rollups`).
 
 Full reference: [Insights.md](Insights.md) · [Insights.vi.md](Insights.vi.md) · [MultiBrand.md](MultiBrand.md).
 
@@ -203,11 +212,23 @@ PO received qty updated
 ### POS sale
 
 ```text
+Optional: reserve (cart hold → QuantityReserved++)
+        ↓
 confirm-sale
         ↓
 Stock Out (Draft) → Approve (same request)
         ↓
-StockTransaction (OUT) → CurrentStock decreased
+StockTransaction (OUT) → CurrentStock decreased; Reserved decreased if held
+```
+
+### Unit barcode (IMEI/serial)
+
+```text
+SKU IsBarcode = true
+        ↓
+Inbound lines register VariantUnitBarcode (InStock)
+        ↓
+Outbound validates barcodes → status Sold; StockTransactionBarcode snapshot
 ```
 
 ---

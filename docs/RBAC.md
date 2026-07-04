@@ -6,7 +6,7 @@ Phân quyền theo **email**, nhóm quyền lưu trong PostgreSQL. Trưởng nh�
 
 ## Nhận diện user
 
-**Frontend:** màn hình `/vi/login` (hoặc `/en/login`) — tạm thời `admin` / `1234`.
+**Frontend:** màn hình `/vi/login` (hoặc `/en/login`) — đăng nhập email + mật khẩu (VD: `admin@stockledger.local` / `1234`).
 
 **API:** `POST /api/auth/login` (không cần header) → trả email + quyền; các request sau gửi:
 
@@ -130,6 +130,6 @@ Migration: `AddIdentityAndPermissions`, `AddUserWarehouseAssignments`
 
 ## Ghi chú
 
-- Integration API (`/api/integration/*`) không yêu cầu email — dùng API key như trước.
+- Integration API (`/api/integration/*`) không yêu cầu `X-User-Email` — khi cấu hình `Integration:Sales:ApiKey`, gửi header `X-Integration-Api-Key`.
 - JWT/OAuth có thể thay thế header email ở bước sau; quyền vẫn đọc từ DB.
 - `CreatedBy` / `ApprovedBy` trên phiếu lưu **email** từ `X-User-Email`.

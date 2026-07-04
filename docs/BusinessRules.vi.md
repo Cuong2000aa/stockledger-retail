@@ -257,6 +257,10 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1104 | Idempotent by SourceSystem + ReferenceNo. | Gọi lại cùng mã tham chiếu không trừ/cộng 2 lần. |
 | BR1105 | Duplicate returns existing document. | Trùng tham chiếu trả về phiếu đã tạo. |
 | BR1106 | Sale validates available stock. | Bán phải đủ tồn khả dụng. |
+| BR1107 | reserve tăng QuantityReserved, không trừ OnHand. | Giữ tồn chỉ tăng Reserved. |
+| BR1108 | release-reservation giảm Reserved. | Hủy giữ trả lại khả dụng. |
+| BR1109 | Gọi lại reserve cùng reference cập nhật dòng và gia hạn TTL. | Idempotent cập nhật hold. |
+| BR1110 | confirm-sale giảm Reserved nếu có hold trước đó. | Bán sau reserve giải phóng hold. |
 
 ---
 
@@ -311,6 +315,9 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1611 | Dashboard **Tổng nhập / Xuất** chỉ tính giao dịch thực (`In`/`Out`, điều chỉnh); **không** gồm chuyển kho nội bộ (`TransferIn`/`TransferOut`). | Tránh hiểu nhầm tồn chuỗi giảm khi chỉ chuyển kho. |
 | BR1609 | Mỗi dòng có thể có 0+ CTA; chỉ deep-link tới màn hình hiện có. | Hành động gợi ý. |
 | BR1610 | Có thể cache `InsightSnapshot`; admin refresh qua operations. | Cache snapshot. |
+| BR1612 | Tab broken-size-runs: phát hiện sản phẩm thiếu size trong dải tồn. | Fashion insight. |
+| BR1613 | Tab season-clearance: SKU mùa cũ + bán chậm, gợi ý giá clearance. | Fashion insight. |
+| BR1614 | explain / markdown-what-if chỉ mô phỏng; bulk-transfers tạo phiếu Draft. | API tương tác insight. |
 
 ## Chính sách giảm giá (BR17xx)
 
@@ -347,3 +354,14 @@ Chi tiết Insights: [Insights.vi.md](Insights.vi.md)
 | BR1501 | TrackLotExpiry enables lots. | SKU bật theo dõi lô/HSD. |
 | BR1502 | FEFO on outbound. | Xuất kho ưu tiên lô sắp hết hạn. |
 | BR1503 | Near-expiry report. | Báo cáo lô cận hạn theo số ngày. |
+
+---
+
+# Quy tắc barcode từng đơn vị (BR18xx)
+
+| Mã | Rule | Mô tả |
+|----|------|-------|
+| BR1801 | SKU `IsBarcode = true` yêu cầu nhập barcode theo số lượng dòng nhập. | Bật theo dõi IMEI/serial. |
+| BR1802 | Mỗi barcode unique trong hệ thống. | Không trùng mã đơn vị. |
+| BR1803 | Xuất/bán phải chọn barcode đang `InStock` tại kho. | Khớp kho và trạng thái. |
+| BR1804 | `StockTransactionBarcode` lưu snapshot barcode tại thời điểm giao dịch. | Audit không phụ thuộc trạng thái hiện tại. |

@@ -191,6 +191,12 @@ Every inventory transaction must be linked to a business document.
 | BR1104 | Idempotent by SourceSystem + ReferenceNo + DocumentType (unique index). |
 | BR1105 | Duplicate confirm with same reference returns existing document, no double deduction. |
 | BR1106 | Sale must pass available-stock validation (same as manual Stock Out). |
+| BR1107 | reserve increases `QuantityReserved` only — does not deduct `QuantityOnHand`. |
+| BR1108 | release-reservation decreases `QuantityReserved`. |
+| BR1109 | Re-calling reserve with same reference updates lines and extends TTL. |
+| BR1110 | confirm-sale decreases reserved quantity when a prior hold exists. |
+
+When `Integration:Sales:ApiKey` is configured, integration routes require header `X-Integration-Api-Key`.
 
 ---
 
@@ -251,6 +257,17 @@ Every inventory transaction must be linked to a business document.
 
 ---
 
+# Unit Barcode Rules (BR18xx)
+
+| Rule Code | Rule |
+| --------- | ---- |
+| BR1801 | SKU with `IsBarcode = true` requires barcode input per unit on inbound lines. |
+| BR1802 | Each unit barcode is globally unique. |
+| BR1803 | Outbound must select barcodes with status `InStock` at the source warehouse. |
+| BR1804 | `StockTransactionBarcode` snapshots barcodes at transaction time for audit. |
+
+---
+
 # Inventory Insights Rules
 
 | Rule Code | Rule |
@@ -266,6 +283,9 @@ Every inventory transaction must be linked to a business document.
 | BR1611 | Dashboard movement **Total in / Total out** counts operational types (`In`/`Out` and adjustments) only; **excludes** internal transfers (`TransferIn`/`TransferOut`). |
 | BR1609 | `InsightRecommendationEngine` may attach zero or more CTAs per row; actions deep-link to existing UI routes only. |
 | BR1610 | Heavy insight queries may be served from `InsightSnapshot`; admin operations can trigger snapshot refresh. |
+| BR1612 | broken-size-runs tab detects products with gaps in in-stock size coverage. |
+| BR1613 | season-clearance tab flags past-season SKUs with slow sell-through. |
+| BR1614 | explain / markdown-what-if are simulations; bulk-transfers creates Draft documents only. |
 
 ## Markdown policy (BR17xx)
 

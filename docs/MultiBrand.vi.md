@@ -89,7 +89,12 @@ Tham số tùy chọn trên API allocate / check availability:
 
 Kho được chọn khi: `BrandId` null hoặc trùng brand; `RegionCode` null hoặc trùng vùng.
 
----
+**API:**
+
+- `POST /api/integration/sales/check-availability-multi-warehouse`
+- `POST /api/integration/sales/allocate-warehouse`
+
+Khi cấu hình `Integration:Sales:ApiKey`, gửi header `X-Integration-Api-Key`.
 
 ## Insights
 

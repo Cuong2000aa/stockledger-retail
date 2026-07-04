@@ -23,6 +23,13 @@
 | Brand                 | Thương hiệu             | Master đa brand                      |
 | TransferPolicy        | Chính sách chuyển kho   | Quy tắc chuyển khác brand             |
 | MarkdownPolicy        | Chính sách giảm giá     | Tier markdown theo brand              |
+| VariantUnitBarcode    | Mã barcode từng đơn vị  | IMEI/serial theo SKU + kho            |
+| StockReservation      | Giữ tồn (POS/OMS)       | Hold trước khi confirm-sale           |
+| AppUser               | Người dùng hệ thống       | Email, nhóm quyền, gán kho            |
+| InsightSnapshot       | Cache insight           | JSON snapshot theo loại insight       |
+| InsightActionLog      | Nhật ký CTA insight     | Theo dõi click hành động gợi ý        |
+| InventoryDailyRollup  | Rollup tồn hàng ngày    | KPI tổng hợp theo brand/kho/ngày      |
+| BackgroundJobSetting  | Cấu hình job nền        | Lịch chạy reconciliation, insight…    |
 
 ---
 
@@ -112,7 +119,9 @@ Không nằm ở Product.
 * VatRate — VAT mặc định của SKU
 * CurrentCostSource — nguồn giá vốn hiện hành
 
-Các trường này là current cache để đọc nhanh. Lịch sử giá và định giá chi tiết được tách sang entity riêng.
+* IsBarcode — bật theo dõi barcode từng đơn vị (IMEI/serial)
+
+Các trường cache là để đọc nhanh. Lịch sử giá và định giá chi tiết nằm ở entity riêng.
 
 ---
 
@@ -136,6 +145,7 @@ Lưu thông tin kho.
 * BrandId — brand sở hữu kho (null = dùng chung)
 * RegionCode — mã vùng (HCM, HN...)
 * FulfillmentPriority — ưu tiên allocate (số nhỏ = ưu tiên cao)
+* AddressLine, Ward, District, Province, PostalCode, Phone, ContactName, FullAddress — địa chỉ giao hàng / liên hệ
 
 ## Ví dụ
 
@@ -389,6 +399,86 @@ Lưu giá bán theo từng loại giá và thời gian hiệu lực.
 Regular Price đang hiệu lực sẽ cập nhật current selling price cache trên SKU.
 
 Promotion và Markdown có lịch sử riêng, không ghi đè lẫn nhau.
+
+---
+
+# VariantUnitBarcode (Mã barcode từng đơn vị)
+
+## Mục đích
+
+Theo dõi từng đơn vị hàng (điện thoại, máy có serial) khi SKU bật `IsBarcode`.
+
+## Trường chính
+
+* ProductVariantId, Barcode (unique)
+* WarehouseId — kho đang giữ đơn vị
+* Status — `InStock`, `Sold`, `Returned`, …
+* ReceivedAt, LastUpdatedAt
+
+## Ghi chú
+
+- Nhập barcode trên dòng PO/GR/phiếu kho khi nhận hàng
+- Xuất kho / bán phải chọn đúng barcode đang `InStock`
+- API: `GET /api/unit-barcodes`
+
+---
+
+# StockReservation (Giữ tồn)
+
+## Mục đích
+
+Giữ tồn khả dụng cho giỏ hàng / đơn OMS trước khi `confirm-sale`.
+
+## Công thức
+
+```text
+Available = OnHand - Reserved
+```
+
+## API tích hợp
+
+* `POST /api/integration/sales/reserve`
+* `POST /api/integration/sales/release-reservation`
+* Admin: `GET /api/stock-reservations`, `POST .../{id}/release`
+
+Job nền `reservation_expiry` tự hủy hold quá hạn.
+
+---
+
+# AppUser & RBAC (tóm tắt)
+
+* **AppUser** — Email, DisplayName, PasswordHash, IsActive
+* **Permission / PermissionGroup / GroupPermission** — mã quyền trong DB
+* **UserGroupAssignment** — gán user vào nhóm (`SYSTEM_ADMIN`, `WAREHOUSE_CLERK`, …)
+* **UserWarehouseAssignment** — gán kho (`isPrimary`)
+* **Team / TeamMember** — trưởng nhóm duyệt phiếu của thành viên
+
+Chi tiết: [RBAC.md](RBAC.md)
+
+---
+
+# InsightSnapshot & InsightActionLog
+
+* **InsightSnapshot** — cache JSON (`SnapshotKey`, `InsightKind`, `PayloadJson`)
+* **InsightActionLog** — ghi CTA (`InsightKind`, `ActionCode`, variant/warehouse IDs)
+
+API: `POST /api/insight-actions`, job `insight_snapshots`
+
+---
+
+# InventoryDailyRollup
+
+Snapshot KPI tồn theo ngày: `SnapshotDate`, `BrandId`, `WarehouseId`, `RegionCode`, `SkuCount`, `TotalOnHand`, `TotalInventoryValue`, `OutboundQty30d`.
+
+Job nền: `inventory_daily_rollups`
+
+---
+
+# BackgroundJobSetting / BackgroundJobRun
+
+Cấu hình và lịch sử chạy job nền (reconciliation, insight refresh, alerts, reservation expiry, rollups).
+
+API: `/api/admin/operations`
 
 ---
 

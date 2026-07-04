@@ -135,13 +135,30 @@ Headers: `X-User-Email: admin@stockledger.local` / `clerk@stockledger.local`.
 
 ---
 
+## Redis caching (runtime)
+
+Khi `Redis:Enabled=true` (xem `docker-compose.dev.yml` cho Redis dev):
+
+| Cache | TTL (mặc định) | Mục đích |
+|-------|----------------|----------|
+| Auth | 10 phút | `UserAuthCacheService` — quyền user |
+| Master data | 30 phút | Brand, warehouse, … |
+| Reports | 15 phút | Báo cáo read-only |
+| Current period | 2 phút | Analytics kỳ hiện tại |
+
+`Cache:Enabled=false` → luôn đọc DB (không cần Redis).
+
+---
+
 ## Audit log (dev tra cứu)
 
-Bảng `transaction_logs` — không cần UI nặng; query DB hoặc API:
+Bảng `transaction_logs` — query DB hoặc API / UI admin:
 
 ```
 GET /api/audit-logs?entityName=AppUser&createdFrom=...&createdBy=...&action=...
 ```
+
+**UI:** `/[locale]/admin/audit-logs`
 
 Composite indexes: migration `AddTransactionLogCompositeIndexes` (`entity_name+created_at`, `created_by+created_at`, `action+created_at`).
 

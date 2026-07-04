@@ -33,9 +33,11 @@ CurrentStock      ← fast lookup
 | **Omni-channel** | Multi-warehouse ATP, allocate warehouse, stock reservation | ✅ Done |
 | **Multi-brand (MB-1→4)** | Brand entity, transfer policy, in-transit transfer, brand-scoped insights & fulfillment, scope headers | ✅ Done |
 | **RBAC** | Email users, permission groups in DB, teams, document authorization | ✅ Done |
-| **Login (stub)** | `POST /api/auth/login`, frontend `/login`, session → `X-User-Email` header | ✅ Done |
+| **Login (email + password)** | `POST /api/auth/login`, frontend `/login`, session → `X-User-Email` header | ✅ Done |
 | **Valuation** | CostPrice on SKU; ProductCostHistory; cost history report API | ✅ Done |
-| **Insights** | Executive summary, 7 analytics tabs (dead stock, velocity, transfer, markdown, promotion/reorder risk, trend), pricing-aware DTOs, snapshot cache, drill-down CTAs | ✅ Done |
+| **Insights** | Executive summary, 9 analytics tabs (7 ops + broken-size, season-clearance), pricing-aware DTOs, snapshot cache, drill-down CTAs, explain/what-if/bulk-transfers | ✅ Done |
+| **Unit barcodes (IMEI/serial)** | Per-unit tracking (`IsBarcode` on SKU), barcode lines on PO/GR/documents, `GET /api/unit-barcodes` | ✅ Done |
+| **Redis caching** | Distributed cache for auth, master data, reports; optional via `docker-compose.dev.yml` | ✅ Done |
 | **Reports** | Inventory value, NXT, near-expiry lots, lot stocks, cost history | ✅ Done |
 | **Stock reservations** | POS/OMS holds — list & manual release API + UI | ✅ Done |
 | **Approval workflow** | 2-step approval for high-value inventory documents & POs | ✅ Done |
@@ -57,7 +59,8 @@ CurrentStock      ← fast lookup
 
 - **Brand** — multi-brand master (`Code`, `Name`, `Status`); scopes products, SKUs, and warehouses
 - **Product** — parent product (code, name, brand text, optional `BrandId`, category)
-- **ProductVariant (SKU)** — actual inventory unit; optional `BrandId`; SKU unique per `(BrandId, Sku)`; optional `TrackLotExpiry` for batch/FEFO
+- **ProductVariant (SKU)** — actual inventory unit; optional `BrandId`; SKU unique per `(BrandId, Sku)`; optional `TrackLotExpiry` for batch/FEFO; optional `IsBarcode` for per-unit IMEI/serial tracking
+- **VariantUnitBarcode** — individual unit barcode registered per SKU + warehouse (`InStock`, `Sold`, `Returned`, …)
 - **StockLot / LotStock** — lot code, expiry date, quantity per warehouse (when lot tracking enabled)
 - **Warehouse** — DC, Store, Sub-warehouse, Defect, Return, **InTransit**; hierarchy via `ParentWarehouseId`; optional `BrandId`, `RegionCode`, `FulfillmentPriority`
 - **Supplier** — procurement partner master data
@@ -96,18 +99,22 @@ Supplier → Purchase Order (Draft → Submitted)
 ### POS & Omni-Channel Integration
 
 `POST /api/integration/sales/check-availability` — read-only stock check  
+`POST /api/integration/sales/reserve` — hold stock (cart/order); updates `QuantityReserved`  
+`POST /api/integration/sales/release-reservation` — release hold  
 `POST /api/integration/sales/confirm-sale` — create + approve Stock Out (idempotent)  
 `POST /api/integration/sales/confirm-return` — create + approve Stock In (idempotent)  
-`POST /api/integration/fulfillment/check-availability-multi-warehouse` — ATP across warehouses (optional `brandId`, `regionCode`)  
-`POST /api/integration/fulfillment/allocate-warehouse` — auto-select ship-from warehouse  
+`POST /api/integration/sales/check-availability-multi-warehouse` — ATP across warehouses (optional `brandId`, `regionCode`)  
+`POST /api/integration/sales/allocate-warehouse` — auto-select ship-from warehouse  
 
 Optional scope headers (RBAC-lite): `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
+
+When `Integration:Sales:ApiKey` is set in `appsettings.json`, integration routes require header `X-Integration-Api-Key`.
 
 **Warehouse scope (DB):** assign warehouses per user in Admin → Users; clerks see only their store(s). See [docs/RBAC.md](docs/RBAC.md) and [docs/BusinessRules.vi.md](docs/BusinessRules.vi.md) (BR1307–BR1308).
 
 ### Authorization (email + DB permissions)
 
-- **Login:** `POST /api/auth/login` (stub: `admin` / `1234`) → frontend session; API calls send `X-User-Email`
+- **Login:** `POST /api/auth/login` (email + password, e.g. `admin@stockledger.local` / `1234`) → frontend session; API calls send `X-User-Email`
 - Identify users via header `X-User-Email` (registered in `app_users`)
 - Permission groups: `SYSTEM_ADMIN`, `TEAM_LEADER`, `WAREHOUSE_CLERK`, `VIEWER`
 - Team leaders can update/cancel/approve documents created by team members
@@ -120,7 +127,11 @@ See [docs/RBAC.md](docs/RBAC.md).
 - `GET/POST /api/brands`, `GET/PUT /api/brands/{id}`
 - `GET/POST/PUT /api/admin/transfer-policies` — cross-brand transfer rules
 - `GET/POST/PUT /api/admin/markdown-policies` — per-brand markdown / discount rules
-- `GET/PUT/POST /api/admin/operations` — background jobs (reconciliation, insight refresh)
+- `GET /api/admin/operations` — background job dashboard
+- `GET /api/admin/operations/jobs/{jobKey}/history` — job run history
+- `PUT /api/admin/operations/jobs/{jobKey}` — update job config
+- `POST /api/admin/operations/jobs/{jobKey}/run` — trigger job manually
+- `POST /api/inventory/reconciliation/run` — manual stock reconciliation
 
 ### Inventory reports (read-only)
 
@@ -147,6 +158,13 @@ Pricing-aware decision support with executive KPIs, seven analytics views, rule-
 - `GET /api/inventory-insights/promotion-risk` — promotion price vs velocity/cover
 - `GET /api/inventory-insights/reorder-risk` — low cover + open PO/GR pipeline
 - `GET /api/inventory-insights/trend-summary` — period-over-period inventory deltas
+- `GET /api/inventory-insights/broken-size-runs` — fashion: incomplete size runs per product
+- `GET /api/inventory-insights/season-clearance` — fashion: end-of-season clearance candidates
+- `GET /api/inventory-insights/dead-stock/paged` — paged dead-stock list
+- `POST /api/inventory-insights/explain` — rule-based explanation for an insight row
+- `POST /api/inventory-insights/markdown-what-if` — simulate markdown impact
+- `POST /api/inventory-insights/bulk-transfers` — create transfer drafts from suggestions
+- `POST /api/insight-actions` — record CTA clicks; `GET .../recent`, `GET .../stats`
 
 Common filters: `warehouseId`, `brandId`, `regionCode`, `lookbackDays`, `daysWithoutOutbound`
 
@@ -159,7 +177,7 @@ Common filters: `warehouseId`, `brandId`, `regionCode`, `lookbackDays`, `daysWit
 
 ### Frontend (Next.js)
 
-Bilingual UI (VI / EN): login, dashboard, products, SKUs, warehouses, suppliers, purchase orders, goods receipts, inventory documents (incl. receive-transfer & multi-step approval), current stock, stock history, **insights** (executive summary + 7 tabs, drill-down CTAs), **reports**, **stock reservations**, **admin** (brands, users, teams, permissions, transfer policies, operations).
+Bilingual UI (VI / EN): login, dashboard, products, SKUs (price editor, unit barcodes modal), warehouses, suppliers, purchase orders (incl. PO approval & receive with barcodes), goods receipts, inventory documents (incl. receive-transfer & multi-step approval), current stock, stock history, **insights** (executive summary + 9 tabs, explain modal, bulk transfers, drill-down CTAs), **reports** (incl. manual reconciliation), **stock reservations**, **admin** (brands, users, teams, permissions, transfer policies, markdown policies, operations, audit logs).
 
 Default locale: `vi` — `http://localhost:3000/vi`
 
@@ -380,7 +398,7 @@ Set `NEXT_PUBLIC_API_URL=http://localhost:5270` in `frontend/.env.local` if need
 | [docs/RBAC.md](docs/RBAC.md) | Admin / Dev | Email RBAC, teams, warehouse assignments |
 | [docs/MultiBrand.md](docs/MultiBrand.md) | Dev / BA | Multi-brand phases, scope headers (EN) |
 | [docs/MultiBrand.vi.md](docs/MultiBrand.vi.md) | BA / User | Đa thương hiệu (VI) |
-| [docs/UseCases.md](docs/UseCases.md) | BA / User | Use cases UC001–UC016 (business flows) |
+| [docs/UseCases.md](docs/UseCases.md) | BA / User | Use cases UC001–UC025 (business flows) |
 | [docs/BusinessRules.md](docs/BusinessRules.md) | BA / User | Business rules (EN) |
 | [docs/BusinessRules.vi.md](docs/BusinessRules.vi.md) | **User / BA** | Quy tắc nghiệp vụ (VI) |
 | [docs/Entities.md](docs/Entities.md) | Dev | Entity dictionary (EN) |
@@ -400,10 +418,10 @@ Items below are **not done yet** (or only partially done). See the [Implementati
 
 | Item | Notes |
 |------|--------|
-| **PO approval UI** | Approve button for POs in `PendingApproval` status |
 | **GR / NXT demo seed** | Sample goods receipts and stock transactions for movement reports |
-| **Docker deployment** | `docker-compose` for API + PostgreSQL + frontend |
+| **Docker deployment** | Full `docker-compose` for API + PostgreSQL + frontend (`docker-compose.dev.yml` is Redis-only today) |
 | **JWT / OAuth** | Replace email header login; permissions still from DB |
+| **AI Copilot** | Natural-language Q&A on insight APIs (rule-based `explain` exists today) |
 
 ---
 

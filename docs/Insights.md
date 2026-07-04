@@ -15,9 +15,9 @@ Read-only decision-support APIs and UI for retail inventory operations. Insights
 | **Read repository** | SQL/read-model queries over `CurrentStock`, `StockTransaction`, `ProductPrice`, `InventoryValuationSnapshot`, PO/GR |
 | **App service** | Maps read models to DTOs; optional `InsightSnapshot` cache |
 | **Recommendation engine** | Rule-based action cards (CTAs) per insight row |
-| **Frontend** | Executive summary strip + 7 analytics tabs, filters, drill-down links |
+| **Frontend** | Executive summary strip + **9 analytics tabs**, filters, drill-down links, explain modal |
 
-Insights are **not** AI-generated today. They are deterministic rules suitable for managers and a future AI Copilot layer.
+Insights are **not** AI-generated today. They are deterministic rules suitable for managers and a future AI Copilot layer. `POST .../explain` returns rule-based explanations (not LLM).
 
 ---
 
@@ -33,12 +33,15 @@ Aggregated KPIs for the current filter scope (`warehouseId`, `brandId`, `regionC
 - Markdown-candidate count
 - Promotion-risk and reorder-risk counts
 - Trend highlights (inventory delta vs prior period)
+- Broken-size-run count and season-clearance count (when tabs have loaded)
 
 The frontend renders this as **InsightsExecutiveSummaryStrip** above the tab bar.
 
 ---
 
-## Analytics tabs (7)
+## Analytics tabs (9)
+
+### Operations (7)
 
 | Tab | Endpoint | Purpose |
 |-----|----------|---------|
@@ -50,12 +53,48 @@ The frontend renders this as **InsightsExecutiveSummaryStrip** above the tab bar
 | **Reorder risk** | `GET .../reorder-risk` | Low cover + open PO/GR pipeline signals |
 | **Trend** | `GET .../trend-summary` | Period-over-period inventory and movement deltas |
 
+### Fashion (2)
+
+| Tab | Endpoint | Purpose |
+|-----|----------|---------|
+| **Broken size runs** | `GET .../broken-size-runs` | Products with gaps in size coverage (e.g. S/M/L missing M) |
+| **Season clearance** | `GET .../season-clearance` | SKUs from past seasons with slow sell-through and suggested clearance price |
+
 Common query parameters:
 
 - `warehouseId`, `brandId`, `regionCode` — scope filters (headers `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code` apply when omitted)
-- `lookbackDays` — velocity, promotion, reorder, trend (default 30)
-- `daysWithoutOutbound` — dead stock / markdown (default 60)
+- `lookbackDays` — velocity, promotion, reorder, trend, fashion tabs (default 30)
+- `daysWithoutOutbound` — dead stock / markdown / season clearance (default 60)
+- `currentSeason` — season clearance filter (optional)
 - `minOnHand`, `maxResults` — row limits
+
+**Paged dead stock:** `GET .../dead-stock/paged` — same filters plus `page`, `pageSize`.
+
+---
+
+## Interactive APIs (not read-only cache)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `.../explain` | Rule-based explanation for a specific insight row (`InsightExplainModal` in UI) |
+| `POST` | `.../markdown-what-if` | Simulate markdown depth / recovery without saving `ProductPrice` |
+| `POST` | `.../bulk-transfers` | Create draft transfer documents from selected transfer suggestions |
+
+`bulk-transfers` creates **Draft** inventory documents; stock is not posted until approve.
+
+---
+
+## Insight action tracking
+
+`InsightActionsController` records when users click CTAs:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/insight-actions` | Record action (`insightKind`, `actionCode`, variant/warehouse IDs, payload) |
+| `GET` | `/api/insight-actions/recent` | Recent actions (`limit`, optional `insightKind`) |
+| `GET` | `/api/insight-actions/stats` | Aggregated stats (`lookbackDays`) |
+
+Persisted in `insight_action_logs`.
 
 ---
 
@@ -93,12 +132,20 @@ Action codes live in `InsightActionCodes`; types in `InsightActionTypes`. The UI
 
 ---
 
-## Snapshot cache
+## Snapshot cache & background jobs
 
-Heavy queries may be served from `InsightSnapshot` (keyed by `InsightSnapshotKeyBuilder`). Refresh via admin operations:
+Heavy queries may be served from `InsightSnapshot` (keyed by `InsightSnapshotKeyBuilder`).
+
+| Job key | Purpose |
+|---------|---------|
+| `insight_snapshots` | Refresh insight snapshot cache |
+| `insight_alerts` | Threshold alerts (dead stock count, tied capital, reorder risk) |
+| `inventory_daily_rollups` | Daily KPI rollups into `inventory_daily_rollups` |
+
+Refresh / monitor via admin operations:
 
 - `GET /api/admin/operations`
-- `POST /api/admin/operations/jobs/{jobKey}` — insight refresh job
+- `POST /api/admin/operations/jobs/{jobKey}/run`
 
 ---
 
@@ -107,7 +154,7 @@ Heavy queries may be served from `InsightSnapshot` (keyed by `InsightSnapshotKey
 | File | Content |
 |------|---------|
 | [Insights.vi.md](Insights.vi.md) | Vietnamese version |
-| [UseCases.md](UseCases.md) | UC012 — Inventory Insights |
+| [UseCases.md](UseCases.md) | UC012, UC022–UC024 |
 | [BusinessRules.md](BusinessRules.md) | BR16xx insight rules |
 | [MultiBrand.md](MultiBrand.md) | Brand/region scoping for insights |
 | [InventoryDomain.md](InventoryDomain.md) | Domain placement |

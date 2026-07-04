@@ -186,7 +186,20 @@ Retail inventory use cases for StockLedger Retail.
 2. System creates Stock In, approves, increases stock
 3. Idempotent by `sourceSystem + returnReference`
 
-**API:** `POST /api/integration/sales/check-availability`, `confirm-sale`, `confirm-return`
+**Reserve stock (cart hold):**
+
+1. POS sends `sourceSystem`, reference key, warehouse, lines
+2. System increases `QuantityReserved` on `CurrentStock` (does not deduct on-hand)
+3. Re-call with same reference updates lines and extends TTL
+
+**Release reservation:**
+
+1. POS sends reference when cart abandoned or order cancelled
+2. System decreases `QuantityReserved`
+
+**API:** `POST /api/integration/sales/check-availability`, `reserve`, `release-reservation`, `confirm-sale`, `confirm-return`
+
+When `Integration:Sales:ApiKey` is configured, send header `X-Integration-Api-Key`.
 
 **Status:** ✅ Implemented
 
@@ -291,7 +304,7 @@ Retail inventory use cases for StockLedger Retail.
 
 **Goal:** Select best warehouse to fulfill an order with brand and region scope.
 
-**API:** `POST /api/integration/fulfillment/check-availability-multi-warehouse`, `allocate-warehouse`
+**API:** `POST /api/integration/sales/check-availability-multi-warehouse`, `allocate-warehouse`
 
 **Status:** ✅ Implemented
 
@@ -377,9 +390,83 @@ Retail inventory use cases for StockLedger Retail.
 
 **Actor:** System admin (`system.admin`)
 
-**Goal:** Monitor and trigger background jobs (stock reconciliation, insight snapshot refresh).
+**Goal:** Monitor and trigger background jobs (stock reconciliation, insight snapshot refresh, insight alerts, reservation expiry, daily rollups).
 
-**API:** `GET /api/admin/operations`, `PUT/POST .../jobs/{jobKey}`
+**API:**
+
+- `GET /api/admin/operations`
+- `GET /api/admin/operations/jobs/{jobKey}/history`
+- `PUT /api/admin/operations/jobs/{jobKey}`
+- `POST /api/admin/operations/jobs/{jobKey}/run`
+
+**Job keys:** `insight_snapshots`, `insight_alerts`, `stock_reconciliation`, `reservation_expiry`, `inventory_daily_rollups`
+
+**Status:** ✅ Implemented
+
+---
+
+# UC022 — Unit Barcode / IMEI Tracking
+
+**Actor:** Warehouse Staff / Procurement
+
+**Goal:** Track individual units (phones, serialized goods) by unique barcode per SKU.
+
+**Flow:**
+
+1. Enable `IsBarcode` on SKU
+2. On stock-in, GR receive, or PO receive — enter unit barcodes per line quantity
+3. System registers `VariantUnitBarcode` per unit (`InStock` at warehouse)
+4. On stock-out / sale — barcodes validated and status updated; snapshots stored on `StockTransactionBarcode`
+
+**API:** `GET /api/unit-barcodes` (filter by `productVariantId`, `warehouseId`, `status`, `search`)
+
+**Status:** ✅ Implemented
+
+---
+
+# UC023 — Fashion Insights (Broken Size & Season Clearance)
+
+**Actor:** Merchandising / Store Manager
+
+**Goal:** Identify incomplete size runs and end-of-season clearance opportunities.
+
+**API:**
+
+- `GET /api/inventory-insights/broken-size-runs`
+- `GET /api/inventory-insights/season-clearance`
+
+**UI:** Insights tabs `brokenSize`, `seasonClearance` (9 tabs total)
+
+**Status:** ✅ Implemented
+
+---
+
+# UC024 — Insight Explain, What-If & Bulk Transfers
+
+**Actor:** Manager
+
+**Goal:** Understand insight rows, simulate markdown, and batch-create transfer drafts.
+
+**API:**
+
+- `POST /api/inventory-insights/explain` — rule-based row explanation
+- `POST /api/inventory-insights/markdown-what-if` — simulate discount impact
+- `POST /api/inventory-insights/bulk-transfers` — create Draft transfer documents
+- `POST /api/insight-actions` — record CTA usage; `GET .../recent`, `GET .../stats`
+
+**Status:** ✅ Implemented
+
+---
+
+# UC025 — Manual Stock Reconciliation
+
+**Actor:** System admin
+
+**Goal:** Compare SUM(`StockTransaction.QuantityDelta`) vs `CurrentStock.QuantityOnHand` and fix drift.
+
+**API:** `POST /api/inventory/reconciliation/run`
+
+**Background job:** `stock_reconciliation` (also runs on schedule)
 
 **Status:** ✅ Implemented
 

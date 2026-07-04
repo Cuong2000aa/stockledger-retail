@@ -111,8 +111,8 @@ Existing multi-warehouse ATP APIs now accept optional scope:
 
 **APIs:**
 
-- `POST /api/integration/fulfillment/check-availability-multi-warehouse`
-- `POST /api/integration/fulfillment/allocate-warehouse`
+- `POST /api/integration/sales/check-availability-multi-warehouse`
+- `POST /api/integration/sales/allocate-warehouse`
 
 Warehouse filter rules:
 

@@ -761,3 +761,71 @@ inventory_documents (TRANSFER)
 ```
 
 See [MultiBrand.md](MultiBrand.md) for API and workflow details.
+
+---
+
+# Schema Supplement (current state)
+
+> Sections above describe the original core schema. The tables below were added in later migrations and are authoritative for new features.
+
+## product_prices
+
+Effective-dated selling prices per SKU (`PriceType`: Regular, Promotion, Markdown, Clearance, Channel).
+
+| Column | Notes |
+|--------|-------|
+| product_variant_id | FK |
+| price_type | enum |
+| price_before_vat, vat_rate, price_after_vat | |
+| effective_from, effective_to, is_current | |
+| channel_code, reference_type, reference_id | optional |
+
+## product_cost_histories
+
+Time-bounded cost records with `valuation_method`, `cost_source`, `is_current`.
+
+## markdown_policies
+
+Per-brand markdown tiers (`tiers_json`, thresholds, `region_code`, `warehouse_type`).
+
+## stock_reservations / stock_reservation_lines
+
+POS/OMS holds: `reservation_no`, `source_system`, `reference_type`, `reference_key`, `warehouse_id`, `status`, `expires_at`.
+
+## variant_unit_barcodes
+
+Per-unit IMEI/serial: `product_variant_id`, `barcode` (unique), `warehouse_id`, `status`.
+
+Related trace tables: `inventory_document_line_barcodes`, `purchase_order_line_barcodes`, `goods_receipt_line_barcodes`, `stock_transaction_barcodes`.
+
+## user_warehouse_assignments
+
+`user_id`, `warehouse_id`, `is_primary`, `assigned_at`.
+
+## RBAC tables
+
+`app_users`, `permissions`, `permission_groups`, `group_permissions`, `user_group_assignments`, `teams`, `team_members`.
+
+## insight_action_logs
+
+CTA audit: `insight_kind`, `action_code`, `action_status`, variant/warehouse IDs, `payload_json`.
+
+## inventory_daily_rollups
+
+Daily KPI: `snapshot_date`, `brand_id`, `warehouse_id`, `region_code`, `sku_count`, `total_on_hand`, `total_inventory_value`, `outbound_qty_30d`.
+
+## background_job_runs
+
+Run history per `job_key`: `triggered_by`, `status`, `started_at_utc`, `completed_at_utc`, `duration_ms`.
+
+## Column additions (pricing & barcode)
+
+| Table | Columns |
+|-------|---------|
+| product_variants | `brand_id`, `track_lot_expiry`, `is_barcode`, current pricing cache fields, `UNIQUE (brand_id, sku)` |
+| warehouses | `brand_id`, `region_code`, `fulfillment_priority`, address fields |
+| inventory_documents | approval fields, transfer lifecycle, `row_version` (xmin) |
+| current_stocks | `row_version` (xmin) |
+| purchase_orders | approval fields, `PendingApproval` status |
+
+See [Entities.md](Entities.md) and migration folder `src/StockLedgerRetail.EntityFrameworkCore/Migrations/` for full history.

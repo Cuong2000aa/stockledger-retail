@@ -103,6 +103,7 @@ Represents a sellable SKU.
 * CurrentCostEffectiveFrom
 * CurrentPriceEffectiveFrom
 * TrackLotExpiry (bool — enable lot/HSD tracking)
+* IsBarcode (bool — require per-unit barcode on inbound/outbound lines)
 * CreatedAt
 * UpdatedAt
 
@@ -177,6 +178,7 @@ Represents a warehouse, store, or sub warehouse.
 * BrandId (optional)
 * RegionCode (optional)
 * FulfillmentPriority
+* AddressLine, Ward, District, Province, PostalCode, Phone, ContactName, FullAddress
 * Status
 * CreatedAt
 * UpdatedAt
@@ -531,6 +533,78 @@ Persisted valuation snapshot per SKU / warehouse / date.
 * CreatedAt
 * UpdatedBy
 * UpdatedAt
+
+---
+
+## VariantUnitBarcode
+
+Per-unit barcode (IMEI/serial) when SKU `IsBarcode = true`.
+
+### Fields
+
+* Id
+* ProductVariantId
+* Barcode (unique)
+* WarehouseId (optional — current location)
+* Status (`InStock`, `Sold`, `Returned`, …)
+* ReceivedAt
+* LastUpdatedAt
+
+**API:** `GET /api/unit-barcodes`
+
+Line-level barcode snapshots: `InventoryDocumentLineBarcode`, `PurchaseOrderLineBarcode`, `GoodsReceiptLineBarcode`, `StockTransactionBarcode`.
+
+---
+
+## StockReservation
+
+POS/OMS stock hold before confirm-sale.
+
+### Fields
+
+* Id, ReservationNo
+* SourceSystem, ReferenceType, ReferenceKey
+* WarehouseId, Status, ExpiresAt
+* CommittedAt, ReleasedAt
+* Lines: `ProductVariantId`, `Quantity`
+
+**API:** `POST /api/integration/sales/reserve`, `release-reservation`; admin `GET /api/stock-reservations`
+
+---
+
+## AppUser & RBAC (summary)
+
+* **AppUser** — Email, DisplayName, PasswordHash, IsActive
+* **Permission**, **PermissionGroup**, **GroupPermission**
+* **UserGroupAssignment**, **UserWarehouseAssignment**
+* **Team**, **TeamMember**
+
+See [RBAC.md](RBAC.md).
+
+---
+
+## InsightSnapshot & InsightActionLog
+
+* **InsightSnapshot** — cached insight JSON (`SnapshotKey`, `InsightKind`, `PayloadJson`)
+* **InsightActionLog** — CTA click audit (`InsightKind`, `ActionCode`, variant/warehouse IDs)
+
+**API:** `POST /api/insight-actions`; job `insight_snapshots`
+
+---
+
+## InventoryDailyRollup
+
+Daily inventory KPI rollup: `SnapshotDate`, `BrandId`, `WarehouseId`, `RegionCode`, `SkuCount`, `TotalOnHand`, `TotalInventoryValue`, `OutboundQty30d`.
+
+Job: `inventory_daily_rollups`
+
+---
+
+## BackgroundJobSetting / BackgroundJobRun
+
+Background job config and run history. Keys: `insight_snapshots`, `insight_alerts`, `stock_reconciliation`, `reservation_expiry`, `inventory_daily_rollups`.
+
+**API:** `/api/admin/operations`
 
 ---
 
