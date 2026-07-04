@@ -114,7 +114,7 @@ public class InventoryDocumentsController : ControllerBase
     public Task<InventoryDocumentDto> ReceiveTransferAsync(Guid id, CancellationToken cancellationToken) =>
         _inventoryDocumentAppService.ReceiveTransferAsync(id, cancellationToken);
 
-    /// <summary>Hủy phiếu Draft hoặc phiếu đang chờ duyệt. Chỉ áp dụng phiếu chưa ghi sổ tồn — không tác động CurrentStock.</summary>
+    /// <summary>Hủy phiếu Draft hoặc phiếu đang chờ duyệt. Chỉ áp dụng phiếu chưa ghi nhận tồn — không tác động CurrentStock.</summary>
     [HttpPost("{id:guid}/cancel")]
     public Task<InventoryDocumentDto> CancelAsync(Guid id, CancellationToken cancellationToken) =>
         _inventoryDocumentAppService.CancelAsync(id, cancellationToken);

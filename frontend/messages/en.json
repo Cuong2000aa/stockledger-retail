@@ -92,7 +92,7 @@
       },
       "stock_reconciliation": {
         "name": "Stock reconciliation",
-        "description": "Compares ledger balances with current stock snapshots."
+        "description": "Compares recorded stock movements with current on-hand balances."
       },
       "insight_alerts": {
         "name": "Insight alerts",

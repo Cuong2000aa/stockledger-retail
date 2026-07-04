@@ -7,7 +7,7 @@ using StockLedgerRetail.Services;
 namespace StockLedgerRetail.Application.Inventory;
 
 /// <summary>
-/// Dịch vụ tra cứu lịch sử sổ cái (StockTransaction) — mọi thay đổi tồn đều có bản ghi ở đây.
+/// Dịch vụ tra cứu lịch sử biến động tồn (StockTransaction) — mọi thay đổi tồn đều có bản ghi ở đây.
 /// </summary>
 public class StockTransactionAppService : IStockTransactionAppService
 {
@@ -22,7 +22,7 @@ public class StockTransactionAppService : IStockTransactionAppService
         _warehouseScopeService = warehouseScopeService;
     }
 
-    /// <summary>Lấy danh sách giao dịch sổ cái, lọc theo kho và/hoặc SKU.</summary>
+    /// <summary>Lấy danh sách giao dịch tồn kho, lọc theo kho và/hoặc SKU.</summary>
     public async Task<PagedResultDto<StockTransactionDto>> GetListAsync(
         Guid? warehouseId = null,
         Guid? productVariantId = null,

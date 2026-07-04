@@ -103,7 +103,7 @@
       },
       "stock_reconciliation": {
         "name": "Đối soát tồn kho",
-        "description": "So sánh số dư sổ cái với snapshot tồn hiện tại."
+        "description": "So sánh tổng biến động đã ghi nhận với tồn hiện tại."
       },
       "insight_alerts": {
         "name": "Cảnh báo Insights",

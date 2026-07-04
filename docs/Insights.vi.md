@@ -1,6 +1,6 @@
 # Inventory Insights (Phân tích tồn kho)
 
-API và giao diện **chỉ đọc** hỗ trợ ra quyết định vận hành kho bán lẻ. Insights kết hợp tín hiệu sổ cái tồn, dữ liệu giá/định giá và ngữ cảnh mua hàng (PO/GR) — **không** ghi sổ tồn.
+API và giao diện **chỉ đọc** hỗ trợ ra quyết định vận hành kho bán lẻ. Insights kết hợp tín hiệu biến động tồn kho, dữ liệu giá/định giá và ngữ cảnh mua hàng (PO/GR) — **không** ghi nhận tồn.
 
 **Đường dẫn UI:** `/[locale]/insights` (mặc định `vi`)
 
@@ -80,7 +80,7 @@ Tham số chung:
 | `POST` | `.../markdown-what-if` | Mô phỏng % giảm / thu hồi vốn, không lưu giá |
 | `POST` | `.../bulk-transfers` | Tạo phiếu chuyển Draft từ gợi ý đã chọn |
 
-`bulk-transfers` chỉ tạo phiếu **Draft**; chưa ghi sổ cho đến khi duyệt.
+`bulk-transfers` chỉ tạo phiếu **Draft**; chưa ghi nhận tồn cho đến khi duyệt.
 
 ---
 

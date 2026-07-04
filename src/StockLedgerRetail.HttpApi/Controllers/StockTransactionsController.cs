@@ -6,7 +6,7 @@ using StockLedgerRetail.Services;
 namespace StockLedgerRetail.Controllers;
 
 /// <summary>
-/// API tra cứu sổ cái tồn kho (StockTransaction) — lịch sử mọi biến động tồn, dùng để audit và phân tích.
+/// API tra cứu biến động tồn kho (StockTransaction) — lịch sử mọi thay đổi tồn, dùng để audit và phân tích.
 /// </summary>
 [ApiController]
 [Route("api/stock-transactions")]

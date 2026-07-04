@@ -251,7 +251,7 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 
 | Rule Code | English | Tiếng Việt |
 | --------- | ------- | ---------- |
-| BR1101 | check-availability is read-only. | Kiểm tra tồn chỉ đọc, không ghi sổ. |
+| BR1101 | check-availability is read-only. | Kiểm tra tồn chỉ đọc, không ghi nhận tồn. |
 | BR1102 | confirm-sale → Stock Out + approve. | Xác nhận bán → xuất kho + duyệt. |
 | BR1103 | confirm-return → Stock In + approve. | Xác nhận trả → nhập kho + duyệt. |
 | BR1104 | Idempotent by SourceSystem + ReferenceNo. | Gọi lại cùng mã tham chiếu không trừ/cộng 2 lần. |
@@ -304,7 +304,7 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 
 | Mã | Rule | Mô tả |
 |----|------|-------|
-| BR1601 | Insights chỉ đọc; không tạo phiếu hay ghi `StockTransaction`. | API insights không ghi sổ. |
+| BR1601 | Insights chỉ đọc; không tạo phiếu hay ghi `StockTransaction`. | API insights không ghi nhận tồn. |
 | BR1602 | Lọc theo `warehouseId`, `brandId`, `regionCode`; header phạm vi khi thiếu param. | Phạm vi brand/kho/vùng. |
 | BR1603 | Tồn chết / markdown: tồn ≥ `minOnHand`, không xuất trong `daysWithoutOutbound`. | Điều kiện tồn chết. |
 | BR1604 | Gợi ý chuyển: cặp kho cùng brand/vùng; số lượng từ thừa vs cover mục tiêu. | Logic chuyển kho. |
@@ -342,7 +342,7 @@ Chi tiết Insights: [Insights.vi.md](Insights.vi.md)
 |----|------|-------|
 | BR1401 | High-value docs need submit-for-approval. | Phiếu vượt ngưỡng phải gửi duyệt trước. |
 | BR1402 | Multiple approval steps allowed. | Có thể yêu cầu nhiều bước duyệt. |
-| BR1403 | Stock posts after all steps. | Chỉ ghi sổ khi đủ bước duyệt. |
+| BR1403 | Stock posts after all steps. | Chỉ ghi nhận tồn khi đủ bước duyệt. |
 | BR1404 | PO PendingApproval on submit. | PO lớn chuyển `PendingApproval` khi submit. |
 
 ---

@@ -4,7 +4,7 @@ namespace StockLedgerRetail.Domain.Entities;
 
 /// <summary>
 /// Lịch sử giá vốn theo SKU — ghi nhận thay đổi cost theo nguồn và khoảng thời gian hiệu lực.
-/// Chuẩn bị cho đồng bộ ERP/POS/Purchase System; chưa có nghiệp vụ ghi sổ tại phase này.
+/// Chuẩn bị cho đồng bộ ERP/POS/Purchase System; chưa có nghiệp vụ ghi nhận giá vốn tại phase này.
 /// </summary>
 public class ProductCostHistory
 {

@@ -1,6 +1,6 @@
 namespace StockLedgerRetail.Domain.Entities;
 
-/// <summary>Snapshot IMEI/barcode tại thời điểm giao dịch sổ cái — không phụ thuộc trạng thái hiện tại của VariantUnitBarcode.</summary>
+/// <summary>Snapshot IMEI/barcode tại thời điểm ghi nhận biến động tồn — không phụ thuộc trạng thái hiện tại của VariantUnitBarcode.</summary>
 public class StockTransactionBarcode
 {
     public Guid Id { get; set; }

@@ -8,7 +8,7 @@ using StockLedgerRetail.Services;
 namespace StockLedgerRetail.Application.Inventory;
 
 /// <summary>
-/// Engine sổ cái tồn kho — khi phiếu được duyệt, sinh StockTransaction và cập nhật CurrentStock.
+/// Engine ghi nhận biến động tồn kho — khi phiếu được duyệt, sinh StockTransaction và cập nhật CurrentStock.
 /// Nguyên tắc: không đổi tồn mà không có giao dịch; không cho tồn âm.
 /// </summary>
 public class StockLedgerService : IStockLedgerService

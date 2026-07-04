@@ -8,7 +8,7 @@
 | CurrentStock          | Tồn kho hiện tại        | Tồn thực tế đang có                   |
 | InventoryDocument     | Phiếu nghiệp vụ         | Phiếu nhập, xuất, chuyển kho, kiểm kê |
 | InventoryDocumentLine | Chi tiết phiếu          | Danh sách SKU trong phiếu             |
-| StockTransaction      | Sổ cái tồn kho          | Lịch sử biến động tồn kho             |
+| StockTransaction      | Biến động tồn kho       | Lịch sử biến động tồn kho             |
 | TransactionLog        | Nhật ký hệ thống        | Lịch sử thao tác người dùng           |
 | Supplier              | Nhà cung cấp            | Đối tác mua hàng                      |
 | PurchaseOrder         | Đơn mua hàng (PO)       | Đặt hàng từ NCC, chưa tác động tồn    |
@@ -242,7 +242,7 @@ Chi tiết:
 
 ---
 
-# StockTransaction (Sổ cái tồn kho)
+# StockTransaction (Biến động tồn kho)
 
 ## Mục đích
 

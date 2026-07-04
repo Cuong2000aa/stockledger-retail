@@ -8,7 +8,7 @@ using StockLedgerRetail.Services;
 namespace StockLedgerRetail.Application.Inventory;
 
 /// <summary>
-/// So sánh tổng QuantityDelta trên sổ cái với CurrentStock.QuantityOnHand.
+/// So sánh tổng QuantityDelta trên nhật ký biến động tồn với CurrentStock.QuantityOnHand.
 /// </summary>
 public class StockReconciliationService : IStockReconciliationService
 {
