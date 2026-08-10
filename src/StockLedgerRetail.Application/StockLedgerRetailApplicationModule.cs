@@ -74,6 +74,7 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IGoodsReceiptAppService, GoodsReceiptAppService>();
         services.AddScoped<IAnalyticsAppService, AnalyticsAppService>();
         services.AddScoped<IInventoryInsightsAppService, InventoryInsightsAppService>();
+        services.AddScoped<ITransferRebalanceEngine, TransferRebalanceEngine>();
         services.AddScoped<IInsightRecommendationEngine, InsightRecommendationEngine>();
         services.AddScoped<IInsightExplainService, InsightExplainService>();
         services.AddScoped<IMarkdownWhatIfService, MarkdownWhatIfService>();
@@ -104,12 +105,18 @@ public static class StockLedgerRetailApplicationModule
                 configuration.GetSection(StockReconciliationOptions.SectionName));
             services.Configure<InsightSnapshotOptions>(
                 configuration.GetSection(InsightSnapshotOptions.SectionName));
+            services.Configure<TransferRebalanceOptions>(
+                configuration.GetSection(TransferRebalanceOptions.SectionName));
             services.Configure<InsightAlertOptions>(
                 configuration.GetSection(InsightAlertOptions.SectionName));
             services.Configure<InventoryRollupOptions>(
                 configuration.GetSection(InventoryRollupOptions.SectionName));
             services.Configure<LoginOptions>(
                 configuration.GetSection(LoginOptions.SectionName));
+        }
+        else
+        {
+            services.Configure<TransferRebalanceOptions>(_ => { });
         }
 
         return services;

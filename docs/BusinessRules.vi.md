@@ -303,7 +303,7 @@ Không bao giờ update CurrentStock trực tiếp mà không tạo StockTransac
 | BR1601 | Insights chỉ đọc; không tạo phiếu hay ghi `StockTransaction`. | API insights không ghi sổ. |
 | BR1602 | Lọc theo `warehouseId`, `brandId`, `regionCode`; header phạm vi khi thiếu param. | Phạm vi brand/kho/vùng. |
 | BR1603 | Tồn chết / markdown: tồn ≥ `minOnHand`, không xuất trong `daysWithoutOutbound`. | Điều kiện tồn chết. |
-| BR1604 | Gợi ý chuyển: cặp kho cùng brand/vùng; số lượng từ thừa vs cover mục tiêu. | Logic chuyển kho. |
+| BR1604 | Gợi ý chuyển: cặp kho cùng brand/vùng; số lượng từ thừa vs cover mục tiêu bằng matching đa vòng có điểm (`transfer_rebalance_v2`), tùy chọn chế độ MinCostFlow. | Logic chuyển kho. |
 | BR1605 | Giá trên DTO lấy từ cache SKU, `ProductPrice`, `InventoryValuationSnapshot`; không sửa giá. | Insights chỉ đọc giá. |
 | BR1606 | Rủi ro KM: giá Promotion/Markdown đang hoặc vừa hiệu lực. | Tín hiệu khuyến mãi. |
 | BR1607 | Rủi ro đặt hàng: cover thấp + PO/GR đang mở. | Tín hiệu mua hàng. |

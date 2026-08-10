@@ -742,19 +742,32 @@ public class InsightRecommendationEngine : IInsightRecommendationEngine
 
     private static int CalculateTransferPriority(TransferSuggestionDto insight)
     {
-        var priority = 60;
+        var priority = 55;
         if (insight.Severity == "critical")
         {
-            priority += 25;
+            priority += 20;
         }
         else
         {
-            priority += 10;
+            priority += 8;
         }
 
         if (insight.DestinationDaysOfCover is < 7)
         {
-            priority += 10;
+            priority += 12;
+        }
+        else if (insight.DestinationDaysOfCover is < 14)
+        {
+            priority += 6;
+        }
+
+        if (insight.MarginOpportunity is > 1_000_000)
+        {
+            priority += 8;
+        }
+        else if (insight.MarginOpportunity is > 100_000)
+        {
+            priority += 4;
         }
 
         return Math.Min(priority, 100);

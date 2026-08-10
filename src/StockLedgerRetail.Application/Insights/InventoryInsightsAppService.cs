@@ -34,6 +34,7 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
     private readonly IInsightExplainService _insightExplainService;
     private readonly IMarkdownWhatIfService _markdownWhatIfService;
     private readonly IInventoryDocumentAppService _inventoryDocumentAppService;
+    private readonly ITransferRebalanceEngine _transferRebalanceEngine;
 
     public InventoryInsightsAppService(
         IInventoryInsightReadRepository inventoryInsightReadRepository,
@@ -50,7 +51,8 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
         IWarehouseScopeService warehouseScopeService,
         IInsightExplainService insightExplainService,
         IMarkdownWhatIfService markdownWhatIfService,
-        IInventoryDocumentAppService inventoryDocumentAppService)
+        IInventoryDocumentAppService inventoryDocumentAppService,
+        ITransferRebalanceEngine transferRebalanceEngine)
     {
         _inventoryInsightReadRepository = inventoryInsightReadRepository;
         _brandScopeContext = brandScopeContext;
@@ -67,6 +69,7 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
         _insightExplainService = insightExplainService;
         _markdownWhatIfService = markdownWhatIfService;
         _inventoryDocumentAppService = inventoryDocumentAppService;
+        _transferRebalanceEngine = transferRebalanceEngine;
     }
 
     public async Task<List<DeadStockInsightDto>> GetDeadStockAsync(
@@ -937,112 +940,28 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
             _warehouseScopeService.GetWarehouseFilterForLists(),
             cancellationToken);
 
-        var groupedFacts = facts.GroupBy(x => x.ProductVariantId).ToList();
-        var suggestions = new List<TransferSuggestionDto>();
-
-        foreach (var skuGroup in groupedFacts)
-        {
-            var productBrandId = skuGroup.First().BrandId;
-
-            var sources = skuGroup
-                .Where(x => !sourceWarehouseId.HasValue || x.WarehouseId == sourceWarehouseId.Value)
-                .Select(x => new TransferCandidate(
-                    x,
-                    Math.Max(
-                        0,
-                        x.QuantityAvailable - (x.OutboundQuantity > 0
-                            ? (x.OutboundQuantity / normalizedLookbackDays) * normalizedReserveCoverDays
-                            : 0))))
-                .Where(x => x.RemainingQuantity > 0)
-                .OrderByDescending(x => x.RemainingQuantity)
-                .ToList();
-
-            var destinations = skuGroup
-                .Where(x => !destinationWarehouseId.HasValue || x.WarehouseId == destinationWarehouseId.Value)
-                .Select(x =>
-                {
-                    var averageDailyOutbound = x.OutboundQuantity / normalizedLookbackDays;
-                    var desiredStock = averageDailyOutbound * normalizedTargetCoverDays;
-                    var neededQuantity = Math.Max(0, desiredStock - x.QuantityAvailable);
-                    var coverDays = averageDailyOutbound > 0
-                        ? x.QuantityAvailable / averageDailyOutbound
-                        : (decimal?)null;
-
-                    return new
-                    {
-                        Fact = x,
-                        AverageDailyOutbound = averageDailyOutbound,
-                        NeededQuantity = neededQuantity,
-                        CoverDays = coverDays
-                    };
-                })
-                .Where(x => x.AverageDailyOutbound > 0 && x.NeededQuantity > 0)
-                .OrderBy(x => x.CoverDays ?? decimal.MaxValue)
-                .ThenByDescending(x => x.NeededQuantity)
-                .ToList();
-
-            foreach (var destination in destinations)
+        var suggestions = _transferRebalanceEngine.Suggest(
+            facts,
+            context.TransferPolicies,
+            new TransferRebalanceRequest
             {
-                var source = sources.FirstOrDefault(x =>
-                    x.Fact.WarehouseId != destination.Fact.WarehouseId
-                    && x.RemainingQuantity > 0
-                    && InsightTransferRules.CanTransferBetweenWarehouses(
-                        x.Fact.BrandId,
-                        destination.Fact.BrandId,
-                        productBrandId,
-                        x.Fact.RegionCode,
-                        destination.Fact.RegionCode,
-                        context.TransferPolicies));
-                if (source is null)
-                {
-                    continue;
-                }
+                SourceWarehouseId = sourceWarehouseId,
+                DestinationWarehouseId = destinationWarehouseId,
+                LookbackDays = normalizedLookbackDays,
+                TargetCoverDays = normalizedTargetCoverDays,
+                ReserveCoverDays = normalizedReserveCoverDays,
+                MaxResults = normalizedMaxResults
+            });
 
-                var suggestedQuantity = Math.Min(source.RemainingQuantity, destination.NeededQuantity);
-                if (suggestedQuantity <= 0)
-                {
-                    continue;
-                }
-
-                source.RemainingQuantity -= suggestedQuantity;
-
-                var suggestion = new TransferSuggestionDto
-                {
-                    ProductVariantId = destination.Fact.ProductVariantId,
-                    Sku = destination.Fact.Sku,
-                    SourceWarehouseId = source.Fact.WarehouseId,
-                    SourceWarehouseCode = source.Fact.WarehouseCode,
-                    SourceWarehouseName = source.Fact.WarehouseName,
-                    DestinationWarehouseId = destination.Fact.WarehouseId,
-                    DestinationWarehouseCode = destination.Fact.WarehouseCode,
-                    DestinationWarehouseName = destination.Fact.WarehouseName,
-                    SuggestedQuantity = suggestedQuantity,
-                    SourceAvailable = source.Fact.QuantityAvailable,
-                    DestinationAvailable = destination.Fact.QuantityAvailable,
-                    DestinationAverageDailyOutbound = destination.AverageDailyOutbound,
-                    DestinationDaysOfCover = destination.CoverDays,
-                    SourceCostPrice = source.Fact.CostPrice,
-                    CurrentSellingPriceBeforeVat = destination.Fact.CurrentSellingPriceBeforeVat,
-                    CurrentSellingPriceAfterVat = destination.Fact.CurrentSellingPriceAfterVat,
-                    VatRate = destination.Fact.VatRate,
-                    TransferValue = source.Fact.CostPrice.HasValue ? source.Fact.CostPrice.Value * suggestedQuantity : null,
-                    MarginOpportunity = destination.Fact.CurrentSellingPriceBeforeVat.HasValue && source.Fact.CostPrice.HasValue
-                        ? (destination.Fact.CurrentSellingPriceBeforeVat.Value - source.Fact.CostPrice.Value) * suggestedQuantity
-                        : null,
-                    Severity = destination.CoverDays.HasValue && destination.CoverDays.Value < 7 ? "critical" : "warning",
-                    RuleCode = "transfer_rebalance"
-                };
-
-                ApplyRecommendation(suggestion, context);
-                suggestions.Add(suggestion);
-            }
+        foreach (var suggestion in suggestions)
+        {
+            ApplyRecommendation(suggestion, context);
         }
 
         return suggestions
             .OrderByDescending(x => x.Recommendation.Priority)
             .ThenByDescending(x => x.SuggestedQuantity)
             .ThenBy(x => x.DestinationDaysOfCover ?? decimal.MaxValue)
-            .Take(normalizedMaxResults)
             .ToList();
     }
 
@@ -1390,17 +1309,4 @@ public partial class InventoryInsightsAppService : IInventoryInsightsAppService
 
     private static decimal RoundMoney(decimal value) =>
         Math.Round(value, 4, MidpointRounding.AwayFromZero);
-
-    private sealed class TransferCandidate
-    {
-        public TransferCandidate(SalesVelocityFact fact, decimal remainingQuantity)
-        {
-            Fact = fact;
-            RemainingQuantity = remainingQuantity;
-        }
-
-        public SalesVelocityFact Fact { get; }
-
-        public decimal RemainingQuantity { get; set; }
-    }
 }
