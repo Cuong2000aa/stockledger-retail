@@ -44,7 +44,7 @@ The frontend renders this as **InsightsExecutiveSummaryStrip** above the tab bar
 |-----|----------|---------|
 | **Dead stock** | `GET .../dead-stock` | SKUs with on-hand stock but no outbound in N days |
 | **Sales velocity** | `GET .../sales-velocity` | Outbound rate and cover days in lookback window |
-| **Transfer suggestions** | `GET .../transfer-suggestions` | Move stock from surplus to deficit warehouses (same brand/region) |
+| **Transfer suggestions** | `GET .../transfer-suggestions` | Move stock from surplus to deficit warehouses (same brand/region). Algorithm notes: [TransferRebalance.md](TransferRebalance.md). |
 | **Markdown candidates** | `GET .../markdown-candidates` | Slow movers with selling price / margin context for clearance |
 | **Promotion risk** | `GET .../promotion-risk` | Active or recent promotion prices vs velocity and cover |
 | **Reorder risk** | `GET .../reorder-risk` | Low cover + open PO/GR pipeline signals |
@@ -106,6 +106,7 @@ Heavy queries may be served from `InsightSnapshot` (keyed by `InsightSnapshotKey
 
 | File | Content |
 |------|---------|
+| [TransferRebalance.md](TransferRebalance.md) | **Algorithm notes** for transfer Heuristic + MinCostFlow |
 | [Insights.vi.md](Insights.vi.md) | Vietnamese version |
 | [UseCases.md](UseCases.md) | UC012 — Inventory Insights |
 | [BusinessRules.md](BusinessRules.md) | BR16xx insight rules |

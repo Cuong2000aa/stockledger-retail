@@ -51,23 +51,28 @@ public static class InsightTransferRules
         string? destinationRegionCode,
         IReadOnlyList<TransferPolicy> policies)
     {
-        if (!CanWarehouseHoldProduct(sourceWarehouseBrandId, productBrandId)
-            || !CanWarehouseHoldProduct(destinationWarehouseBrandId, productBrandId))
+        if (!IsRegionCompatible(sourceRegionCode, destinationRegionCode))
         {
             return false;
         }
 
-        if (!IsRegionCompatible(sourceRegionCode, destinationRegionCode))
+        // Product must be holdable at the source warehouse.
+        if (!CanWarehouseHoldProduct(sourceWarehouseBrandId, productBrandId))
         {
             return false;
         }
 
         if (sourceWarehouseBrandId == destinationWarehouseBrandId)
         {
-            return true;
+            return CanWarehouseHoldProduct(destinationWarehouseBrandId, productBrandId);
         }
 
-        return IsCrossBrandTransferAllowed(sourceWarehouseBrandId, destinationWarehouseBrandId, policies);
+        // Different warehouse brands: active cross-brand policy authorizes the destination
+        // (destination brand need not equal product brand — BR308).
+        return IsCrossBrandTransferAllowed(
+            sourceWarehouseBrandId,
+            destinationWarehouseBrandId,
+            policies);
     }
 
     public static Warehouse? FindClearanceDestination(

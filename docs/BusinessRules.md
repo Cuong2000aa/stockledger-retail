@@ -258,7 +258,7 @@ Every inventory transaction must be linked to a business document.
 | BR1601 | Insights APIs are read-only; they never create documents or post `StockTransaction`. |
 | BR1602 | Insight rows respect `warehouseId`, `brandId`, and `regionCode` filters; scope headers apply when query params are omitted. |
 | BR1603 | Dead stock and markdown candidates require `QuantityOnHand ≥ minOnHand` and no outbound within `daysWithoutOutbound`. |
-| BR1604 | Transfer suggestions pair source/destination warehouses with compatible brand and region; quantity derived from surplus vs target cover. |
+| BR1604 | Transfer suggestions pair source/destination warehouses with compatible brand and region; quantity from surplus vs target cover via scored multi-pass matching (`transfer_rebalance_v2`), optional MinCostFlow mode. |
 | BR1605 | Pricing fields on insight DTOs come from SKU cache, `ProductPrice`, or `InventoryValuationSnapshot` — insights do not mutate prices. |
 | BR1606 | Promotion-risk rows consider active or recent `ProductPrice` rows with `PriceType` Promotion or Markdown. |
 | BR1607 | Reorder-risk combines low cover days with open purchase-order and goods-receipt pipeline quantities. |

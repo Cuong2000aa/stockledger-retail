@@ -44,7 +44,7 @@ Frontend hiển thị qua **InsightsExecutiveSummaryStrip** phía trên thanh ta
 |-----|----------|----------|
 | **Tồn chết** | `GET .../dead-stock` | SKU còn tồn nhưng không có xuất trong N ngày |
 | **Tốc độ bán** | `GET .../sales-velocity` | Tốc độ xuất và số ngày cover trong cửa sổ lookback |
-| **Gợi ý chuyển** | `GET .../transfer-suggestions` | Chuyển từ kho thừa sang kho thiếu (cùng brand/vùng) |
+| **Gợi ý chuyển** | `GET .../transfer-suggestions` | Chuyển từ kho thừa sang kho thiếu (cùng brand/vùng). Chi tiết thuật toán: [TransferRebalance.vi.md](TransferRebalance.vi.md). |
 | **Ứng viên markdown** | `GET .../markdown-candidates` | Hàng bán chậm kèm giá bán / biên lợi nhuận |
 | **Rủi ro khuyến mãi** | `GET .../promotion-risk` | Giá KM đang/chuẩn bị hiệu lực vs tốc độ bán và cover |
 | **Rủi ro đặt hàng** | `GET .../reorder-risk` | Cover thấp + tín hiệu PO/GR đang mở |
@@ -106,6 +106,7 @@ Truy vấn nặng có thể lấy từ `InsightSnapshot` (key qua `InsightSnapsh
 
 | File | Nội dung |
 |------|----------|
+| [TransferRebalance.vi.md](TransferRebalance.vi.md) | **Ghi chú thuật toán** transfer (Heuristic + MinCostFlow) |
 | [Insights.md](Insights.md) | English version |
 | [UseCases.md](UseCases.md) | UC012 — Inventory Insights |
 | [BusinessRules.vi.md](BusinessRules.vi.md) | Quy tắc BR16xx |
