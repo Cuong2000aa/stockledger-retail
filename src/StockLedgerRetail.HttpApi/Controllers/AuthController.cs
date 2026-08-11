@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using StockLedgerRetail.Identity;
 using StockLedgerRetail.Services;
@@ -5,8 +6,7 @@ using StockLedgerRetail.Services;
 namespace StockLedgerRetail.Controllers;
 
 /// <summary>
-/// API xác thực và thông tin người dùng hiện tại.
-/// Phiên bản hiện tại dùng login stub/header-based để demo RBAC và admin UI.
+/// API xác thực JWT và thông tin người dùng hiện tại.
 /// </summary>
 [ApiController]
 [Route("api/auth")]
@@ -19,12 +19,28 @@ public class AuthController : ControllerBase
         _authAppService = authAppService;
     }
 
-    /// <summary>Đăng nhập và trả về thông tin phiên làm việc dùng cho frontend.</summary>
+    /// <summary>Đăng nhập — trả JWT access token + refresh token.</summary>
     [HttpPost("login")]
+    [EnableRateLimiting(AuthRateLimitPolicies.Login)]
     public Task<LoginResponseDto> LoginAsync(
         [FromBody] LoginRequestDto input,
         CancellationToken cancellationToken) =>
         _authAppService.LoginAsync(input, cancellationToken);
+
+    /// <summary>Đổi refresh token lấy cặp access/refresh mới (rotation).</summary>
+    [HttpPost("refresh")]
+    [EnableRateLimiting(AuthRateLimitPolicies.Refresh)]
+    public Task<LoginResponseDto> RefreshAsync(
+        [FromBody] RefreshTokenRequestDto input,
+        CancellationToken cancellationToken) =>
+        _authAppService.RefreshAsync(input, cancellationToken);
+
+    /// <summary>Thu hồi refresh token (logout).</summary>
+    [HttpPost("logout")]
+    public Task LogoutAsync(
+        [FromBody] LogoutRequestDto input,
+        CancellationToken cancellationToken) =>
+        _authAppService.LogoutAsync(input, cancellationToken);
 
     /// <summary>Lấy thông tin người dùng hiện tại và quyền đang có.</summary>
     [HttpGet("me")]

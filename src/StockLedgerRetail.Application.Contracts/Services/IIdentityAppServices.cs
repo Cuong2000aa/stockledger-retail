@@ -6,6 +6,10 @@ public interface IAuthAppService
 {
     Task<LoginResponseDto> LoginAsync(LoginRequestDto input, CancellationToken cancellationToken = default);
 
+    Task<LoginResponseDto> RefreshAsync(RefreshTokenRequestDto input, CancellationToken cancellationToken = default);
+
+    Task LogoutAsync(LogoutRequestDto input, CancellationToken cancellationToken = default);
+
     Task<CurrentUserDto> GetCurrentUserAsync(CancellationToken cancellationToken = default);
 }
 

@@ -6,6 +6,9 @@ export type AuthSession = {
   warehouseIds?: string[];
   primaryWarehouseId?: string | null;
   hasUnrestrictedWarehouseAccess?: boolean;
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpiresAt?: string;
 };
 
 const STORAGE_KEY = "stockledger_auth_session";
@@ -37,7 +40,8 @@ export function clearAuthSession(): void {
 }
 
 export function hasAuthSession(): boolean {
-  return getAuthSession() !== null;
+  const session = getAuthSession();
+  return Boolean(session?.accessToken || session?.email);
 }
 
 export function isSystemAdminSession(session: AuthSession | null | undefined): boolean {
@@ -46,4 +50,12 @@ export function isSystemAdminSession(session: AuthSession | null | undefined): b
       (code) => code.toLowerCase() === "system.admin"
     )
   );
+}
+
+export function isAccessTokenExpired(session: AuthSession | null | undefined): boolean {
+  if (!session?.accessTokenExpiresAt) {
+    return false;
+  }
+
+  return Date.parse(session.accessTokenExpiresAt) <= Date.now() + 30_000;
 }

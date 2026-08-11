@@ -1,29 +1,34 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.Authorization;
 using StockLedgerRetail.Caching;
+using StockLedgerRetail.Identity;
 
 namespace StockLedgerRetail.HttpApi.Host.Middleware;
 
 /// <summary>
-/// Nhận diện user theo email từ header X-User-Email và load quyền từ cache/DB.
-/// Bỏ qua /api/integration và swagger.
+/// After JWT validation, load permissions from cache/DB into <see cref="ICurrentUserContext"/>.
+/// Legacy <c>X-User-Email</c> header is optional when <see cref="AuthOptions.AllowLegacyEmailHeader"/> is true.
 /// </summary>
-public class UserEmailAuthMiddleware
+public class UserContextMiddleware
 {
     public const string UserEmailHeader = "X-User-Email";
 
     private readonly RequestDelegate _next;
     private readonly bool _requireUserEmail;
-    private readonly ILogger<UserEmailAuthMiddleware> _logger;
+    private readonly bool _allowLegacyEmailHeader;
+    private readonly ILogger<UserContextMiddleware> _logger;
 
-    public UserEmailAuthMiddleware(
+    public UserContextMiddleware(
         RequestDelegate next,
         IConfiguration configuration,
-        ILogger<UserEmailAuthMiddleware> logger)
+        ILogger<UserContextMiddleware> logger)
     {
         _next = next;
         _requireUserEmail = configuration.GetValue("Auth:RequireUserEmail", true);
+        _allowLegacyEmailHeader = configuration.GetValue("Auth:AllowLegacyEmailHeader", false);
         _logger = logger;
     }
 
@@ -44,15 +49,15 @@ public class UserEmailAuthMiddleware
             return;
         }
 
-        if (!context.Request.Headers.TryGetValue(UserEmailHeader, out var emailHeader)
-            || string.IsNullOrWhiteSpace(emailHeader))
+        var email = ResolveEmail(context);
+        if (string.IsNullOrWhiteSpace(email))
         {
             if (_requireUserEmail && RequiresAuthentication(context.Request.Path))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsJsonAsync(new
                 {
-                    error = $"Missing header '{UserEmailHeader}'. User must be registered in the system."
+                    error = "Authentication required. Send Authorization: Bearer <access_token>."
                 });
                 return;
             }
@@ -61,7 +66,7 @@ public class UserEmailAuthMiddleware
             return;
         }
 
-        var email = emailHeader.ToString().Trim().ToLowerInvariant();
+        email = email.Trim().ToLowerInvariant();
         var user = await userAuthCacheService.GetByEmailAsync(email, context.RequestAborted);
 
         if (user is null || !user.IsActive)
@@ -104,11 +109,35 @@ public class UserEmailAuthMiddleware
         await _next(context);
     }
 
+    private string? ResolveEmail(HttpContext context)
+    {
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var email = context.User.FindFirstValue(ClaimTypes.Email)
+                ?? context.User.FindFirstValue(JwtRegisteredClaimNames.Email);
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                return email;
+            }
+        }
+
+        if (_allowLegacyEmailHeader
+            && context.Request.Headers.TryGetValue(UserEmailHeader, out var emailHeader)
+            && !string.IsNullOrWhiteSpace(emailHeader))
+        {
+            return emailHeader.ToString();
+        }
+
+        return null;
+    }
+
     private static bool ShouldSkip(PathString path) =>
         path.StartsWithSegments("/swagger")
         || path.StartsWithSegments("/health")
         || path.StartsWithSegments("/api/integration")
-        || path.StartsWithSegments("/api/auth/login");
+        || path.StartsWithSegments("/api/auth/login")
+        || path.StartsWithSegments("/api/auth/refresh")
+        || path.StartsWithSegments("/api/auth/logout");
 
     private static bool RequiresAuthentication(PathString path) =>
         path.StartsWithSegments("/api") && !path.StartsWithSegments("/api/integration");

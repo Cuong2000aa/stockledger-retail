@@ -20,6 +20,8 @@ public class StockLedgerRetailDbContext : DbContext
 
     public DbSet<AppUser> AppUsers => Set<AppUser>();
 
+    public DbSet<AppUserRefreshToken> AppUserRefreshTokens => Set<AppUserRefreshToken>();
+
     public DbSet<Permission> Permissions => Set<Permission>();
 
     public DbSet<PermissionGroup> PermissionGroups => Set<PermissionGroup>();

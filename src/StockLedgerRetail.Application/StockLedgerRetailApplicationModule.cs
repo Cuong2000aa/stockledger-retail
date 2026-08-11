@@ -44,6 +44,8 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<ITransactionAuditService, TransactionAuditService>();
         services.AddScoped<ITransactionLogAppService, TransactionLogAppService>();
         services.AddScoped<IAuthAppService, AuthAppService>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IAppUserAppService, AppUserAppService>();
         services.AddScoped<IPermissionAdminAppService, PermissionAdminAppService>();
         services.AddScoped<ITeamAppService, TeamAppService>();
@@ -113,6 +115,10 @@ public static class StockLedgerRetailApplicationModule
                 configuration.GetSection(InventoryRollupOptions.SectionName));
             services.Configure<LoginOptions>(
                 configuration.GetSection(LoginOptions.SectionName));
+            services.Configure<JwtOptions>(
+                configuration.GetSection(JwtOptions.SectionName));
+            services.Configure<AuthOptions>(
+                configuration.GetSection(AuthOptions.SectionName));
         }
         else
         {

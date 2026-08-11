@@ -1,5 +1,10 @@
 import axios from "axios";
-import { clearAuthSession, getAuthSession } from "./auth-session";
+import {
+  clearAuthSession,
+  getAuthSession,
+  setAuthSession,
+  type AuthSession,
+} from "./auth-session";
 import { GoodsReceiptStatus } from "./types";
 import type {
   AdjustmentLineInput,
@@ -44,10 +49,50 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+type LoginResponse = AuthSession & {
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpiresAt?: string;
+};
+
+function mapLoginResponse(data: LoginResponse): AuthSession {
+  return {
+    email: data.email,
+    displayName: data.displayName,
+    permissionCodes: data.permissionCodes ?? [],
+    groupCodes: data.groupCodes ?? [],
+    warehouseIds: (data.warehouseIds ?? []).map(String),
+    primaryWarehouseId: data.primaryWarehouseId ? String(data.primaryWarehouseId) : null,
+    hasUnrestrictedWarehouseAccess: data.hasUnrestrictedWarehouseAccess ?? false,
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    accessTokenExpiresAt: data.accessTokenExpiresAt,
+  };
+}
+
+let refreshInFlight: Promise<AuthSession> | null = null;
+
+async function refreshAuthSession(): Promise<AuthSession> {
+  const session = getAuthSession();
+  if (!session?.refreshToken) {
+    throw new Error("Missing refresh token.");
+  }
+
+  const { data } = await axios.post<LoginResponse>(
+    `${api.defaults.baseURL}/api/auth/refresh`,
+    { refreshToken: session.refreshToken },
+    { headers: { "Content-Type": "application/json" } }
+  );
+
+  const nextSession = mapLoginResponse(data);
+  setAuthSession(nextSession);
+  return nextSession;
+}
+
 api.interceptors.request.use((config) => {
   const session = getAuthSession();
-  if (session?.email) {
-    config.headers["X-User-Email"] = session.email;
+  if (session?.accessToken) {
+    config.headers.Authorization = `Bearer ${session.accessToken}`;
   }
   return config;
 });
@@ -56,10 +101,42 @@ export const apiClient = api;
 
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
+    const originalRequest = err.config as (typeof err.config & { _retry?: boolean }) | undefined;
+    const requestUrl = originalRequest?.url ?? "";
+
+    if (
+      err.response?.status === 401 &&
+      typeof window !== "undefined" &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !requestUrl.includes("/api/auth/login") &&
+      !requestUrl.includes("/api/auth/refresh")
+    ) {
+      originalRequest._retry = true;
+      try {
+        if (!refreshInFlight) {
+          refreshInFlight = refreshAuthSession().finally(() => {
+            refreshInFlight = null;
+          });
+        }
+
+        const session = await refreshInFlight;
+        originalRequest.headers.Authorization = `Bearer ${session.accessToken}`;
+        return api(originalRequest);
+      } catch {
+        clearAuthSession();
+        const locale = window.location.pathname.split("/")[1] || "vi";
+        if (!window.location.pathname.includes("/login")) {
+          window.location.href = `/${locale}/login`;
+        }
+      }
+    }
+
     if (err.response?.status === 401 && typeof window !== "undefined") {
-      const isLoginRequest = err.config?.url?.includes("/api/auth/login");
-      if (!isLoginRequest) {
+      const isAuthRequest =
+        requestUrl.includes("/api/auth/login") || requestUrl.includes("/api/auth/refresh");
+      if (!isAuthRequest) {
         clearAuthSession();
         const locale = window.location.pathname.split("/")[1] || "vi";
         if (!window.location.pathname.includes("/login")) {
@@ -70,12 +147,33 @@ api.interceptors.response.use(
 
     const apiBase = api.defaults.baseURL ?? "http://localhost:5270";
     const message =
-      !err.response && (err.code === "ERR_NETWORK" || err.message === "Network Error")
-        ? `Không kết nối được API (${apiBase}). Hãy chạy backend: dotnet run trong host/StockLedgerRetail.HttpApi.Host`
-        : err.response?.data?.error ?? err.message ?? "Request failed";
+      err.response?.status === 429
+        ? (err.response?.data?.error ??
+          "Quá nhiều lần thử đăng nhập. Vui lòng đợi một lát rồi thử lại.")
+        : !err.response && (err.code === "ERR_NETWORK" || err.message === "Network Error")
+          ? `Không kết nối được API (${apiBase}). Hãy chạy backend: dotnet run trong host/StockLedgerRetail.HttpApi.Host`
+          : err.response?.data?.error ?? err.message ?? "Request failed";
     return Promise.reject(new Error(message));
   }
 );
+
+export async function loginWithPassword(email: string, password: string): Promise<AuthSession> {
+  const { data } = await api.post<LoginResponse>("/api/auth/login", { email, password });
+  const session = mapLoginResponse(data);
+  setAuthSession(session);
+  return session;
+}
+
+export async function logoutSession(): Promise<void> {
+  const session = getAuthSession();
+  try {
+    if (session?.refreshToken) {
+      await api.post("/api/auth/logout", { refreshToken: session.refreshToken });
+    }
+  } finally {
+    clearAuthSession();
+  }
+}
 
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof Error) {
