@@ -17,17 +17,26 @@ public class AuthAppService : IAuthAppService
     private readonly IAppUserRepository _appUserRepository;
     private readonly IWarehouseScopeService _warehouseScopeService;
     private readonly LoginOptions _loginOptions;
+    private readonly JwtOptions _jwtOptions;
+    private readonly IJwtTokenService _jwtTokenService;
+    private readonly IRefreshTokenService _refreshTokenService;
 
     public AuthAppService(
         ICurrentUserContext currentUser,
         IAppUserRepository appUserRepository,
         IWarehouseScopeService warehouseScopeService,
-        IOptions<LoginOptions> loginOptions)
+        IOptions<LoginOptions> loginOptions,
+        IOptions<JwtOptions> jwtOptions,
+        IJwtTokenService jwtTokenService,
+        IRefreshTokenService refreshTokenService)
     {
         _currentUser = currentUser;
         _appUserRepository = appUserRepository;
         _warehouseScopeService = warehouseScopeService;
         _loginOptions = loginOptions.Value;
+        _jwtOptions = jwtOptions.Value;
+        _jwtTokenService = jwtTokenService;
+        _refreshTokenService = refreshTokenService;
     }
 
     public async Task<LoginResponseDto> LoginAsync(
@@ -54,7 +63,44 @@ public class AuthAppService : IAuthAppService
             throw new UnauthorizedAccessException("Invalid email or password.");
         }
 
-        return MapLoginResponse(user);
+        return await IssueTokensAsync(user, cancellationToken);
+    }
+
+    public async Task<LoginResponseDto> RefreshAsync(
+        RefreshTokenRequestDto input,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_jwtOptions.Enabled)
+        {
+            throw new InvalidOperationException("JWT refresh is disabled.");
+        }
+
+        var userId = await _refreshTokenService.ValidateAndRevokeAsync(input.RefreshToken, cancellationToken);
+        if (userId is null)
+        {
+            throw new UnauthorizedAccessException("Invalid or expired refresh token.");
+        }
+
+        var user = await _appUserRepository.GetByIdWithPermissionsAsync(userId.Value, cancellationToken);
+
+        if (user is null || !user.IsActive)
+        {
+            throw new UnauthorizedAccessException("User is inactive.");
+        }
+
+        return await IssueTokensAsync(user, cancellationToken);
+    }
+
+    public async Task LogoutAsync(LogoutRequestDto input, CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(input.RefreshToken))
+        {
+            await _refreshTokenService.ValidateAndRevokeAsync(input.RefreshToken, cancellationToken);
+        }
+        else if (_currentUser.UserId.HasValue)
+        {
+            await _refreshTokenService.RevokeAllForUserAsync(_currentUser.UserId.Value, cancellationToken);
+        }
     }
 
     private static string? ResolveLoginEmail(LoginRequestDto input)
@@ -93,6 +139,23 @@ public class AuthAppService : IAuthAppService
             PrimaryWarehouseId = primaryWarehouseId == Guid.Empty ? null : primaryWarehouseId,
             HasUnrestrictedWarehouseAccess = _warehouseScopeService.HasUnrestrictedWarehouseAccess()
         };
+    }
+
+    private async Task<LoginResponseDto> IssueTokensAsync(
+        AppUser user,
+        CancellationToken cancellationToken)
+    {
+        var response = MapLoginResponse(user);
+        if (!_jwtOptions.Enabled)
+        {
+            return response;
+        }
+
+        JwtTokenService.EnsureSigningKeyConfigured(_jwtOptions);
+        response.AccessToken = _jwtTokenService.CreateAccessToken(user.Id, user.Email, user.DisplayName);
+        response.AccessTokenExpiresAt = _jwtTokenService.GetAccessTokenExpiryUtc();
+        response.RefreshToken = await _refreshTokenService.IssueAsync(user.Id, cancellationToken);
+        return response;
     }
 
     private static LoginResponseDto MapLoginResponse(AppUser user)
@@ -135,6 +198,7 @@ public class AppUserAppService : IAppUserAppService
     private readonly IUserAuthCacheService _userAuthCacheService;
     private readonly IUserWarehouseAssignmentRepository _userWarehouseAssignmentRepository;
     private readonly ITransactionAuditService _transactionAuditService;
+    private readonly IRefreshTokenService _refreshTokenService;
 
     public AppUserAppService(
         IAppUserRepository appUserRepository,
@@ -142,7 +206,8 @@ public class AppUserAppService : IAppUserAppService
         IPermissionAuthorizationService authorizationService,
         IUserAuthCacheService userAuthCacheService,
         IUserWarehouseAssignmentRepository userWarehouseAssignmentRepository,
-        ITransactionAuditService transactionAuditService)
+        ITransactionAuditService transactionAuditService,
+        IRefreshTokenService refreshTokenService)
     {
         _appUserRepository = appUserRepository;
         _permissionGroupRepository = permissionGroupRepository;
@@ -150,6 +215,7 @@ public class AppUserAppService : IAppUserAppService
         _userAuthCacheService = userAuthCacheService;
         _userWarehouseAssignmentRepository = userWarehouseAssignmentRepository;
         _transactionAuditService = transactionAuditService;
+        _refreshTokenService = refreshTokenService;
     }
 
     public async Task<List<AppUserDto>> GetListAsync(CancellationToken cancellationToken = default)
@@ -229,6 +295,10 @@ public class AppUserAppService : IAppUserAppService
         await SyncWarehouseAssignmentsAsync(user.Id, input.WarehouseAssignments, cancellationToken);
         await _appUserRepository.SaveChangesAsync(cancellationToken);
         await _userAuthCacheService.InvalidateUserAsync(user.Email, cancellationToken);
+        if (!input.IsActive || !string.IsNullOrWhiteSpace(input.Password))
+        {
+            await _refreshTokenService.RevokeAllForUserAsync(user.Id, cancellationToken);
+        }
 
         var newDto = MapToDto((await _appUserRepository.GetByIdWithAssignmentsAsync(user.Id, cancellationToken))!);
         await _transactionAuditService.LogAsync(nameof(AppUser), user.Id, AuditActionType.Update, oldDto, newDto, cancellationToken);

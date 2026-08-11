@@ -17,7 +17,7 @@ import {
   setAuthSession,
   type AuthSession,
 } from "@/lib/auth-session";
-import { apiClient } from "@/lib/api";
+import { apiClient, loginWithPassword, logoutSession } from "@/lib/api";
 
 type LoginInput = { email: string; password: string };
 
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = getAuthSession();
-    if (!stored?.email) {
+    if (!stored?.accessToken && !stored?.email) {
       setIsLoading(false);
       return;
     }
@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }>("/api/auth/me")
       .then(({ data }) => {
         const nextSession: AuthSession = {
+          ...stored,
           email: data.email,
           displayName: data.displayName,
           permissionCodes: data.permissionCodes ?? [],
@@ -87,20 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (input: LoginInput) => {
-      const { data } = await apiClient.post<AuthSession>("/api/auth/login", {
-        email: input.email,
-        password: input.password,
-      });
-      const nextSession: AuthSession = {
-        email: data.email,
-        displayName: data.displayName,
-        permissionCodes: data.permissionCodes ?? [],
-        groupCodes: data.groupCodes ?? [],
-        warehouseIds: (data.warehouseIds ?? []).map(String),
-        primaryWarehouseId: data.primaryWarehouseId ? String(data.primaryWarehouseId) : null,
-        hasUnrestrictedWarehouseAccess: data.hasUnrestrictedWarehouseAccess ?? false,
-      };
-      setAuthSession(nextSession);
+      const nextSession = await loginWithPassword(input.email, input.password);
       setSession(nextSession);
       router.replace("/");
     },
@@ -108,9 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    clearAuthSession();
-    setSession(null);
-    router.replace("/login");
+    void logoutSession().finally(() => {
+      setSession(null);
+      router.replace("/login");
+    });
   }, [router]);
 
   const hasPermission = useCallback(

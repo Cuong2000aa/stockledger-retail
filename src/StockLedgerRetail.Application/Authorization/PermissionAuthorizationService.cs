@@ -24,7 +24,7 @@ public class PermissionAuthorizationService : IPermissionAuthorizationService
     {
         if (!_currentUser.IsAuthenticated)
         {
-            throw new UnauthorizedAccessException("User email is required. Send header X-User-Email.");
+            throw new UnauthorizedAccessException("Authentication required. Send Authorization: Bearer <access_token>.");
         }
     }
 

@@ -12,6 +12,8 @@ public interface IAppUserRepository
 
     Task<AppUser?> GetByIdWithAssignmentsAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<AppUser?> GetByIdWithPermissionsAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<List<AppUser>> GetListAsync(CancellationToken cancellationToken = default);
 
     Task InsertAsync(AppUser user, CancellationToken cancellationToken = default);

@@ -68,6 +68,39 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.ToTable("app_users", (string)null);
                 });
 
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.AppUserRefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "RevokedAt");
+
+                    b.ToTable("app_user_refresh_tokens", (string)null);
+                });
+
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.BackgroundJobRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2079,6 +2112,17 @@ namespace StockLedgerRetail.EntityFrameworkCore.Migrations
                     b.HasIndex("Type", "BrandId");
 
                     b.ToTable("warehouses", (string)null);
+                });
+
+            modelBuilder.Entity("StockLedgerRetail.Domain.Entities.AppUserRefreshToken", b =>
+                {
+                    b.HasOne("StockLedgerRetail.Domain.Entities.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("StockLedgerRetail.Domain.Entities.CurrentStock", b =>

@@ -2,6 +2,7 @@ using Serilog;
 using StockLedgerRetail;
 using StockLedgerRetail.Audit;
 using StockLedgerRetail.EntityFrameworkCore;
+using StockLedgerRetail.HttpApi.Host;
 using StockLedgerRetail.HttpApi.Host.Audit;
 using StockLedgerRetail.HttpApi.Host.HostedServices;
 using StockLedgerRetail.HttpApi.Host.Middleware;
@@ -89,12 +90,18 @@ builder.Services.Configure<InventoryRollupOptions>(
 builder.Services.AddHostedService<AuthorizationBootstrapHostedService>();
 builder.Services.AddHostedService<FbDataSeedHostedService>();
 
+builder.Services.AddStockLedgerRetailJwtAuthentication(builder.Configuration);
+builder.Services.AddStockLedgerRetailRateLimiting(builder.Configuration);
+
 var app = builder.Build();
 
 app.UseCors();
 
+app.UseRateLimiter();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-app.UseMiddleware<UserEmailAuthMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseMiddleware<UserContextMiddleware>();
 app.UseMiddleware<BrandScopeMiddleware>();
 app.UseMiddleware<IntegrationApiKeyMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();

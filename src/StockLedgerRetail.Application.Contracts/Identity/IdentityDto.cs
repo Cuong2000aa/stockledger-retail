@@ -21,6 +21,16 @@ public class CurrentUserDto
     public bool HasUnrestrictedWarehouseAccess { get; set; }
 }
 
+public class RefreshTokenRequestDto
+{
+    public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class LogoutRequestDto
+{
+    public string? RefreshToken { get; set; }
+}
+
 public class LoginRequestDto
 {
     /// <summary>Email đăng nhập (field legacy tên Username vẫn dùng được).</summary>
@@ -46,6 +56,14 @@ public class LoginResponseDto
     public Guid? PrimaryWarehouseId { get; set; }
 
     public bool HasUnrestrictedWarehouseAccess { get; set; }
+
+    /// <summary>JWT access token (Bearer). Empty when JWT disabled.</summary>
+    public string AccessToken { get; set; } = string.Empty;
+
+    /// <summary>Opaque refresh token — store securely client-side.</summary>
+    public string RefreshToken { get; set; } = string.Empty;
+
+    public DateTime? AccessTokenExpiresAt { get; set; }
 }
 
 public class AppUserDto

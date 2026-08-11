@@ -33,7 +33,7 @@ CurrentStock      ← fast lookup
 | **Omni-channel** | Multi-warehouse ATP, allocate warehouse, stock reservation | ✅ Done |
 | **Multi-brand (MB-1→4)** | Brand entity, transfer policy, in-transit transfer, brand-scoped insights & fulfillment, scope headers | ✅ Done |
 | **RBAC** | Email users, permission groups in DB, teams, document authorization | ✅ Done |
-| **Login (stub)** | `POST /api/auth/login`, frontend `/login`, session → `X-User-Email` header | ✅ Done |
+| **Login** | `POST /api/auth/login`, frontend `/login`, JWT Bearer + refresh token | ✅ Done |
 | **Valuation** | CostPrice on SKU; ProductCostHistory; cost history report API | ✅ Done |
 | **Insights** | Executive summary, 7 analytics tabs (dead stock, velocity, transfer, markdown, promotion/reorder risk, trend), pricing-aware DTOs, snapshot cache, drill-down CTAs | ✅ Done |
 | **Reports** | Inventory value, NXT, near-expiry lots, lot stocks, cost history | ✅ Done |
@@ -400,13 +400,10 @@ Items below are **not done yet** (or only partially done). See the [Implementati
 
 | Item | Notes |
 |------|--------|
-| **PO approval UI** | Approve button for POs in `PendingApproval` status |
-| **GR / NXT demo seed** | Sample goods receipts and stock transactions for movement reports |
 | **Docker deployment** | `docker-compose` for API + PostgreSQL + frontend |
-| **JWT / OAuth** | Replace email header login; permissions still from DB |
 
 ---
 
 ## Project Status
 
-🚧 **Active development** — Core inventory, omni-channel, multi-brand, RBAC, reports, lot/expiry, approval workflow, and admin UI are **done**. Next: JWT/OAuth, AI copilot, Docker.
+🚧 **Active development** — Core inventory, omni-channel, multi-brand, RBAC, reports, lot/expiry, approval workflow, JWT auth, and admin UI are **done**. Next: OAuth/SSO, AI copilot, Docker full stack.

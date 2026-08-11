@@ -34,6 +34,16 @@ public class AppUserRepository : IAppUserRepository
             .Include(x => x.WarehouseAssignments)
             .FirstOrDefaultAsync(x => x.Email == email.ToLowerInvariant(), cancellationToken);
 
+    public Task<AppUser?> GetByIdWithPermissionsAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _dbContext.AppUsers
+            .AsNoTracking()
+            .Include(x => x.GroupAssignments)
+            .ThenInclude(x => x.Group)
+            .ThenInclude(x => x.Permissions)
+            .ThenInclude(x => x.Permission)
+            .Include(x => x.WarehouseAssignments)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
     public Task<AppUser?> GetByIdWithAssignmentsAsync(Guid id, CancellationToken cancellationToken = default) =>
         _dbContext.AppUsers
             .Include(x => x.GroupAssignments)

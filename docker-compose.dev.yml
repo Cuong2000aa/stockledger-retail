@@ -1,14 +1,38 @@
-# Local development dependencies (Redis for distributed cache).
-# Postgres: use local install or extend this file when needed.
+# Local smoke/dev dependencies: PostgreSQL + Redis.
+# Usage: docker compose -f docker-compose.dev.yml up -d
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stockledger-postgres-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "201020"
+      POSTGRES_DB: stockledger_retail
+    ports:
+      - "5432:5432"
+    volumes:
+      - stockledger_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d stockledger_retail"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # If host :6379 is already taken (another Redis), either stop that container
+  # or keep using it — appsettings Redis points at 127.0.0.1:6379 either way.
   redis:
     image: redis:7-alpine
     container_name: stockledger-redis-dev
     ports:
       - "6379:6379"
+    profiles: ["redis"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 5s
+
+volumes:
+  stockledger_pgdata:
