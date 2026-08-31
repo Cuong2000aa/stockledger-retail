@@ -95,11 +95,14 @@ Supplier → Purchase Order (Draft → Submitted)
 
 ### POS & Omni-Channel Integration
 
-`POST /api/integration/sales/check-availability` — read-only stock check  
-`POST /api/integration/sales/confirm-sale` — create + approve Stock Out (idempotent)  
-`POST /api/integration/sales/confirm-return` — create + approve Stock In (idempotent)  
-`POST /api/integration/fulfillment/check-availability-multi-warehouse` — ATP across warehouses (optional `brandId`, `regionCode`)  
-`POST /api/integration/fulfillment/allocate-warehouse` — auto-select ship-from warehouse  
+- `POST /api/integration/sales/check-availability` — read-only stock check (hỗ trợ `safetyStockBuffer`)
+- `POST /api/integration/sales/confirm-sale` — create + approve Stock Out (idempotent theo `sourceSystem` + `orderReference`)
+- `POST /api/integration/sales/batch-confirm-sales` — đồng bộ hàng loạt đơn bán (hỗ trợ POS offline đồng bộ khi có kết nối lại)
+- `POST /api/integration/sales/confirm-return` — create + approve Stock In (idempotent theo `sourceSystem` + `returnReference`)
+- `POST /api/integration/sales/check-availability-multi-warehouse` — ATP across warehouses (hỗ trợ `brandId`, `regionCode`, `safetyStockBuffer`)
+- `POST /api/integration/sales/allocate-warehouse` — auto-select ship-from warehouse (Store-first / DC-first)
+- `GET /api/integration/stocks/delta` — Delta sync tồn kho theo timestamp `sinceUtc` (dành cho OMS/Ecom/ERP poll định kỳ)
+- `POST /api/integration/stocks/webhooks/test` — bắn thử nghiệm webhook thông báo biến động tồn kho (`stock.changed`)
 
 Optional scope headers (RBAC-lite): `X-Brand-Id`, `X-Warehouse-Ids`, `X-Region-Code`.
 

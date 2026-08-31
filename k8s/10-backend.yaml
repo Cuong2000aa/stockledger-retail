@@ -1,0 +1,89 @@
+# -----------------------------------------------------------------------------
+# StockLedger Retail - Backend API (.NET 10 Web API)
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stockledger-backend
+  namespace: stockledger-retail
+  labels:
+    app.kubernetes.io/name: stockledger-backend
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: stockledger
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: stockledger-backend
+  template:
+    metadata:
+      labels:
+        app: stockledger-backend
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: backend
+          image: stockledger-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5270
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: stockledger-config
+            - secretRef:
+                name: stockledger-secrets
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1536Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 12
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stockledger-backend
+  namespace: stockledger-retail
+  labels:
+    app.kubernetes.io/name: stockledger-backend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 5270
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: stockledger-backend

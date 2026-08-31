@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stockledger-config
+  namespace: stockledger-retail
+data:
+  # --- Backend Environment Configurations ---
+  ASPNETCORE_ENVIRONMENT: "Production"
+  ASPNETCORE_URLS: "http://+:5270"
+  
+  # Redis Config
+  Redis__Enabled: "true"
+  Redis__Host: "REPLACE_REDIS_HOST"       # TODO infra: e.g. 10.0.x.x or redis-cluster
+  Redis__Port: "6379"
+  Redis__Database: "0"
+  Redis__InstanceName: "StockLedgerRetail:"
+
+  # JWT & Authentication Config
+  Auth__Jwt__Enabled: "true"
+  Auth__Jwt__Issuer: "StockLedgerRetail"
+  Auth__Jwt__Audience: "StockLedgerRetail.Web"
+  Auth__Jwt__AccessTokenMinutes: "60"
+  Auth__Jwt__RefreshTokenDays: "7"
+  Auth__AllowLegacyEmailHeader: "false"
+
+  # Rate Limiting
+  Auth__RateLimit__Enabled: "true"
+  Auth__RateLimit__LoginPermitLimit: "5"
+  Auth__RateLimit__RefreshPermitLimit: "20"
+  Auth__RateLimit__WindowSeconds: "60"
+
+  # Approval & Features
+  ApprovalWorkflow__DocumentValueThreshold: "10000000"
+  InventoryInsights__NightlyCronEnabled: "true"
+
+  # --- Frontend Environment Configurations ---
+  NEXT_PUBLIC_API_URL: "https://stockledger-api-uat.acfc.com.vn" # TODO infra
+  NODE_ENV: "production"

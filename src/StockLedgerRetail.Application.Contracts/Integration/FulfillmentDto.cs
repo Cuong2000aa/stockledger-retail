@@ -20,6 +20,9 @@ public class FulfillmentScopeDto
 
     /// <summary>Kho ưu tiên nếu đủ tồn.</summary>
     public Guid? PreferredWarehouseId { get; set; }
+
+    /// <summary>Mức tồn an toàn khấu trừ trước khi tính khả dụng (Online safety buffer).</summary>
+    public decimal SafetyStockBuffer { get; set; } = 0;
 }
 
 public class WarehouseAvailabilityLineDto
@@ -67,6 +70,9 @@ public class CheckMultiWarehouseAvailabilityRequestDto
     public Guid? WarehouseId { get; set; }
 
     public List<Guid>? CandidateWarehouseIds { get; set; }
+
+    /// <summary>Mức tồn an toàn khấu trừ trước khi tính khả dụng.</summary>
+    public decimal SafetyStockBuffer { get; set; } = 0;
 }
 
 public class CheckMultiWarehouseAvailabilityResponseDto

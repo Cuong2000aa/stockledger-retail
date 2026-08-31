@@ -69,6 +69,8 @@ public static class StockLedgerRetailApplicationModule
         services.AddScoped<IVariantUnitBarcodeAppService, VariantUnitBarcodeAppService>();
         services.AddScoped<IStockTransactionAppService, StockTransactionAppService>();
         services.AddScoped<ISalesIntegrationService, SalesIntegrationService>();
+        services.AddScoped<IStockIntegrationService, StockIntegrationService>();
+        services.AddScoped<IStockWebhookService, StockWebhookService>();
         services.AddScoped<IStockReservationService, StockReservationService>();
         services.AddScoped<IWarehouseFulfillmentService, WarehouseFulfillmentService>();
         services.AddScoped<ISupplierAppService, SupplierAppService>();
@@ -103,6 +105,8 @@ public static class StockLedgerRetailApplicationModule
                 configuration.GetSection(ApprovalWorkflowOptions.SectionName));
             services.Configure<SalesIntegrationOptions>(
                 configuration.GetSection(SalesIntegrationOptions.SectionName));
+            services.Configure<StockWebhookOptions>(
+                configuration.GetSection(StockWebhookOptions.SectionName));
             services.Configure<StockReconciliationOptions>(
                 configuration.GetSection(StockReconciliationOptions.SectionName));
             services.Configure<InsightSnapshotOptions>(

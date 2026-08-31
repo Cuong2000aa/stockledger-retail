@@ -1,0 +1,17 @@
+**/.git
+**/.github
+**/.cursor
+**/bin
+**/obj
+**/logs
+**/.vscode
+**/.idea
+**/node_modules
+**/.next
+frontend/
+graphify-out/
+.graphifyignore
+*.user
+*.suo
+*.userosscache
+*.sln.docstates

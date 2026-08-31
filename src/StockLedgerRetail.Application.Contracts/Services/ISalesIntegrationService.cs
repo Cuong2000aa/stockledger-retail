@@ -12,6 +12,10 @@ public interface ISalesIntegrationService
         ConfirmSaleRequestDto input,
         CancellationToken cancellationToken = default);
 
+    Task<BatchConfirmSaleResponseDto> BatchConfirmSaleAsync(
+        BatchConfirmSaleRequestDto input,
+        CancellationToken cancellationToken = default);
+
     Task<ConfirmReturnResponseDto> ConfirmReturnAsync(
         ConfirmReturnRequestDto input,
         CancellationToken cancellationToken = default);

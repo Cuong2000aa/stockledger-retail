@@ -1,0 +1,44 @@
+# -----------------------------------------------------------------------------
+# Ingress Controller Routing (Nginx Ingress mẫu cho ACFC)
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stockledger-ingress
+  namespace: stockledger-retail
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod" # Bật nếu dùng auto SSL
+spec:
+  # tls:
+  #   - hosts:
+  #       - stockledger-uat.acfc.com.vn
+  #       - stockledger-api-uat.acfc.com.vn
+  #     secretName: stockledger-tls
+  rules:
+    # 1. Host cho Frontend
+    - host: stockledger-uat.acfc.com.vn
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stockledger-frontend
+                port:
+                  number: 3000
+
+    # 2. Host cho Backend API
+    - host: stockledger-api-uat.acfc.com.vn
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stockledger-backend
+                port:
+                  number: 5270

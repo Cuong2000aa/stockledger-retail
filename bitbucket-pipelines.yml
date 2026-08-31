@@ -1,0 +1,82 @@
+# -----------------------------------------------------------------------------
+# StockLedger Retail - Bitbucket CI/CD Pipeline
+# Standard ACFC Pipeline: Test -> Build & Push Docker -> GitOps K8s Sync
+# -----------------------------------------------------------------------------
+
+image: atlassian/default-image:4
+
+definitions:
+  services:
+    docker:
+      memory: 4096
+
+  steps:
+    - step: &run-tests
+        name: Run Tests & Quality Checks
+        image: mcr.microsoft.com/dotnet/sdk:10.0-preview
+        script:
+          - dotnet restore StockLedgerRetail.slnx
+          - dotnet test --no-restore --verbosity normal
+
+    - step: &build-and-deploy
+        name: Build, Push Docker Images & GitOps Update
+        services:
+          - docker
+        script:
+          - echo "$REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$REGISTRY_USERNAME" --password-stdin
+          - export ENVIRONMENT="${BITBUCKET_BRANCH:-uat}"
+          - export IMAGE_TAG="${BITBUCKET_COMMIT:0:8}"
+          
+          # --- 1. Build & Push Backend API Image (.NET 10) ---
+          - export IMAGE_BACKEND="$REGISTRY_URL/$IMAGE_NAME_BACKEND"
+          - docker build -t ${IMAGE_BACKEND}:${IMAGE_TAG} -t ${IMAGE_BACKEND}:${ENVIRONMENT}-latest -f Dockerfile .
+          - docker push ${IMAGE_BACKEND}:${IMAGE_TAG}
+          - docker push ${IMAGE_BACKEND}:${ENVIRONMENT}-latest
+          
+          # --- 2. Build & Push Frontend Image (Next.js 15) ---
+          - export IMAGE_FRONTEND="$REGISTRY_URL/$IMAGE_NAME_FRONTEND"
+          - cd frontend
+          - docker build -t ${IMAGE_FRONTEND}:${IMAGE_TAG} -t ${IMAGE_FRONTEND}:${ENVIRONMENT}-latest -f Dockerfile .
+          - docker push ${IMAGE_FRONTEND}:${IMAGE_TAG}
+          - docker push ${IMAGE_FRONTEND}:${ENVIRONMENT}-latest
+          - cd ..
+
+          # --- 3. Update Kustomization Tags in GitOps Deployment Repo ---
+          - apk add --no-cache git curl bash tar gzip
+          - git config --global user.email "pipeline@bitbucket.org"
+          - git config --global user.name "Bitbucket Pipeline"
+          - git clone -b ${ENVIRONMENT} https://x-token-auth:${GITOPS_ACCESS_TOKEN}@bitbucket.org/acfc-it/${GITOPS_REPO}.git deploy_repo || git clone https://x-token-auth:${GITOPS_ACCESS_TOKEN}@bitbucket.org/acfc-it/${GITOPS_REPO}.git deploy_repo
+          - cd deploy_repo/stockledger-retail || cd deploy_repo
+          - curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+          - mv kustomize /usr/local/bin/
+          - kustomize edit set image stockledger-backend=${IMAGE_BACKEND}:${IMAGE_TAG}
+          - kustomize edit set image stockledger-frontend=${IMAGE_FRONTEND}:${IMAGE_TAG}
+          
+          # Push directly to deployment branch or create deployment PR
+          - git add kustomization.yaml
+          - git commit -m "chore(deploy): update stockledger images to tag ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
+          - git push origin ${ENVIRONMENT}
+
+pipelines:
+  branches:
+    uat:
+      - step: *run-tests
+      - step:
+          <<: *build-and-deploy
+          deployment: uat
+
+    staging:
+      - step: *run-tests
+      - step:
+          <<: *build-and-deploy
+          deployment: staging
+
+    main:
+      - step: *run-tests
+      - step:
+          <<: *build-and-deploy
+          deployment: production
+
+  pull-requests:
+    '**':
+      - step: *run-tests

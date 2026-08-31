@@ -27,4 +27,7 @@ public class SalesIntegrationOptions
     };
 
     public bool PreferStoreOverDc { get; set; } = true;
+
+    /// <summary>Default safety stock buffer deducted from available stock for external channel queries.</summary>
+    public decimal DefaultSafetyStockBuffer { get; set; } = 0;
 }
