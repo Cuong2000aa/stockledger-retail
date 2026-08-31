@@ -26,3 +26,8 @@ appsettings.*.local.json
 ## Local dev runtime
 dump.rdb
 tools/redis/
+
+## Graphify cache & out
+graphify-out/
+.graphify_build.json
+

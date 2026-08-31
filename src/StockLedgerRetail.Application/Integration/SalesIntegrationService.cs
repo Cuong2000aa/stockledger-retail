@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StockLedgerRetail.Domain.Repositories;
 using StockLedgerRetail.Enums;
@@ -8,7 +9,7 @@ using StockLedgerRetail.Services;
 namespace StockLedgerRetail.Application.Integration;
 
 /// <summary>
-/// Dịch vụ tích hợp bán hàng (POS/OMS) — kiểm tra tồn, xác nhận bán/trả hàng.
+/// Dịch vụ tích hợp bán hàng (POS/OMS) — kiểm tra tồn, xác nhận bán/trả hàng và batch sync.
 /// Dùng SourceSystem + ReferenceNo để đảm bảo idempotent (gọi lại không trừ/cộng tồn 2 lần).
 /// </summary>
 public class SalesIntegrationService : ISalesIntegrationService
@@ -20,7 +21,9 @@ public class SalesIntegrationService : ISalesIntegrationService
     private readonly IInventoryDocumentAppService _inventoryDocumentAppService;
     private readonly IStockReservationService _stockReservationService;
     private readonly IWarehouseFulfillmentService _warehouseFulfillmentService;
+    private readonly IStockWebhookService _stockWebhookService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<SalesIntegrationService> _logger;
     private readonly SalesIntegrationOptions _options;
 
     public SalesIntegrationService(
@@ -31,7 +34,9 @@ public class SalesIntegrationService : ISalesIntegrationService
         IInventoryDocumentAppService inventoryDocumentAppService,
         IStockReservationService stockReservationService,
         IWarehouseFulfillmentService warehouseFulfillmentService,
+        IStockWebhookService stockWebhookService,
         IUnitOfWork unitOfWork,
+        ILogger<SalesIntegrationService> logger,
         IOptions<SalesIntegrationOptions> options)
     {
         _inventoryDocumentRepository = inventoryDocumentRepository;
@@ -41,7 +46,9 @@ public class SalesIntegrationService : ISalesIntegrationService
         _inventoryDocumentAppService = inventoryDocumentAppService;
         _stockReservationService = stockReservationService;
         _warehouseFulfillmentService = warehouseFulfillmentService;
+        _stockWebhookService = stockWebhookService;
         _unitOfWork = unitOfWork;
+        _logger = logger;
         _options = options.Value;
     }
 
@@ -53,10 +60,11 @@ public class SalesIntegrationService : ISalesIntegrationService
         await EnsureWarehouseExistsAsync(input.WarehouseId, cancellationToken);
         ValidateSalesLines(input.Lines);
 
+        var safetyBuffer = Math.Max(0m, input.SafetyStockBuffer > 0 ? input.SafetyStockBuffer : _options.DefaultSafetyStockBuffer);
         var lines = new List<SalesAvailabilityLineDto>();
         foreach (var line in input.Lines)
         {
-            lines.Add(await BuildAvailabilityLineAsync(input.WarehouseId, line, cancellationToken));
+            lines.Add(await BuildAvailabilityLineAsync(input.WarehouseId, line, safetyBuffer, cancellationToken));
         }
 
         return new CheckSalesAvailabilityResponseDto
@@ -120,7 +128,8 @@ public class SalesIntegrationService : ISalesIntegrationService
         }
 
         ValidateSalesLines(input.Lines);
-        var warehouseId = await ResolveWarehouseIdForFulfillmentAsync(
+
+        var warehouseId = await ResolveFulfillmentWarehouseIdAsync(
             new AllocateWarehouseRequestDto
             {
                 WarehouseId = input.WarehouseId,
@@ -155,7 +164,60 @@ public class SalesIntegrationService : ISalesIntegrationService
             return await _inventoryDocumentAppService.ApproveAsync(created.Id, ct);
         }, cancellationToken);
 
+        // Dispatch stock changed webhook notification
+        _ = DispatchStockChangeEventAsync(warehouseId, input.Lines, -1, "SALE", sourceSystem, orderReference);
+
         return MapSaleResponse(approved, sourceSystem, orderReference, warehouseId, isReplay: false);
+    }
+
+    /// <summary>
+    /// Đồng bộ hàng loạt đơn bán hàng (Hỗ trợ POS offline đồng bộ khi có mạng lại).
+    /// </summary>
+    public async Task<BatchConfirmSaleResponseDto> BatchConfirmSaleAsync(
+        BatchConfirmSaleRequestDto input,
+        CancellationToken cancellationToken = default)
+    {
+        var sourceSystem = NormalizeSourceSystem(input.SourceSystem);
+        var results = new List<BatchConfirmSaleItemResultDto>();
+        var successCount = 0;
+        var failedCount = 0;
+
+        foreach (var sale in input.Sales)
+        {
+            sale.SourceSystem = sourceSystem;
+            var orderRef = sale.OrderReference?.Trim() ?? string.Empty;
+
+            try
+            {
+                var response = await ConfirmSaleAsync(sale, cancellationToken);
+                results.Add(new BatchConfirmSaleItemResultDto
+                {
+                    OrderReference = orderRef,
+                    Success = true,
+                    Data = response
+                });
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to confirm sale in batch for order {OrderReference}", orderRef);
+                results.Add(new BatchConfirmSaleItemResultDto
+                {
+                    OrderReference = orderRef,
+                    Success = false,
+                    ErrorMessage = ex.Message
+                });
+                failedCount++;
+            }
+        }
+
+        return new BatchConfirmSaleResponseDto
+        {
+            TotalCount = input.Sales.Count,
+            SuccessCount = successCount,
+            FailedCount = failedCount,
+            Results = results
+        };
     }
 
     /// <summary>
@@ -213,6 +275,9 @@ public class SalesIntegrationService : ISalesIntegrationService
             return await _inventoryDocumentAppService.ApproveAsync(created.Id, ct);
         }, cancellationToken);
 
+        // Dispatch stock changed webhook notification
+        _ = DispatchStockChangeEventAsync(input.WarehouseId, input.Lines, 1, "RETURN", sourceSystem, returnReference);
+
         return MapReturnResponse(approved, sourceSystem, returnReference, isReplay: false);
     }
 
@@ -220,6 +285,7 @@ public class SalesIntegrationService : ISalesIntegrationService
     private async Task<SalesAvailabilityLineDto> BuildAvailabilityLineAsync(
         Guid warehouseId,
         SalesLineRequestDto line,
+        decimal safetyBuffer,
         CancellationToken cancellationToken)
     {
         var sku = NormalizeSku(line.Sku);
@@ -240,7 +306,8 @@ public class SalesIntegrationService : ISalesIntegrationService
         var stock = await _currentStockRepository.GetByVariantAndWarehouseAsync(
             variant.Id, warehouseId, cancellationToken);
 
-        var available = stock?.QuantityAvailable ?? 0;
+        var rawAvailable = stock?.QuantityAvailable ?? 0;
+        var available = Math.Max(0m, rawAvailable - safetyBuffer);
         var isAvailable = available >= line.Quantity;
 
         return new SalesAvailabilityLineDto
@@ -277,7 +344,7 @@ public class SalesIntegrationService : ISalesIntegrationService
         return result;
     }
 
-    private async Task<Guid> ResolveWarehouseIdForFulfillmentAsync(
+    private async Task<Guid> ResolveFulfillmentWarehouseIdAsync(
         AllocateWarehouseRequestDto request,
         CancellationToken cancellationToken)
     {
@@ -291,12 +358,64 @@ public class SalesIntegrationService : ISalesIntegrationService
         return allocation.SelectedWarehouseId;
     }
 
-    /// <summary>Chuẩn hóa và kiểm tra sourceSystem có trong danh sách cho phép.</summary>
-    private string NormalizeSourceSystem(string? sourceSystem) =>
-        IntegrationSourceNormalizer.Normalize(sourceSystem, _options);
+    private async Task DispatchStockChangeEventAsync(
+        Guid warehouseId,
+        List<SalesLineRequestDto> lines,
+        decimal directionMultiplier,
+        string reason,
+        string sourceSystem,
+        string referenceNo)
+    {
+        try
+        {
+            var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId);
+            var warehouseCode = warehouse?.Code ?? warehouseId.ToString();
 
-    /// <summary>Chuẩn hóa mã tham chiếu đơn/trả hàng (bắt buộc, không rỗng).</summary>
-    private static string NormalizeReference(string reference, string fieldName)
+            var events = new List<StockChangedEventDto>();
+
+            foreach (var line in lines)
+            {
+                var variant = await _productVariantRepository.GetBySkuAsync(line.Sku);
+                if (variant is null) continue;
+
+                var stock = await _currentStockRepository.GetByVariantAndWarehouseAsync(variant.Id, warehouseId);
+
+                events.Add(new StockChangedEventDto
+                {
+                    EventId = Guid.NewGuid().ToString("N"),
+                    EventType = "stock.changed",
+                    Sku = line.Sku,
+                    ProductVariantId = variant.Id,
+                    WarehouseId = warehouseId,
+                    WarehouseCode = warehouseCode,
+                    OnHandQuantity = stock?.QuantityOnHand ?? 0,
+                    ReservedQuantity = stock?.QuantityReserved ?? 0,
+                    AvailableQuantity = stock?.QuantityAvailable ?? 0,
+                    ChangeDelta = line.Quantity * directionMultiplier,
+                    Reason = reason,
+                    SourceSystem = sourceSystem,
+                    ReferenceNo = referenceNo,
+                    OccurredAtUtc = DateTime.UtcNow
+                });
+            }
+
+            if (events.Count > 0)
+            {
+                await _stockWebhookService.NotifyBatchStockChangedAsync(events);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to emit stock changed webhook for {ReferenceNo}", referenceNo);
+        }
+    }
+
+    private string NormalizeSourceSystem(string? sourceSystem)
+    {
+        return IntegrationSourceNormalizer.Normalize(sourceSystem, _options);
+    }
+
+    private static string NormalizeReference(string? reference, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(reference))
         {
@@ -306,7 +425,6 @@ public class SalesIntegrationService : ISalesIntegrationService
         return reference.Trim();
     }
 
-    /// <summary>Chuẩn hóa mã SKU (trim, không rỗng).</summary>
     private static string NormalizeSku(string sku)
     {
         if (string.IsNullOrWhiteSpace(sku))
@@ -317,7 +435,6 @@ public class SalesIntegrationService : ISalesIntegrationService
         return sku.Trim();
     }
 
-    /// <summary>Kiểm tra request có ít nhất một dòng và số lượng hợp lệ.</summary>
     private static void ValidateSalesLines(List<SalesLineRequestDto> lines)
     {
         if (lines.Count == 0)
@@ -335,7 +452,6 @@ public class SalesIntegrationService : ISalesIntegrationService
         }
     }
 
-    /// <summary>Đảm bảo kho bán/trả tồn tại.</summary>
     private async Task EnsureWarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken)
     {
         var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken);
@@ -345,14 +461,12 @@ public class SalesIntegrationService : ISalesIntegrationService
         }
     }
 
-    /// <summary>Gắn nhãn SALE/RETURN vào ghi chú phiếu.</summary>
     private static string? BuildSalesNote(string operation, string? note)
     {
         var prefix = $"[{operation}]";
         return string.IsNullOrWhiteSpace(note) ? prefix : $"{prefix} {note.Trim()}";
     }
 
-    /// <summary>Map phiếu đã xử lý sang response xác nhận bán.</summary>
     private static ConfirmSaleResponseDto MapSaleResponse(
         InventoryDocumentDto document,
         string sourceSystem,
@@ -368,7 +482,6 @@ public class SalesIntegrationService : ISalesIntegrationService
         SelectedWarehouseId = selectedWarehouseId
     };
 
-    /// <summary>Map phiếu đã xử lý sang response xác nhận trả hàng.</summary>
     private static ConfirmReturnResponseDto MapReturnResponse(
         InventoryDocumentDto document,
         string sourceSystem,

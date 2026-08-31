@@ -28,6 +28,9 @@ public class CheckSalesAvailabilityRequestDto
 {
     public Guid WarehouseId { get; set; }
 
+    /// <summary>Optional safety stock buffer for online channel queries.</summary>
+    public decimal SafetyStockBuffer { get; set; } = 0;
+
     public List<SalesLineRequestDto> Lines { get; set; } = new();
 }
 
@@ -108,4 +111,35 @@ public class ConfirmReturnResponseDto
     public string SourceSystem { get; set; } = string.Empty;
 
     public string ReturnReference { get; set; } = string.Empty;
+}
+
+public class BatchConfirmSaleRequestDto
+{
+    /// <summary>External system id, e.g. POS, OMS.</summary>
+    public string SourceSystem { get; set; } = IntegrationSourceSystems.Pos;
+
+    /// <summary>List of sales orders to confirm in batch.</summary>
+    public List<ConfirmSaleRequestDto> Sales { get; set; } = new();
+}
+
+public class BatchConfirmSaleItemResultDto
+{
+    public string OrderReference { get; set; } = string.Empty;
+
+    public bool Success { get; set; }
+
+    public string? ErrorMessage { get; set; }
+
+    public ConfirmSaleResponseDto? Data { get; set; }
+}
+
+public class BatchConfirmSaleResponseDto
+{
+    public int TotalCount { get; set; }
+
+    public int SuccessCount { get; set; }
+
+    public int FailedCount { get; set; }
+
+    public List<BatchConfirmSaleItemResultDto> Results { get; set; } = new();
 }

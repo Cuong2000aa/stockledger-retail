@@ -63,6 +63,15 @@ public class SalesIntegrationController : ControllerBase
         _salesIntegrationService.ConfirmSaleAsync(input, cancellationToken);
 
     /// <summary>
+    /// Đồng bộ hàng loạt đơn bán hàng (hỗ trợ POS offline đồng bộ khi có kết nối lại).
+    /// </summary>
+    [HttpPost("batch-confirm-sales")]
+    public Task<BatchConfirmSaleResponseDto> BatchConfirmSaleAsync(
+        [FromBody] BatchConfirmSaleRequestDto input,
+        CancellationToken cancellationToken) =>
+        _salesIntegrationService.BatchConfirmSaleAsync(input, cancellationToken);
+
+    /// <summary>
     /// Xác nhận trả hàng — tạo phiếu nhập, duyệt và cộng tồn.
     /// Idempotent theo sourceSystem + returnReference.
     /// </summary>

@@ -54,7 +54,11 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
             regionCode,
             cancellationToken);
 
-        var summaries = await BuildWarehouseSummariesAsync(mappedLines, warehouses, cancellationToken);
+        var summaries = await BuildWarehouseSummariesAsync(
+            mappedLines,
+            warehouses,
+            input.SafetyStockBuffer,
+            cancellationToken);
 
         return new CheckMultiWarehouseAvailabilityResponseDto
         {
@@ -86,6 +90,7 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
             var summary = (await BuildWarehouseSummariesAsync(
                 mappedLines,
                 new List<Warehouse> { warehouse },
+                input.SafetyStockBuffer,
                 cancellationToken)).Single();
 
             if (!summary.CanFulfillAll)
@@ -112,7 +117,11 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
             throw new InvalidOperationException("No active fulfillment warehouses are configured.");
         }
 
-        var summaries = await BuildWarehouseSummariesAsync(mappedLines, warehouses, cancellationToken);
+        var summaries = await BuildWarehouseSummariesAsync(
+            mappedLines,
+            warehouses,
+            input.SafetyStockBuffer,
+            cancellationToken);
         var ordered = OrderSummariesForSelection(summaries, input.SelectionMode, input.PreferredWarehouseId);
         var selected = ordered.FirstOrDefault(x => x.CanFulfillAll)
             ?? throw new InvalidOperationException(
@@ -125,6 +134,7 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
     private async Task<List<WarehouseFulfillmentSummaryDto>> BuildWarehouseSummariesAsync(
         List<MappedSalesLine> mappedLines,
         List<Warehouse> warehouses,
+        decimal safetyStockBuffer,
         CancellationToken cancellationToken)
     {
         if (warehouses.Count == 0)
@@ -132,6 +142,7 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
             return new List<WarehouseFulfillmentSummaryDto>();
         }
 
+        var buffer = Math.Max(0m, safetyStockBuffer > 0 ? safetyStockBuffer : _options.DefaultSafetyStockBuffer);
         var variantIds = mappedLines.Select(x => x.ProductVariantId).Distinct().ToList();
         var warehouseIds = warehouses.Select(x => x.Id).ToList();
 
@@ -160,7 +171,8 @@ public class WarehouseFulfillmentService : IWarehouseFulfillmentService
                 reserved.TryGetValue((line.ProductVariantId, warehouse.Id), out var reservedQty);
 
                 var onHand = stock?.QuantityOnHand ?? 0;
-                var available = onHand - reservedQty;
+                var rawAvailable = Math.Max(0m, onHand - reservedQty);
+                var available = Math.Max(0m, rawAvailable - buffer);
                 var isAvailable = available >= line.Quantity;
 
                 if (available < bottleneck)

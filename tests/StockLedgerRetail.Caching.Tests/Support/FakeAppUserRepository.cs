@@ -29,6 +29,9 @@ public sealed class FakeAppUserRepository : IAppUserRepository
     public Task<AppUser?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
+    public Task<AppUser?> GetByIdWithPermissionsAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_usersByEmail.Values.FirstOrDefault(u => u.Id == id));
+
     public Task<AppUser?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 

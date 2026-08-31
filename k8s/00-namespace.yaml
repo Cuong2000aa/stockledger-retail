@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stockledger-retail
+  labels:
+    app.kubernetes.io/name: stockledger-retail
+    app.kubernetes.io/part-of: stockledger
